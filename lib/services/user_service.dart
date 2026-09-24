@@ -343,21 +343,44 @@ class UserService {
   /// (PUT /me/settings/address { city_id }).
   ///
   /// [streetId] и [buildingId] — необязательный точный адрес (улица и дом).
-  /// Передаём их в запрос только если они выбраны (не null): бэк принимает
-  /// эти поля опционально, а отсутствие ключа не затирает уже сохранённое.
+  /// При [clearMissing] они уходят всегда, в том числе пустыми: так человек
+  /// может стереть улицу и так затирается улица прошлого города. Без флага
+  /// пустые поля не отправляются и сохранённое на сервере остаётся как было.
+  ///
+  /// Город необязателен (24.09.2026): у Москвы,
+  /// Санкт-Петербурга и Севастополя в справочнике города нет, там выбирается
+  /// сам регион, и тогда шлём только его.
   static Future<Map<String, dynamic>> updateAddress({
-    required int cityId,
+    int? cityId,
+    int? regionId,
     int? streetId,
     int? buildingId,
+    bool clearMissing = false,
     required String token,
   }) async {
     try {
-      final body = <String, dynamic>{'city_id': cityId};
-      if (streetId != null) {
+      // Если человек трогал адрес, улицу и дом шлём всегда, в том числе
+      // пустыми: сервер обновляет адрес присланными полями, и пропущенная
+      // улица осталась бы от прошлого города. Если не трогал, пустые поля не
+      // отправляем вовсе, чтобы не стереть сохранённое на сервере.
+      final body = <String, dynamic>{};
+
+      if (clearMissing) {
         body['street_id'] = streetId;
+        body['building_id'] = streetId == null ? null : buildingId;
+      } else {
+        if (streetId != null) body['street_id'] = streetId;
+        if (buildingId != null) body['building_id'] = buildingId;
       }
-      if (buildingId != null) {
-        body['building_id'] = buildingId;
+
+      if (cityId != null) {
+        body['city_id'] = cityId;
+      } else if (regionId != null) {
+        // Без города адрес остаётся на уровне области, это допустимый случай:
+        // у Москвы и Петербурга города в справочнике нет.
+        body['city_id'] = null;
+        body['main_region_id'] = regionId;
+        body['region_id'] = regionId;
       }
 
       final response = await ApiService.put(

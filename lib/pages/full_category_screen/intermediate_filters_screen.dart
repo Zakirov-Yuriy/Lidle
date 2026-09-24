@@ -679,7 +679,10 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                 hint: 'Например, Мариуполь',
                 promptText: 'Введите название города или посёлка',
                 emptyText: 'Такого населённого пункта не нашлось',
-                onSearch: PlacesService.cities,
+                // Только настоящие города: дальше по фильтрам уходит одно
+                // название, и «Москва» как регион ничему бы не соответствовала.
+                onSearch: (query) =>
+                    PlacesService.cities(query, withRegions: false),
               ),
             );
 

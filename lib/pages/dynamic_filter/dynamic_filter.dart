@@ -480,12 +480,26 @@ class _DynamicFilterState extends State<DynamicFilter>
 
         log.d('🎯 Город по умолчанию: "$fCity" (ID: $fCityId)');
       } else if (fRegionId != null && fRegion != null && fRegion.isNotEmpty) {
-        // Город неизвестен, но область есть: пригодится как region_id, если
-        // человек так и не выберет населённый пункт.
+        // Города у компании нет. Так выглядит адрес в Москве, Петербурге и
+        // Севастополе: там в справочнике сам регион и есть населённый пункт.
+        // Проверяем это у сервера и подставляем его в поле города.
+        // null значит «сервер не ответил»: считаем, что это обычная область.
+        final isRegionCity =
+            await PlacesService.isRegionCity(fRegionId, fRegion) ?? false;
+
+        if (!mounted) return;
+
         setState(() {
           _selectedRegion = {fRegion};
           _selectedRegionId = fRegionId;
           mainRegionId = fRegionId;
+
+          if (isRegionCity) {
+            _selectedPlaceRegionId = fRegionId;
+            _selectedCity = {fRegion};
+            _cityController.text = fRegion;
+            _selectedCityMainRegionId = fRegionId;
+          }
         });
       }
 
@@ -2473,7 +2487,10 @@ class _DynamicFilterState extends State<DynamicFilter>
     // Адрес: обязателен только населённый пункт (24.09.2026). Область человек
     // больше не выбирает, её выводит сервер по городу. Улица необязательна: в
     // сёлах улиц в справочнике нет, и раньше такие люди публиковать не могли.
-    if (_selectedCity.isEmpty || _selectedCityId == null) {
+    // У Москвы, Петербурга и Севастополя города в справочнике нет, выбирается
+    // сам регион: тогда достаточно его.
+    if (_selectedCity.isEmpty ||
+        (_selectedCityId == null && _selectedPlaceRegionId == null)) {
       _fieldErrors['city'] = 'Выберите город или посёлок';
     }
 
@@ -2550,7 +2567,8 @@ class _DynamicFilterState extends State<DynamicFilter>
 
       // Адрес: обязателен только населённый пункт (24.09.2026). Улица и дом
       // необязательны, область сервер выводит из города сам.
-      if (_selectedCity.isEmpty || _selectedCityId == null) {
+      if (_selectedCity.isEmpty ||
+          (_selectedCityId == null && _selectedPlaceRegionId == null)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Пожалуйста, выберите город или посёлок')),
         );
@@ -2558,7 +2576,7 @@ class _DynamicFilterState extends State<DynamicFilter>
         return;
       }
 
-      if (_selectedCityId != null) {
+      {
         try {
           final token = TokenService.currentToken;
           if (token != null) {
@@ -2577,11 +2595,11 @@ class _DynamicFilterState extends State<DynamicFilter>
             // Подрегион адреса. Сервер всё равно выводит и область, и подрегион
             // из города сам, поэтому здесь достаточно того, что пришло вместе с
             // населённым пунктом. Ноль не отправляем: у городов-регионов
-            // (Москва, Санкт-Петербург) подрегиона нет.
-            final addressRegionId =
-                (_selectedCityRegionId != null && _selectedCityRegionId != 0)
+            // (Москва, Санкт-Петербург) подрегиона нет, там регион и есть область.
+            final addressRegionId = _selectedPlaceRegionId ??
+                ((_selectedCityRegionId != null && _selectedCityRegionId != 0)
                     ? _selectedCityRegionId
-                    : _selectedRegionId;
+                    : _selectedRegionId);
 
             if (addressRegionId != null) {
               address['region_id'] = addressRegionId;
@@ -2673,8 +2691,6 @@ class _DynamicFilterState extends State<DynamicFilter>
           setState(() => _isPublishing = false);
           return;
         }
-      } else {
-        // log.d('⚠️ City or street not selected, address will be empty');
       }
 
       log.d('═══════════════════════════════════════════════════════');
@@ -4741,7 +4757,9 @@ class _DynamicFilterState extends State<DynamicFilter>
               ? 'Найдите улицу, если она есть'
               : _selectedStreet.join(', '),
           icon: const Icon(Icons.search, color: textSecondary),
-          onTap: _selectedCityId == null ? null : () => _pickStreet(context),
+          onTap: (_selectedCityId == null && _selectedPlaceRegionId == null)
+              ? null
+              : () => _pickStreet(context),
         ),
         const SizedBox(height: 9),
 
@@ -4772,7 +4790,8 @@ class _DynamicFilterState extends State<DynamicFilter>
         promptText: 'Введите название города или посёлка',
         emptyText: 'Такого населённого пункта не нашлось',
         onSearch: PlacesService.cities,
-        selectedId: _selectedCityId,
+        selectedId: _selectedPlaceRegionId ?? _selectedCityId,
+        selectedIsRegion: _selectedPlaceRegionId != null,
       ),
     );
 
@@ -4785,8 +4804,12 @@ class _DynamicFilterState extends State<DynamicFilter>
 
     setState(() {
       _selectedCity = {picked.name};
-      _selectedCityId = picked.id;
-      _selectedCityPlaceLabel = picked.subtitle;
+      // Москва и подобные: это регион, а не город. Город (внутригородской
+      // округ) подставится из выбранной улицы, а без улицы адрес останется на
+      // уровне города-региона, и это нормальный адрес «Москва».
+      _selectedPlaceRegionId = picked.isRegion ? picked.id : null;
+      _selectedCityId = picked.isRegion ? null : picked.id;
+      _selectedCityPlaceLabel = picked.isRegion ? null : picked.subtitle;
       _cityController.text = picked.name;
 
       // Область и подрегион берём у населённого пункта: спрашивать их у
@@ -4816,9 +4839,14 @@ class _DynamicFilterState extends State<DynamicFilter>
   }
 
   /// Выбор улицы внутри населённого пункта. Сбрасывает дом.
+  ///
+  /// У города-региона (Москва) улицы ищутся по всему региону, и вместе с
+  /// улицей приходит её внутригородской округ: его и запоминаем как город.
   Future<void> _pickStreet(BuildContext context) async {
     final cityId = _selectedCityId;
-    if (cityId == null) return;
+    final placeRegionId = _selectedPlaceRegionId;
+
+    if (cityId == null && placeRegionId == null) return;
 
     final picked = await showDialog<PlaceSuggestion>(
       context: context,
@@ -4827,7 +4855,9 @@ class _DynamicFilterState extends State<DynamicFilter>
         hint: 'Например, Ленина',
         promptText: 'Введите название улицы',
         emptyText: 'Такой улицы в справочнике нет, поле можно оставить пустым',
-        onSearch: (query) => PlacesService.streets(query, cityId),
+        onSearch: (query) => placeRegionId != null
+            ? PlacesService.streetsInRegion(query, placeRegionId)
+            : PlacesService.streets(query, cityId!),
         selectedId: _selectedStreetId,
       ),
     );
@@ -4843,6 +4873,11 @@ class _DynamicFilterState extends State<DynamicFilter>
       _selectedStreet = {picked.name};
       _selectedStreetId = picked.id;
       _streetController.text = picked.name;
+
+      // Округ Москвы: человеку его не показываем, но серверу он нужен городом.
+      if (placeRegionId != null && picked.cityId != null) {
+        _selectedCityId = picked.cityId;
+      }
       _lastStreetsSearchResults[picked.name] = picked.id;
       _lastStreetsSubregionResults[picked.name] =
           picked.regionId ?? _selectedCityRegionId;

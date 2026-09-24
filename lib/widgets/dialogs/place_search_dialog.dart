@@ -23,6 +23,7 @@ class PlaceSearchDialog extends StatefulWidget {
     this.promptText = 'Введите название',
     this.initial = const <PlaceSuggestion>[],
     this.selectedId,
+    this.selectedIsRegion = false,
     this.minQueryLength = 2,
   });
 
@@ -38,8 +39,11 @@ class PlaceSearchDialog extends StatefulWidget {
   final String emptyText;
   final String promptText;
 
-  /// Уже выбранное значение: подсвечиваем его в списке.
+  /// Уже выбранное значение: подсвечиваем его в списке. Номера городов и
+  /// регионов живут в разных справочниках и могут совпасть, поэтому сверяем
+  /// заодно и вид записи.
   final int? selectedId;
+  final bool selectedIsRegion;
 
   /// С какой длины запроса начинаем искать. Сервер адресов просит два символа,
   /// а по готовому списку (номера домов) достаточно одного.
@@ -215,7 +219,9 @@ class _PlaceSearchDialogState extends State<PlaceSearchDialog> {
           itemCount: _items.length,
           itemBuilder: (context, index) {
             final item = _items[index];
-            final selected = widget.selectedId != null && widget.selectedId == item.id;
+            final selected = widget.selectedId != null &&
+                widget.selectedId == item.id &&
+                widget.selectedIsRegion == item.isRegion;
 
             return GestureDetector(
               onTap: () => Navigator.of(context).pop(item),

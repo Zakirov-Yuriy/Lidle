@@ -183,15 +183,30 @@ class CompanyContactService {
         token: token);
   }
 
+  /// Адрес компании. Город необязателен (24.09.2026): у Москвы,
+  /// Санкт-Петербурга и Севастополя города в справочнике нет, там выбирается
+  /// сам регион, и тогда шлём только его.
   static Future<Map<String, dynamic>> changeAddress({
-    required int cityId,
+    int? cityId,
+    int? regionId,
     int? streetId,
     int? buildingId,
     String? token,
   }) {
-    final body = <String, dynamic>{'city_id': cityId};
-    if (streetId != null) body['street_id'] = streetId;
-    if (buildingId != null) body['building_id'] = buildingId;
+    // Улицу и дом шлём всегда, в том числе пустыми: сервер обновляет адрес
+    // присланными полями, и пропущенная улица осталась бы от прошлого города.
+    final body = <String, dynamic>{
+      'street_id': streetId,
+      'building_id': streetId == null ? null : buildingId,
+    };
+
+    if (cityId != null) {
+      body['city_id'] = cityId;
+    } else if (regionId != null) {
+      body['city_id'] = null;
+      body['main_region_id'] = regionId;
+      body['region_id'] = regionId;
+    }
     return ApiService.put('/me/settings/company/address', body, token: token);
   }
 

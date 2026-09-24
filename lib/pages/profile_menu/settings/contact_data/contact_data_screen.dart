@@ -109,6 +109,17 @@ class _ContactDataScreenState extends State<ContactDataScreen>
   Set<String> _selectedCity = {};
   int? _selectedRegionId;
   int? _selectedCityId;
+
+  /// Человек менял адрес на этом экране. Тогда при сохранении улицу и дом
+  /// отправляем даже пустыми: иначе улица прошлого города осталась бы на
+  /// сервере. Без этого флага пустые поля не шлём, чтобы не стереть адрес,
+  /// которого экран просто не знает (он читает его из локального хранилища).
+  bool _addressChanged = false;
+
+  /// Выбран город-регион: Москва, Санкт-Петербург, Севастополь (24.09.2026).
+  /// В справочнике это регионы, городами внутри них лежат внутригородские
+  /// округа. Тогда города нет, пока не выбрана улица: округ берётся из неё.
+  int? _selectedPlaceRegionId;
   List<Map<String, dynamic>> _regions = [];
   List<Map<String, dynamic>> _cities = [];
   Map<String, int> _lastCitiesSearchResults = {};
@@ -289,6 +300,21 @@ class _ContactDataScreenState extends State<ContactDataScreen>
       // Загружаем сохраненные данные из Hive
       final region = UserService.getLocal('region') as String? ?? '';
       final city = UserService.getLocal('city') as String? ?? '';
+      // Номера области и города: без них поле города считалось незаполненным, и
+      // экран отказывался сохраняться (24.09.2026). Список регионов к этому
+      // моменту ещё грузится, искать номер по названию в нём бесполезно.
+      final cachedRegionId =
+          int.tryParse(UserService.getLocal('regionId') as String? ?? '');
+      final cachedPlaceRegionId =
+          int.tryParse(UserService.getLocal('placeRegionId') as String? ?? '');
+      final cachedCityId =
+          int.tryParse(UserService.getLocal('cityId') as String? ?? '');
+      final cachedStreet = UserService.getLocal('street') as String? ?? '';
+      final cachedStreetId =
+          int.tryParse(UserService.getLocal('streetId') as String? ?? '');
+      final cachedBuilding = UserService.getLocal('building') as String? ?? '';
+      final cachedBuildingId =
+          int.tryParse(UserService.getLocal('buildingId') as String? ?? '');
       final telegram = UserService.getLocal('telegram') as String? ?? '';
       final whatsapp = UserService.getLocal('whatsapp') as String? ?? '';
       final phone1Cache = UserService.getLocal('phone1') as String? ?? '';
@@ -311,23 +337,53 @@ class _ContactDataScreenState extends State<ContactDataScreen>
         // Восстанавливаем выбранные область и город
         if (region.isNotEmpty) {
           _selectedRegion = {region};
-          // Находим ID выбранного региона
-          final regionIndex = _regions.indexWhere((r) => r['name'] == region);
-          if (regionIndex >= 0) {
-            _selectedRegionId = _regions[regionIndex]['id'] as int?;
-          }
+          _selectedRegionId = cachedRegionId ??
+              (() {
+                final regionIndex =
+                    _regions.indexWhere((r) => r['name'] == region);
+                return regionIndex >= 0
+                    ? _regions[regionIndex]['id'] as int?
+                    : null;
+              })();
         }
         if (city.isNotEmpty) {
           _selectedCity = {city};
-          // Находим ID выбранного города
-          final cityIndex = _lastCitiesSearchResults.keys.toList().indexOf(city);
-          if (cityIndex >= 0) {
-            _selectedCityId = _lastCitiesSearchResults[city];
+          _selectedCityId = cachedCityId ?? _lastCitiesSearchResults[city];
+          if (_selectedCityId != null) {
+            _lastCitiesSearchResults[city] = _selectedCityId!;
+          }
+        }
+
+        // Город-регион (Москва и подобные) помним отдельным ключом: по паре
+        // «город есть, номера города нет» его не угадать, так же выглядит
+        // адрес, разобранный из строки объявления.
+        _selectedPlaceRegionId = cachedPlaceRegionId;
+
+        // Улица и дом: без них поле улицы выглядело бы пустым, а сохранение
+        // отправило бы пустую улицу и стёрло её в профиле.
+        if (cachedStreet.isNotEmpty && cachedStreetId != null) {
+          _selectedStreet = {cachedStreet};
+          _selectedStreetId = cachedStreetId;
+          _streets = [
+            {'name': cachedStreet, 'id': cachedStreetId},
+          ];
+          _lastStreetsSearchResults[cachedStreet] = cachedStreetId;
+
+          if (cachedBuilding.isNotEmpty && cachedBuildingId != null) {
+            _selectedBuilding = {cachedBuilding};
+            _selectedBuildingId = cachedBuildingId;
+            _buildings = [
+              {'name': cachedBuilding, 'id': cachedBuildingId},
+            ];
           }
         }
         
         _isLoading = false;
       });
+
+      // Без await: метод сам ничего не бросает, а держать восстановление
+      // экрана ради одного запроса незачем.
+      _detectRegionCity();
     } catch (e) {
       // Если восстановление не удалось, загружаем свежие данные
       // ignore: avoid_print
@@ -517,6 +573,9 @@ class _ContactDataScreenState extends State<ContactDataScreen>
       final savedRegionIdStr = UserService.getLocal('regionId') as String? ?? '';
       final savedCityIdStr = UserService.getLocal('cityId') as String? ?? '';
       final savedRegionId = savedRegionIdStr.isNotEmpty ? int.tryParse(savedRegionIdStr) : null;
+      // Город-регион (Москва и подобные): помним отдельным ключом.
+      final savedPlaceRegionId =
+          int.tryParse(UserService.getLocal('placeRegionId') as String? ?? '');
       final savedCityId = savedCityIdStr.isNotEmpty ? int.tryParse(savedCityIdStr) : null;
 
       // Точный адрес (улица/дом) — восстанавливаем из локального хранилища.
@@ -596,6 +655,10 @@ class _ContactDataScreenState extends State<ContactDataScreen>
           }
         }
 
+        // Город-регион (Москва и подобные) помним отдельным ключом.
+        _selectedPlaceRegionId = savedPlaceRegionId;
+
+
         // Восстанавливаем улицу и дом (необязательный точный адрес). Кладём
         // выбранное значение и по одной записи в списки, чтобы поле показывало
         // сохранённый выбор без повторной загрузки.
@@ -620,6 +683,7 @@ class _ContactDataScreenState extends State<ContactDataScreen>
 
       // Список городов области больше не нужен (24.09.2026): населённый пункт
       // ищется по всей стране, поле заполнено сохранённым городом.
+      await _detectRegionCity();
 
       // 💾 Сохраняем данные в локальное хранилище для кеширования
       await UserService.saveLocal('name', firstName);
@@ -628,7 +692,12 @@ class _ContactDataScreenState extends State<ContactDataScreen>
       await UserService.saveLocal('phone1', phone1);
       await UserService.saveLocal('phone2', phone2);
       await UserService.saveLocal('region', region);
-      await UserService.saveLocal('city', city);
+      // Именно выбранное значение: у города-региона (Москва) в поле стоит
+      // название региона, а в `city` с сервера пришёл бы округ или пусто.
+      await UserService.saveLocal(
+        'city',
+        _selectedCity.isEmpty ? city : _selectedCity.first,
+      );
       
       // ✅ ВАЖНО: Сохраняем также ID региона и города для dynamic_filter
       // Это нужно чтобы при создании объявления не было ошибки валидации
@@ -699,7 +768,7 @@ class _ContactDataScreenState extends State<ContactDataScreen>
       RequiredField(
         name: 'city',
         label: 'Ваш город или посёлок',
-        filled: _selectedCityId != null,
+        filled: _selectedCityId != null || _selectedPlaceRegionId != null,
       ),
       RequiredField(
         name: 'email',
@@ -903,12 +972,14 @@ class _ContactDataScreenState extends State<ContactDataScreen>
       // лог, экран писал «Сохранено», а область с городом оставались пустыми.
       final addressErrors = <String>[];
 
-      if (_selectedCityId != null) {
+      if (_selectedCityId != null || _selectedPlaceRegionId != null) {
         try {
           final resp = await UserService.updateAddress(
-            cityId: _selectedCityId!,
+            cityId: _selectedCityId,
+            regionId: _selectedPlaceRegionId,
             streetId: _selectedStreetId,
             buildingId: _selectedBuildingId,
+            clearMissing: _addressChanged,
             token: token,
           );
           if (resp['success'] == false) {
@@ -917,6 +988,7 @@ class _ContactDataScreenState extends State<ContactDataScreen>
               'Адрес: ${resp['message']?.toString() ?? 'не удалось сохранить'}',
             );
           } else {
+            _addressChanged = false;
             log.d(
               '✅ Адрес сохранён (city_id=$_selectedCityId, '
               'street_id=$_selectedStreetId, building_id=$_selectedBuildingId)',
@@ -1394,7 +1466,7 @@ class _ContactDataScreenState extends State<ContactDataScreen>
                       _label('Ваш город или посёлок', required: true),
                       requiredBox(
                         name: 'city',
-                        filled: _selectedCityId != null,
+                        filled: _selectedCityId != null || _selectedPlaceRegionId != null,
                         message: 'Выберите город или посёлок',
                         child: _buildCityDropdown(),
                       ),
@@ -1793,6 +1865,43 @@ class _ContactDataScreenState extends State<ContactDataScreen>
     );
   }
 
+  /// Москва, Санкт-Петербург, Севастополь: в справочнике это регионы, а
+  /// городами внутри них лежат внутригородские округа (24.09.2026). У такого
+  /// адреса в поле показываем сам регион, а улицу ищем по всему региону.
+  /// Спрашиваем у сервера: по названию этого не понять.
+  Future<void> _detectRegionCity() async {
+    final regionId = _selectedRegionId;
+    final regionName = _selectedRegion.isEmpty ? '' : _selectedRegion.first;
+
+    if (regionId == null || regionName.isEmpty) return;
+
+    final isRegionCity = await PlacesService.isRegionCity(regionId, regionName);
+
+    if (!mounted) return;
+
+    // null значит «сервер не ответил»: тогда ничего не трогаем, иначе одна
+    // неудачная попытка сняла бы у человека уже выбранную Москву.
+    if (isRegionCity == null) return;
+
+    if (!isRegionCity) {
+      // Обычная область: признак снимаем, если он остался от прошлого адреса.
+      if (_selectedPlaceRegionId != null) {
+        setState(() => _selectedPlaceRegionId = null);
+        await UserService.saveLocal('placeRegionId', '');
+      }
+
+      return;
+    }
+
+    setState(() {
+      _selectedPlaceRegionId = regionId;
+      // В поле стоит «Москва», а не округ, которого человек не выбирал.
+      _selectedCity = {regionName};
+    });
+
+    await UserService.saveLocal('placeRegionId', regionId.toString());
+  }
+
   /// Выбор населённого пункта поиском. Сбрасывает улицу и дом: они были от
   /// прошлого города.
   Future<void> _pickCityPlace() async {
@@ -1804,16 +1913,23 @@ class _ContactDataScreenState extends State<ContactDataScreen>
         promptText: 'Введите название города или посёлка',
         emptyText: 'Такого населённого пункта не нашлось',
         onSearch: PlacesService.cities,
-        selectedId: _selectedCityId,
+        selectedId: _selectedPlaceRegionId ?? _selectedCityId,
+        selectedIsRegion: _selectedPlaceRegionId != null,
       ),
     );
 
     if (picked == null || !mounted) return;
 
     setState(() {
+      _addressChanged = true;
       _selectedCity = {picked.name};
-      _selectedCityId = picked.id;
-      _lastCitiesSearchResults[picked.name] = picked.id;
+      // Москва и подобные: в справочнике это регион, города там нет. Округ
+      // подставится из улицы, а без улицы адрес останется «Москва».
+      _selectedPlaceRegionId = picked.isRegion ? picked.id : null;
+      _selectedCityId = picked.isRegion ? null : picked.id;
+      if (!picked.isRegion) {
+        _lastCitiesSearchResults[picked.name] = picked.id;
+      }
 
       // Область запоминаем ту, что пришла вместе с населённым пунктом: она
       // подставляется в адрес объявления и показывается в магазине. Берём
@@ -1836,91 +1952,87 @@ class _ContactDataScreenState extends State<ContactDataScreen>
     await UserService.saveLocal('building', '');
     await UserService.saveLocal('buildingId', '');
     await UserService.saveLocal('city', picked.name);
-    await UserService.saveLocal('cityId', picked.id.toString());
+    await UserService.saveLocal('cityId', _selectedCityId?.toString() ?? '');
+    await UserService.saveLocal(
+      'placeRegionId',
+      _selectedPlaceRegionId?.toString() ?? '',
+    );
     await UserService.saveLocal(
       'region',
       _selectedRegion.isEmpty ? '' : _selectedRegion.first,
     );
     await UserService.saveLocal('regionId', _selectedRegionId?.toString() ?? '');
 
-    // Улицы выбранного города, чтобы диалог «Улица» открывался со списком.
-    await _loadStreetsForSelectedCity();
+    if (_selectedCityId != null) {
+      // Улицы выбранного города, чтобы диалог «Улица» открывался со списком.
+      await _loadStreetsForSelectedCity();
+    }
   }
 
-  /// ───── Выпадающий список для выбора улицы ─────
-  /// Доступен только когда выбран город. Улицы ищутся по городу
-  /// (types=['street'], filters[city_id]).
+  /// Улица: внутри города, а у города-региона (Москва) по всему региону.
+  /// Вместе с улицей приходит её внутригородской округ, его и запоминаем
+  /// городом: серверу он нужен, человеку показывать не надо.
+  Future<void> _pickStreetPlace() async {
+    final cityId = _selectedCityId;
+    final placeRegionId = _selectedPlaceRegionId;
+
+    if (cityId == null && placeRegionId == null) return;
+
+    final picked = await showDialog<PlaceSuggestion>(
+      context: context,
+      builder: (_) => PlaceSearchDialog(
+        title: 'Улица',
+        hint: 'Например, Ленина',
+        promptText: 'Введите название улицы',
+        emptyText: 'Такой улицы в справочнике нет, поле можно оставить пустым',
+        onSearch: (query) => placeRegionId != null
+            ? PlacesService.streetsInRegion(query, placeRegionId)
+            : PlacesService.streets(query, cityId!),
+        selectedId: _selectedStreetId,
+      ),
+    );
+
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      _addressChanged = true;
+      _selectedStreet = {picked.name};
+      _selectedStreetId = picked.id;
+      _streets = <Map<String, dynamic>>[
+        {'name': picked.name, 'id': picked.id},
+      ];
+      _lastStreetsSearchResults[picked.name] = picked.id;
+
+      if (placeRegionId != null && picked.cityId != null) {
+        _selectedCityId = picked.cityId;
+      }
+
+      _selectedBuilding.clear();
+      _selectedBuildingId = null;
+      _buildings.clear();
+    });
+
+    await UserService.saveLocal('street', picked.name);
+    await UserService.saveLocal('streetId', picked.id.toString());
+    await UserService.saveLocal('building', '');
+    await UserService.saveLocal('buildingId', '');
+    await UserService.saveLocal('cityId', _selectedCityId?.toString() ?? '');
+  }
+
+  /// ───── Улица: поиск внутри населённого пункта ─────
+  /// Доступна, когда выбран город или город-регион (Москва). Необязательна:
+  /// в сёлах улиц в справочнике нет.
   Widget _buildStreetDropdown() {
+    final enabled = _selectedCityId != null || _selectedPlaceRegionId != null;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: GestureDetector(
-        onTap: _selectedCityId == null
-            ? null
-            : () async {
-                // Если улицы ещё не подгружены — тянем первую партию, чтобы
-                // диалог не открывался пустым.
-                if (_streets.isEmpty) {
-                  await _loadStreetsForSelectedCity();
-                }
-                if (!mounted) return;
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return SelectionDialog(
-                      title: 'Выберите улицу',
-                      showSearchField: true,
-                      options: _streets
-                          .map((s) => s['name'] as String)
-                          .toList(),
-                      selectedOptions: _selectedStreet,
-                      allowMultipleSelection: false,
-                      onSearchQuery: _searchStreetsAPI,
-                      onSelectionChanged: (Set<String> selected) {
-                        if (selected.isNotEmpty) {
-                          final selectedStreetName = selected.first;
-                          int? streetId =
-                              _lastStreetsSearchResults[selectedStreetName];
-                          if (streetId == null) {
-                            final idx = _streets.indexWhere(
-                              (s) => s['name'] == selectedStreetName,
-                            );
-                            if (idx >= 0) {
-                              streetId = _streets[idx]['id'] as int?;
-                            }
-                          }
-                          setState(() {
-                            _selectedStreet = selected;
-                            _selectedStreetId = streetId;
-                            // Смена улицы сбрасывает дом.
-                            _selectedBuilding.clear();
-                            _selectedBuildingId = null;
-                            _buildings.clear();
-                            UserService.saveLocal('street', selectedStreetName);
-                            if (streetId != null) {
-                              UserService.saveLocal(
-                                'streetId',
-                                streetId.toString(),
-                              );
-                            }
-                            UserService.saveLocal('building', '');
-                            UserService.saveLocal('buildingId', '');
-                          });
-                          // Предзагружаем дома выбранной улицы.
-                          if (streetId != null) {
-                            _loadBuildingsForSelectedStreet();
-                          }
-                        }
-                      },
-                    );
-                  },
-                );
-              },
+        onTap: enabled ? _pickStreetPlace : null,
         child: Container(
           height: 48,
           decoration: BoxDecoration(
-            color: _selectedCityId == null
-                ? const Color(0xFF2F4456)
-                : fieldColor,
+            color: enabled ? fieldColor : const Color(0xFF2F4456),
             borderRadius: BorderRadius.circular(6),
           ),
           alignment: Alignment.centerLeft,
@@ -1931,24 +2043,20 @@ class _ContactDataScreenState extends State<ContactDataScreen>
               Expanded(
                 child: Text(
                   _selectedStreet.isEmpty
-                      ? 'Выберите улицу'
+                      ? 'Найдите улицу, если она есть'
                       : _selectedStreet.first,
                   style: TextStyle(
                     color: _selectedStreet.isEmpty
                         ? Colors.white54
-                        : (_selectedCityId == null
-                            ? Colors.white38
-                            : Colors.white),
+                        : (enabled ? Colors.white : Colors.white38),
                     fontSize: 14,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: _selectedCityId == null
-                    ? Colors.white24
-                    : Colors.white54,
+                Icons.search,
+                color: enabled ? Colors.white54 : Colors.white24,
               ),
             ],
           ),
@@ -2001,6 +2109,7 @@ class _ContactDataScreenState extends State<ContactDataScreen>
                             buildingId = _buildings[idx]['id'] as int?;
                           }
                           setState(() {
+                            _addressChanged = true;
                             _selectedBuilding = selected;
                             _selectedBuildingId = buildingId;
                             UserService.saveLocal(
@@ -2064,6 +2173,9 @@ class _ContactDataScreenState extends State<ContactDataScreen>
 
   /// Поиск улиц через API по вводу пользователя (для диалога выбора улицы).
   /// Требует выбранного города и запрос от 3 символов (ограничение API).
+  ///
+  /// С 24.09.2026 не вызывается: улицу выбирает общий диалог поиска.
+  // ignore: unused_element
   Future<List<String>> _searchStreetsAPI(String query) async {
     if (_selectedCityId == null) return [];
     if (query.trim().length < 3) return [];

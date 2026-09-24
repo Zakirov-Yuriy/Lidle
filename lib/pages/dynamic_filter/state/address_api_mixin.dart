@@ -41,7 +41,6 @@ mixin _AddressApiMixin on State<DynamicFilter> {
   int? _selectedRegionId;
   int? _selectedCityId;
   int? _selectedStreetId;
-  // ignore: unused_field
   int? _selectedBuildingId;
 
   /// Регион выбранного города (`region_id` = подрегион,
@@ -49,6 +48,12 @@ mixin _AddressApiMixin on State<DynamicFilter> {
   /// улиц через API, чтобы сузить результаты.
   int? _selectedCityRegionId;
   int? _selectedCityMainRegionId;
+
+  /// Выбран город-регион: Москва, Санкт-Петербург, Севастополь (24.09.2026).
+  /// В справочнике они заведены регионами, а городами внутри них лежат
+  /// внутригородские округа. Тогда `_selectedCityId` пуст до выбора улицы:
+  /// округ подставляется из неё, а человек его не видит.
+  int? _selectedPlaceRegionId;
 
   /// Область и район выбранного населённого пункта одной строкой
   /// («Ростовская область, Аксайский р-н»). Показываем подписью под полем:
@@ -654,12 +659,31 @@ mixin _AddressApiMixin on State<DynamicFilter> {
         if (text.isEmpty || placeParts.contains(text)) continue;
         placeParts.add(text);
       }
-      _selectedCityPlaceLabel = placeParts.isEmpty ? null : placeParts.join(', ');
+      final placeLabel = placeParts.isEmpty ? null : placeParts.join(', ');
 
       if (mainRegion == null && city == null && street == null) {
         log.d('ℹ️ Структурный адрес пуст, нечего заполнять');
         return;
       }
+
+      // Город-регион (Москва, Санкт-Петербург, Севастополь): у него подрегион
+      // совпадает с областью, а «городом» записан внутригородской округ.
+      // В поле показываем сам регион, округ остаётся под капотом (24.09.2026).
+      //
+      // Совпадения номеров мало: так же выглядит адрес из фида, у которого
+      // подрегион не проставлен. Поэтому спрашиваем сервер, город ли это.
+      final mainRegionId = mainRegion?['id'] as int?;
+      final subRegionId = subRegion?['id'] as int?;
+      final mainRegionName = '${mainRegion?['name'] ?? ''}'.trim();
+
+      // null значит «сервер не ответил»: показываем адрес как есть, с округом.
+      final isRegionCity = mainRegionId != null &&
+          mainRegionId == subRegionId &&
+          mainRegionName.isNotEmpty &&
+          (await PlacesService.isRegionCity(mainRegionId, mainRegionName) ??
+              false);
+
+      if (!mounted) return;
 
       setState(() {
         // Область. Верхняя выпадашка тянет главные регионы (parent_id = null),
@@ -680,9 +704,15 @@ mixin _AddressApiMixin on State<DynamicFilter> {
         }
 
         // Город.
+        _selectedPlaceRegionId = isRegionCity ? mainRegionId : null;
+        _selectedCityPlaceLabel = isRegionCity ? null : placeLabel;
+
         if (city != null) {
-          final name = city['name'] as String? ?? '';
           final id = city['id'] as int?;
+          // В Москве в поле стоит «Москва», а не «муниципальный округ Вешняки».
+          final name = isRegionCity
+              ? mainRegionName
+              : (city['name'] as String? ?? '');
           _selectedCity
             ..clear()
             ..add(name);
@@ -698,6 +728,12 @@ mixin _AddressApiMixin on State<DynamicFilter> {
               'main_region_id': _selectedCityMainRegionId ?? 0,
             };
           }
+        } else if (isRegionCity && mainRegionName.isNotEmpty) {
+          // Адрес «просто Москва»: города в нём нет вовсе.
+          _selectedCity
+            ..clear()
+            ..add(mainRegionName);
+          _cityController.text = mainRegionName;
         }
 
         // Улица.
@@ -1105,6 +1141,7 @@ mixin _AddressApiMixin on State<DynamicFilter> {
   /// 🔧 Парсит адрес из API при редактировании объявления
   /// API возвращает адрес строкой: "г. Донецк, ул. Бутовская" или "г. Донецк, ул. Бутовская, 1А"
   /// Нужно распарсить и выделить номер дома в _selectedBuilding
+  // ignore: unused_element
   void _parseAddressForEdit(String fullAddress) {
     try {
       if (fullAddress.isEmpty) return;

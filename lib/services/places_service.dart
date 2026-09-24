@@ -6,14 +6,22 @@
 // совсем. Теперь спрашиваем сразу населённый пункт, поиском по всей стране, а
 // область сервер выводит из города сам.
 //
-//   GET /v1/addresses/search?q=мариу&types[0]=city&size=30
+//   GET /v1/addresses/places?q=мариу&size=40
 //   GET /v1/addresses/search?q=лен&types[0]=street&filters[city_id]=123
 //
 // Наружу отдаём готовые подсказки: название, пояснение (область и район, чтобы
 // отличать одноимённые села) и все нужные id.
+//
+// Отдельная история с Москвой, Санкт-Петербургом и Севастополем: в справочнике
+// они заведены РЕГИОНАМИ, а городами внутри них лежат внутригородские округа
+// («муниципальный округ Вешняки») и поселения ТиНАО. Поэтому на «Москва» поиск
+// городов отдавал посёлки, а самой Москвы в списке не было. Ручка `places`
+// добавляет такие города-регионы первой строкой (`isRegion`), улицы у них
+// ищутся по всему региону, а округ подставляется из выбранной улицы.
 
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/services/address_service.dart';
+import 'package:lidle/services/api_service.dart';
 
 /// Одна подсказка адреса: что показать человеку и что отправить на сервер.
 class PlaceSuggestion {
@@ -25,10 +33,16 @@ class PlaceSuggestion {
     this.mainRegionId,
     this.mainRegionName,
     this.cityId,
+    this.isRegion = false,
   });
 
   /// Номер в справочнике: города для населённого пункта, улицы для улицы.
+  /// У города-региона (Москва) это номер региона, не города.
   final int id;
+
+  /// Москва, Санкт-Петербург, Севастополь: в справочнике это регион, а не
+  /// город. Улицы у него ищутся по региону, город берётся из улицы.
+  final bool isRegion;
 
   /// Название как в справочнике: «г Мариуполь», «ул Ленина».
   final String name;
@@ -59,38 +73,128 @@ class PlacesService {
   static const int _size = 40;
   static const int _maxSize = 50;
 
-  /// Населённые пункты по всей стране: города, посёлки, села.
+  /// Населённые пункты по всей стране: города, посёлки, села, а также
+  /// города-регионы (Москва, Санкт-Петербург, Севастополь) первой строкой.
   ///
   /// Область не спрашиваем и в фильтры не кладём: смысл правки в том, чтобы
   /// человек ввёл своё название и сразу увидел нужную строку.
-  static Future<List<PlaceSuggestion>> cities(String query) async {
+  /// [withRegions] false отдаёт только настоящие города: так нужно там, где
+  /// дальше по коду идёт одно лишь название населённого пункта (фильтры).
+  static Future<List<PlaceSuggestion>> cities(
+    String query, {
+    bool withRegions = true,
+  }) async {
+    return await _places(query, withRegions: withRegions) ?? const [];
+  }
+
+  /// То же, но отличает пустую выдачу от неудачного запроса: null означает
+  /// «не дозвонились». Это важно там, где по ответу принимается решение, а не
+  /// просто рисуется список.
+  static Future<List<PlaceSuggestion>?> _places(
+    String query, {
+    bool withRegions = true,
+  }) async {
+    final text = query.trim();
+
+    if (text.length < 2) return const [];
+
+    try {
+      final response = await ApiService.get(
+        '/addresses/places'
+        '?q=${Uri.encodeQueryComponent(text)}&size=$_size',
+      );
+
+      final data = response['data'];
+
+      if (data is! List) return [];
+
+      final regions = <PlaceSuggestion>[];
+      final cities = <PlaceSuggestion>[];
+
+      for (final row in data) {
+        if (row is! Map) continue;
+
+        final id = (row['id'] as num?)?.toInt();
+        final name = '${row['name'] ?? ''}'.trim();
+
+        if (id == null || name.isEmpty) continue;
+
+        final isRegion = row['place_type'] == 'region';
+
+        if (isRegion && !withRegions) continue;
+
+        final mainRegionId = (row['main_region_id'] as num?)?.toInt();
+
+        final place = PlaceSuggestion(
+          id: id,
+          name: name,
+          subtitle: _text(row['subtitle']),
+          regionId: (row['region_id'] as num?)?.toInt(),
+          mainRegionId: mainRegionId,
+          // Только область: район («Аксайский р-н») в поле «область» не нужен.
+          // У города-региона область это он сам.
+          mainRegionName: isRegion ? name : _firstPart(row['subtitle']),
+          isRegion: isRegion,
+        );
+
+        (isRegion ? regions : cities).add(place);
+      }
+
+      _sortByQuery(cities, text);
+
+      // Города-регионы всегда наверху: человек, набравший «Москва», ищет
+      // прежде всего саму Москву, а не поселение Внуковское.
+      return [...regions, ...cities];
+    } catch (e) {
+      log.d('❌ PlacesService.cities: $e');
+      return null;
+    }
+  }
+
+  /// Улицы города-региона: ищем по всей Москве, город (округ) берём из улицы.
+  static Future<List<PlaceSuggestion>> streetsInRegion(
+    String query,
+    int regionId,
+  ) async {
     final text = query.trim();
 
     if (text.length < 2) return [];
 
     try {
-      final response = await AddressService.searchAddresses(
+      var response = await AddressService.searchAddresses(
         query: text,
-        types: const ['city'],
-        size: _size,
+        types: const ['street'],
+        filters: {'main_region_id': regionId},
+        size: _maxSize,
       );
+
+      // У города-региона подрегиона нет, и в индексе он может лежать как
+      // region, а не main_region. Если по области пусто, спрашиваем по району.
+      if (response.data.isEmpty) {
+        response = await AddressService.searchAddresses(
+          query: text,
+          types: const ['street'],
+          filters: {'region_id': regionId},
+          size: _maxSize,
+        );
+      }
 
       final byId = <int, PlaceSuggestion>{};
 
       for (final row in response.data) {
-        final city = row.city;
-        if (city == null) continue;
+        final street = row.street;
+        if (street == null) continue;
 
         byId.putIfAbsent(
-          city.id,
+          street.id,
           () => PlaceSuggestion(
-            id: city.id,
-            name: city.name,
-            subtitle: _placeSubtitle(row.main_region?.name, row.region?.name),
+            id: street.id,
+            name: street.name,
+            // Под улицей показываем округ: одноимённых улиц в Москве много.
+            subtitle: row.city?.name ?? row.district?.name,
             regionId: row.region?.id,
-            mainRegionId: row.main_region?.id,
-            // Только область: район («Аксайский р-н») в поле «область» не нужен.
-            mainRegionName: row.main_region?.name,
+            mainRegionId: row.main_region?.id ?? regionId,
+            cityId: row.city?.id,
           ),
         );
       }
@@ -100,9 +204,38 @@ class PlacesService {
 
       return list;
     } catch (e) {
-      log.d('❌ PlacesService.cities: $e');
+      log.d('❌ PlacesService.streetsInRegion: $e');
       return [];
     }
+  }
+
+  /// Город-регион ли это: Москва, Санкт-Петербург, Севастополь.
+  ///
+  /// Спрашиваем сервер по названию региона. Нужно при открытии объявления на
+  /// редактирование: в адресе там лежит внутригородской округ, а показать в
+  /// поле надо саму Москву.
+  /// null означает, что выяснить не удалось: сервер не ответил. Отличать это
+  /// от «нет» обязательно — иначе одна неудачная попытка снимала бы у человека
+  /// уже выбранную Москву.
+  static Future<bool?> isRegionCity(int regionId, String regionName) async {
+    final found = await _places(regionName);
+
+    if (found == null) return null;
+
+    return found.any((item) => item.isRegion && item.id == regionId);
+  }
+
+  static String? _text(dynamic value) {
+    final text = '${value ?? ''}'.trim();
+
+    return text.isEmpty ? null : text;
+  }
+
+  /// «Ростовская область, Аксайский р-н» → «Ростовская область».
+  static String? _firstPart(dynamic value) {
+    final text = _text(value);
+
+    return text == null ? null : text.split(',').first.trim();
   }
 
   /// Улицы внутри выбранного населённого пункта.
@@ -222,19 +355,5 @@ class PlacesService {
 
       return byRank != 0 ? byRank : cleanName(a.name).compareTo(cleanName(b.name));
     });
-  }
-
-  /// «Ростовская область, Аксайский р-н» под названием села.
-  static String? _placeSubtitle(String? mainRegion, String? region) {
-    final parts = <String>[];
-
-    for (final part in [mainRegion, region]) {
-      final text = (part ?? '').trim();
-      if (text.isEmpty) continue;
-      if (parts.contains(text)) continue;
-      parts.add(text);
-    }
-
-    return parts.isEmpty ? null : parts.join(', ');
   }
 }
