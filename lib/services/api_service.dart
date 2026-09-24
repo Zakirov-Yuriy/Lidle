@@ -829,10 +829,15 @@ class ApiService {
     /// сборки приложения продолжают работать. Здесь мы новая сборка и
     /// просим смешанную ленту.
     bool withProducts = true,
+
+    /// Показать ленту без городского приоритета (24.09.2026): человек нажал
+    /// «Сбросить» под подписью «Сначала показываем ваш город».
+    bool allCities = false,
   }) async {
     final response = await get(
       '/adverts/feed?page=$page&per_page=$perPage'
-          '${withProducts ? '&with_products=1' : ''}',
+          '${withProducts ? '&with_products=1' : ''}'
+          '${allCities ? '&all_cities=1' : ''}',
       token: token,
     );
 

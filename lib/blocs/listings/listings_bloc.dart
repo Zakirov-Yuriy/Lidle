@@ -9,7 +9,6 @@ import '../../models/home_models.dart' as home;
 import '../../models/advert_model.dart';
 import '../../services/api_service.dart';
 import '../../services/token_service.dart';
-import '../../services/user_service.dart';
 import '../../services/loading_timer_service.dart';
 import '../../services/api_request_queue.dart';
 import '../../core/cache/cache_service.dart';
@@ -121,6 +120,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// человеку, почему выдача такая, и дать её сбросить: город берётся из
   /// профиля, а человек про это давно забыл.
   String? _feedCityName;
+
+  /// Человек нажал «Сбросить» под подписью о городе (24.09.2026).
+  ///
+  /// Держим у себя, на время работы приложения: лента запрашивается с
+  /// `all_cities`, город в профиле при этом остаётся на месте. Раньше кнопка
+  /// СТИРАЛА адрес человека на сервере, и это было и разрушительно, и
+  /// бесполезно: если город записан у компании, лента всё равно оставалась
+  /// прежней.
+  bool _ignoreFeedCity = false;
 
   /// Конструктор ListingsBloc.
   /// Инициализирует Bloc с начальным состоянием ListingsInitial.
@@ -289,6 +297,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
                 currentPage: cachedListings['currentPage'] ?? 1,
                 totalPages: cachedListings['totalPages'] ?? 1,
                 itemsPerPage: cachedListings['itemsPerPage'] ?? 20,
+                feedCityName: _feedCityName,
+                feedAllCities: _ignoreFeedCity,
               ),
             );
             _isInitialLoadComplete = true;
@@ -363,6 +373,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           itemsPerPage: feedPage.perPage,
           hasMore: feedPage.currentPage < feedPage.lastPage,
           feedCityName: _feedCityName,
+          feedAllCities: _ignoreFeedCity,
         ),
       );
 
@@ -469,6 +480,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         emit(ListingsLoaded(
           listings: _cachedAllListings,
           categories: _cachedCategories,
+          feedCityName: _feedCityName,
+          feedAllCities: _ignoreFeedCity,
         ));
       }
       return;
@@ -740,6 +753,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ListingsLoaded(
           listings: _cachedAllListings,
           categories: _cachedCategories,
+          // Подпись о городе и режим «все города» переживают сброс фильтров:
+          // иначе после очистки строки поиска кнопка исчезала бы.
+          feedCityName: _feedCityName,
+          feedAllCities: _ignoreFeedCity,
         ),
       );
     } catch (e) {
@@ -920,6 +937,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           itemsPerPage: itemsPerPage,
           hasMore: hasMore,
           feedCityName: _feedCityName,
+          feedAllCities: _ignoreFeedCity,
         ),
       );
     } catch (e) {
@@ -936,31 +954,32 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     }
   }
 
-  /// Сбросить город в профиле и перечитать ленту (задача 70).
+  /// Показать ленту по всей стране (задача 70, переделано 24.09.2026).
   ///
-  /// Сбрасываем на сервере, а не только у себя: приоритет считает сервер по
-  /// профилю, и локальный флажок ничего бы не изменил. После сброса
-  /// перечитываем главную целиком, иначе человек нажал бы кнопку и не увидел
-  /// разницы.
+  /// Раньше кнопка стирала город в профиле человека. Это было неверно дважды:
+  /// человек терял свой адрес, а лента оставалась прежней, если город записан
+  /// у его компании. Теперь просто просим у сервера ленту без городского
+  /// приоритета и перечитываем главную.
   Future<void> _onResetFeedCity(
     ResetFeedCityEvent event,
     Emitter<ListingsState> emit,
   ) async {
-    final token = TokenService.currentToken;
+    _ignoreFeedCity = event.allCities;
+    _feedCityName = null;
 
-    if (token == null || token.isEmpty) return;
-
+    // Кеш главной и дебаунс обновления иначе съели бы перезагрузку: человек
+    // нажал бы кнопку и не увидел разницы. Признак «идёт загрузка» не трогаем:
+    // отменить чужой запрос мы всё равно не можем, а сбросив флаг, получили бы
+    // два обработчика разом и старый ответ поверх нового. Если нажатие попало
+    // ровно в идущее обновление, человек нажмёт ещё раз: повторное нажатие
+    // теперь не глотается.
     try {
-      await UserService.clearAddress(token: token);
+      AppCacheService().invalidate(CacheKeys.listingsData);
     } catch (e) {
-      log.e('Не удалось сбросить город: $e');
-
-      // Список не трогаем: он на экране и он верный. Молча оставить как есть
-      // честнее, чем показать пустоту из-за неудачного сброса.
-      return;
+      log.w('Кеш главной не очистился: $e');
     }
 
-    _feedCityName = null;
+    _lastRefreshTime = null;
 
     add(LoadListingsEvent(forceRefresh: true));
   }
@@ -978,6 +997,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           token: token,
           page: page,
           perPage: homeFeedPageSize,
+          allCities: _ignoreFeedCity,
         );
 
         _feedCityName = feed.cityName;
@@ -1026,6 +1046,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       itemsPerPage: state.itemsPerPage,
       hasMore: hasMore,
       feedCityName: state.feedCityName,
+      feedAllCities: state.feedAllCities,
     );
   }
 
@@ -1626,6 +1647,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             currentPage: cachedListings['currentPage'] ?? 1,
             totalPages: cachedListings['totalPages'] ?? 1,
             itemsPerPage: cachedListings['itemsPerPage'] ?? 20,
+            // Подпись о городе в кеше не лежит, но режим «все города» держим
+            // мы сами: иначе после возврата с карточки кнопка «Мой город»
+            // исчезала бы и вернуть свой город было бы нечем (24.09.2026).
+            feedCityName: _feedCityName,
+            feedAllCities: _ignoreFeedCity,
           );
         } catch (e) {
           // log.w('⚠️ Ошибка при восстановлении из кеша: $e');

@@ -44,6 +44,10 @@ class ListingsLoaded extends ListingsState {
   /// иначе не объяснить.
   final String? feedCityName;
 
+  /// Человек нажал «Сбросить» и смотрит объявления всех городов (24.09.2026).
+  /// Экран показывает это подписью и даёт вернуть свой город обратно.
+  final bool feedAllCities;
+
   ListingsLoaded({
     required this.listings,
     required this.categories,
@@ -53,6 +57,7 @@ class ListingsLoaded extends ListingsState {
     this.itemsPerPage = 10,
     this.hasMore = true,
     this.feedCityName,
+    this.feedAllCities = false,
   }) : filteredListings = filteredListings ?? listings;
 }
 

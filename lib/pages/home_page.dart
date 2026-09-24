@@ -804,7 +804,16 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Widget _buildFeedCityNotice(String cityName) {
+  /// Подпись над лентой: по какому городу она собрана и как это изменить.
+  ///
+  /// «Сбросить» больше не стирает город в профиле (24.09.2026): человек просто
+  /// смотрит объявления всех городов, а свой адрес сохраняет. Поэтому и вернуть
+  /// его можно тут же.
+  Widget _buildFeedCityNotice({String? cityName, bool allCities = false}) {
+    final text = allCities
+        ? 'Показываем объявления всех городов'
+        : 'Сначала показываем ваш город: $cityName';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
       child: Row(
@@ -813,20 +822,22 @@ class _HomePageState extends State<HomePage>
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              'Сначала показываем ваш город: $cityName',
+              text,
               style: const TextStyle(color: textSecondary, fontSize: 13),
             ),
           ),
           GestureDetector(
             onTap: () {
-              context.read<ListingsBloc>().add(const ResetFeedCityEvent());
+              context
+                  .read<ListingsBloc>()
+                  .add(ResetFeedCityEvent(allCities: !allCities));
             },
             behavior: HitTestBehavior.opaque,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               child: Text(
-                'Сбросить',
-                style: TextStyle(
+                allCities ? 'Мой город' : 'Сбросить',
+                style: const TextStyle(
                   color: accentColor,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -1091,8 +1102,12 @@ class _HomePageState extends State<HomePage>
               ),
             ),
           ),
-          if (state is ListingsLoaded && state.feedCityName != null)
-            _buildFeedCityNotice(state.feedCityName!),
+          if (state is ListingsLoaded &&
+              (state.feedCityName != null || state.feedAllCities))
+            _buildFeedCityNotice(
+              cityName: state.feedCityName,
+              allCities: state.feedAllCities,
+            ),
           const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
