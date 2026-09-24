@@ -34,6 +34,9 @@ import '../pages/auth/sign_in_screen.dart';
 import '../main.dart'; // Для доступа к routeObserver
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/services/companies_search_service.dart';
+import 'package:lidle/services/token_service.dart';
+import 'package:lidle/services/wishlist_service.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 
 /// `HomePage` - это StatefulWidget, который отображает главную страницу
@@ -732,6 +735,56 @@ class _HomePageState extends State<HomePage>
   /// Мариуполя». Сбрасывать надо там же, где виден результат, а не в глубине
   /// настроек, поэтому кнопка стоит прямо над лентой. На сайте она уже есть,
   /// и логика теперь одинаковая.
+  /// Сердечко на карточке компании: подписка на магазин (24.09.2026).
+  ///
+  /// Хранится там же, где избранные магазины экрана «Моё избранное»
+  /// (`/me/wishlist` с `user_id`), поэтому отмеченное здесь видно и там.
+  Future<void> _toggleCompanyWishlist(CompanySearchItem company) async {
+    final token = TokenService.currentToken;
+
+    if (token == null || token.isEmpty) {
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Войдите в свой профиль, чтобы добавлять магазины в избранное',
+      );
+
+      return;
+    }
+
+    final wasAdded = company.isWishlisted;
+
+    // Сердечко закрашиваем сразу, ответ сервера догоняет: иначе нажатие
+    // выглядит как «не сработало».
+    setState(() {
+      company.isWishlisted = !wasAdded;
+    });
+
+    try {
+      if (wasAdded) {
+        final id = company.wishlistId;
+
+        if (id != null) {
+          await WishlistService.removeFromWishlist(advertId: id, token: token);
+        }
+
+        company.wishlistId = null;
+      } else {
+        final response = await WishlistService.addToWishlist(
+          companyId: company.userId,
+          token: token,
+        );
+
+        company.wishlistId = (response['wishlist_id'] as num?)?.toInt();
+      }
+    } catch (e) {
+      log.e('❌ Избранное магазина: $e');
+
+      if (mounted) {
+        setState(() => company.isWishlisted = wasAdded);
+      }
+    }
+  }
+
   /// Нажали на карточку компании в результатах поиска: открываем её витрину
   /// (задача 28, 24.09.2026).
   void _openCompany(CompanySearchItem company) {
@@ -996,11 +1049,33 @@ class _HomePageState extends State<HomePage>
               ),
             ),
             const SizedBox(height: 10),
-            for (final company in companies)
-              _CompanySearchCard(
-                company: company,
-                onTap: () => _openCompany(company),
-              ),
+            // Плитками по две в ряд, как объявления (24.09.2026).
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final itemWidth = (constraints.maxWidth - 24 - 9) / 2;
+                double tileHeight = 300;
+                if (itemWidth < 160) tileHeight = 288;
+                if (itemWidth < 140) tileHeight = 276;
+
+                return GridView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 9,
+                    mainAxisSpacing: 12,
+                    mainAxisExtent: tileHeight,
+                  ),
+                  itemCount: companies.length,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemBuilder: (context, index) => _CompanySearchCard(
+                    company: companies[index],
+                    onTap: () => _openCompany(companies[index]),
+                    onWishlist: () => _toggleCompanyWishlist(companies[index]),
+                  ),
+                );
+              },
+            ),
             const SizedBox(height: 18),
           ],
           Padding(
@@ -1184,10 +1259,15 @@ class _WaitingForConnectionState extends State<_WaitingForConnection> {
 /// Выглядит как строка магазина: вывеска, название, город и описание. По
 /// нажатию открывается витрина продавца, та же, что из объявления.
 class _CompanySearchCard extends StatelessWidget {
-  const _CompanySearchCard({required this.company, required this.onTap});
+  const _CompanySearchCard({
+    required this.company,
+    required this.onTap,
+    required this.onWishlist,
+  });
 
   final CompanySearchItem company;
   final VoidCallback onTap;
+  final VoidCallback onWishlist;
 
   @override
   Widget build(BuildContext context) {
@@ -1195,99 +1275,113 @@ class _CompanySearchCard extends StatelessWidget {
     final city = company.city;
     final image = company.image;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: secondaryBackground,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          // Минимальная высота, чтобы у компании без описания вывеска не
-          // съёживалась до строчки.
-          constraints: const BoxConstraints(minHeight: 96),
-          child: IntrinsicHeight(
-            child: Row(
-              // Растягиваем: вывеска занимает всю высоту карточки, текст
-              // прижат к верху внутри своей колонки.
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Вывеска во всю высоту карточки: квадрат, как у магазина в
-                // каталоге (24.09.2026).
-                AspectRatio(
-                  aspectRatio: 1,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: image == null || image.isEmpty
-                        ? Container(
-                            color: formBackground,
-                            alignment: Alignment.center,
-                            child: Text(
-                              company.name.substring(0, 1).toUpperCase(),
-                              style: const TextStyle(
-                                color: textSecondary,
-                                fontSize: 26,
-                                fontWeight: FontWeight.w600,
-                              ),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        decoration: BoxDecoration(
+          color: secondaryBackground,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Вывеска квадратом во всю ширину плитки, как фото объявления.
+            AspectRatio(
+              aspectRatio: 1,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  image == null || image.isEmpty
+                      ? Container(
+                          color: formBackground,
+                          alignment: Alignment.center,
+                          child: Text(
+                            company.name.substring(0, 1).toUpperCase(),
+                            style: const TextStyle(
+                              color: textSecondary,
+                              fontSize: 34,
+                              fontWeight: FontWeight.w600,
                             ),
-                          )
-                        : Image.network(image, fit: BoxFit.cover),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        company.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          ),
+                        )
+                      : Image.network(image, fit: BoxFit.cover),
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: GestureDetector(
+                      onTap: onWishlist,
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          company.isWishlisted ? Icons.favorite : Icons.favorite_border,
+                          color: company.isWishlisted ? const Color(0xFFFF4D4D) : Colors.white,
+                          size: 18,
                         ),
                       ),
-                      if (city != null) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          city,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: textSecondary, fontSize: 13),
-                        ),
-                      ],
-                      if (about != null) ...[
-                        const SizedBox(height: 5),
-                        Text(
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      company.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (city != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        city,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: textSecondary, fontSize: 12),
+                      ),
+                    ],
+                    if (about != null) ...[
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: Text(
                           about,
-                          maxLines: 2,
+                          maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: textSecondary,
-                            fontSize: 13,
+                            fontSize: 12,
                             height: 1.3,
                           ),
                         ),
-                      ],
-                      if (company.advertsCount > 0) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          'Объявлений: ${company.advertsCount}',
-                          style: const TextStyle(color: textSecondary, fontSize: 13),
-                        ),
-                      ],
-                    ],
-                  ),
+                      ),
+                    ] else
+                      const Spacer(),
+                    Text(
+                      company.advertsCount > 0
+                          ? 'Объявлений: ${company.advertsCount}'
+                          : 'Пока без объявлений',
+                      style: const TextStyle(color: textSecondary, fontSize: 12),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

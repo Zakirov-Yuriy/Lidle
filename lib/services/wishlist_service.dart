@@ -24,14 +24,17 @@ class WishlistService {
   /// [token] - токен авторизации
   ///
   /// Возвращает ответ сервера или выбрасывает исключение при ошибке.
+  /// [companyId] — магазин (продавец) вместо объявления: избранные магазины
+  /// лежат там же, только другим полем `user_id` (24.09.2026).
   static Future<Map<String, dynamic>> addToWishlist({
-    required int advertId,
+    int? advertId,
+    int? companyId,
     required String token,
   }) async {
     try {
-      // log.i('📤 WishlistService.addToWishlist(): Добавляем advert_id=$advertId');
-      
-      final body = {'advert_id': advertId};
+      final body = companyId != null
+          ? {'user_id': companyId}
+          : {'advert_id': advertId};
       final response = await ApiService.post(
         '/me/wishlist/add',
         body,

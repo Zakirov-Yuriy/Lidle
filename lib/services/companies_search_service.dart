@@ -10,15 +10,18 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/token_service.dart';
 
 class CompanySearchItem {
-  const CompanySearchItem({
+  CompanySearchItem({
     required this.userId,
     required this.name,
     this.about,
     this.image,
     this.city,
     this.advertsCount = 0,
+    this.isWishlisted = false,
+    this.wishlistId,
   });
 
   final int userId;
@@ -27,6 +30,11 @@ class CompanySearchItem {
   final String? image;
   final String? city;
   final int advertsCount;
+
+  /// В избранном ли магазин у того, кто смотрит, и номер записи избранного:
+  /// по нему сердечко снимается без перезапроса списка (24.09.2026).
+  bool isWishlisted;
+  int? wishlistId;
 
   static CompanySearchItem? tryParse(dynamic raw) {
     if (raw is! Map) return null;
@@ -48,6 +56,8 @@ class CompanySearchItem {
       image: text(raw['image']),
       city: text(raw['city']),
       advertsCount: (raw['adverts_count'] as num?)?.toInt() ?? 0,
+      isWishlisted: raw['is_wishlisted'] == true,
+      wishlistId: (raw['wishlist_id'] as num?)?.toInt(),
     );
   }
 }
@@ -67,7 +77,12 @@ class CompaniesSearchService {
         '?search=${Uri.encodeQueryComponent(text)}&limit=$limit',
       );
 
-      final response = await http.get(uri, headers: ApiService.defaultHeaders);
+      final token = TokenService.currentToken;
+
+      final response = await http.get(uri, headers: {
+        ...ApiService.defaultHeaders,
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      });
 
       if (response.statusCode != 200) return [];
 
