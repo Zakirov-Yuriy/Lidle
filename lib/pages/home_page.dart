@@ -1336,6 +1336,7 @@ class _CompanySearchCard extends StatelessWidget {
               SizedBox(height: 8 * scale),
               Expanded(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -1359,23 +1360,22 @@ class _CompanySearchCard extends StatelessWidget {
                     ],
                     if (about != null) ...[
                       SizedBox(height: 3 * scale),
-                      // Описание в две строки с троеточием, а не «сколько
-                      // влезло»: раньше Expanded резал текст по высоте, и
-                      // снизу торчали половинки букв (24.09.2026).
-                      Flexible(
-                        child: Text(
-                          about,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 12 * scale,
-                            height: 1.25,
-                          ),
+                      // Две строки и троеточие. Ни Expanded, ни Flexible:
+                      // они отдавали тексту всю оставшуюся высоту, он резался
+                      // по ней без многоточия, а снизу оставался пустой провал
+                      // до строки с количеством (24.09.2026).
+                      Text(
+                        about,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textSecondary,
+                          fontSize: 12 * scale,
+                          height: 1.25,
                         ),
                       ),
                     ],
-                    const Spacer(),
+                    SizedBox(height: 3 * scale),
                     Text(
                       company.advertsCount > 0
                           ? 'Объявлений: ${company.advertsCount}'
@@ -1384,7 +1384,6 @@ class _CompanySearchCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: textSecondary, fontSize: 12 * scale),
                     ),
-                    SizedBox(height: 8 * scale),
                   ],
                 ),
               ),
