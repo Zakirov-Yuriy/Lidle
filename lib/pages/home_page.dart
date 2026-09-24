@@ -33,6 +33,8 @@ import 'profile_menu/profile_menu_screen.dart';
 import '../pages/auth/sign_in_screen.dart';
 import '../main.dart'; // Для доступа к routeObserver
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/services/companies_search_service.dart';
+import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 
 /// `HomePage` - это StatefulWidget, который отображает главную страницу
 /// приложения с использованием Bloc для управления состоянием.
@@ -715,6 +717,25 @@ class _HomePageState extends State<HomePage>
   /// Мариуполя». Сбрасывать надо там же, где виден результат, а не в глубине
   /// настроек, поэтому кнопка стоит прямо над лентой. На сайте она уже есть,
   /// и логика теперь одинаковая.
+  /// Нажали на карточку компании в результатах поиска: открываем её витрину
+  /// (задача 28, 24.09.2026).
+  void _openCompany(CompanySearchItem company) {
+    final url = company.image;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SellerProfileScreen(
+          sellerName: company.name,
+          sellerAvatar: url != null && url.startsWith('http')
+              ? NetworkImage(url) as ImageProvider
+              : const AssetImage('assets/profile_dashboard/default-photo.svg'),
+          sellerAvatarUrl: url,
+          userId: '${company.userId}',
+        ),
+      ),
+    );
+  }
+
   Widget _buildFeedCityNotice(String cityName) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
@@ -936,11 +957,36 @@ class _HomePageState extends State<HomePage>
         ? state.filteredListings
         : <Listing>[];
 
+    // Компании и магазины, найденные по той же строке (задача 28,
+    // 24.09.2026): человек ищет «ZAC» и должен увидеть саму компанию.
+    final companies =
+        state is ListingsSearchResults ? state.companies : const <CompanySearchItem>[];
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 110.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (companies.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                'Компании и магазины',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            for (final company in companies)
+              _CompanySearchCard(
+                company: company,
+                onTap: () => _openCompany(company),
+              ),
+            const SizedBox(height: 18),
+          ],
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
@@ -1111,6 +1157,111 @@ class _WaitingForConnectionState extends State<_WaitingForConnection> {
               style: TextStyle(color: Colors.white38, fontSize: 13),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Карточка компании в результатах поиска (задача 28, 24.09.2026).
+///
+/// Выглядит как строка магазина: вывеска, название, город и описание. По
+/// нажатию открывается витрина продавца, та же, что из объявления.
+class _CompanySearchCard extends StatelessWidget {
+  const _CompanySearchCard({required this.company, required this.onTap});
+
+  final CompanySearchItem company;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final about = company.about;
+    final city = company.city;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: secondaryBackground,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: company.image == null || company.image!.isEmpty
+                      ? Container(
+                          color: formBackground,
+                          alignment: Alignment.center,
+                          child: Text(
+                            company.name.substring(0, 1).toUpperCase(),
+                            style: const TextStyle(
+                              color: textSecondary,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      : Image.network(company.image!, fit: BoxFit.cover),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      company.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (city != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        city,
+                        style: const TextStyle(color: textSecondary, fontSize: 12),
+                      ),
+                    ],
+                    if (about != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        about,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: textSecondary,
+                          fontSize: 13,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                    if (company.advertsCount > 0) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Объявлений: ${company.advertsCount}',
+                        style: const TextStyle(color: textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: textSecondary, size: 20),
+            ],
+          ),
         ),
       ),
     );

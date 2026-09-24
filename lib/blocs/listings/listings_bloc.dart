@@ -16,6 +16,7 @@ import '../../core/cache/cache_service.dart';
 import '../../core/cache/cache_keys.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/data/mock/mock_listings.dart';
+import 'package:lidle/services/companies_search_service.dart';
 
 /// Bloc для управления состоянием данных объявлений.
 /// Обрабатывает события загрузки, поиска и фильтрации объявлений.
@@ -451,8 +452,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     return super.close();
   }
 
-  /// Обработчик события поиска объявлений.
-  /// Выполняет поиск по заголовку и описанию объявлений.
+  /// Обработчик события поиска.
+  ///
+  /// Ищет объявления (заголовок, описание, название компании продавца) и
+  /// заодно сами компании с магазинами: их карточки показываются над
+  /// объявлениями (задача 28, 24.09.2026).
   Future<void> _onSearchListings(
     SearchListingsEvent event,
     Emitter<ListingsState> emit,
@@ -478,13 +482,16 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       final token = await TokenService.getCurrentToken();
 
-      // 🔍 Глобальный поиск по заголовкам через бэкенд (по всем объявлениям).
-      final response = await ApiService.getAdverts(
-        search: query,
-        token: token,
-        page: 1,
-        limit: 50,
-      );
+      // 🔍 Глобальный поиск через бэкенд: объявления (заголовок, описание и
+      // название компании) и сами компании с магазинами — одним заходом,
+      // параллельно (задача 28, 24.09.2026).
+      final results = await Future.wait([
+        ApiService.getAdverts(search: query, token: token, page: 1, limit: 50),
+        CompaniesSearchService.search(query),
+      ]);
+
+      final response = results[0] as dynamic;
+      final companies = results[1] as List<CompanySearchItem>;
 
       // Парсим ответ в модели Listing тем же способом, что при загрузке.
       final List<home.Listing> searchResults =
@@ -502,6 +509,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           searchResults: searchResults,
           query: event.query,
           categories: _cachedCategories,
+          companies: companies,
         ),
       );
     } catch (e) {

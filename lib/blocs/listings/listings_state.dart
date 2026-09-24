@@ -1,4 +1,5 @@
 import '../../models/home_models.dart';
+import 'package:lidle/services/companies_search_service.dart';
 
 /// Состояния для управления данными объявлений.
 /// Определяют различные состояния, в которых может находиться процесс загрузки объявлений.
@@ -70,10 +71,15 @@ class ListingsSearchResults extends ListingsState {
   final String query;
   final List<Category> categories; // 🔥 Добавлены категории для отображения
 
+  /// Найденные компании и магазины (задача 28, 24.09.2026). Показываются
+  /// карточками над объявлениями, нажатие ведёт на витрину продавца.
+  final List<CompanySearchItem> companies;
+
   ListingsSearchResults({
     required this.searchResults,
     required this.query,
     this.categories = const [],
+    this.companies = const [],
   });
 }
 
