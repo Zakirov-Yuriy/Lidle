@@ -92,7 +92,11 @@ class StaffService {
       }
 
       if (ungrouped.isNotEmpty) {
-        content.groups.add(MenuGroup(key: groupKey(0), name: 'Сотрудники', position: ++position));
+        // Папка для тех, кого в группы не положили. Называется так же, как на
+        // экране сотрудников в товарах: место одно и то же (25.09.2026).
+        // Гостю в карточке заведения сервер подписывает её «Сотрудники»:
+        // «Без группы» это слово для хозяина, а не для покупателя.
+        content.groups.add(MenuGroup(key: groupKey(0), name: 'Без группы', position: ++position));
         content.items.addAll(ungrouped);
       }
 
