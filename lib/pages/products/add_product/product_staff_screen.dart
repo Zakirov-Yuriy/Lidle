@@ -42,6 +42,12 @@ class ProductStaffScreen extends StatefulWidget {
   State<ProductStaffScreen> createState() => _ProductStaffScreenState();
 }
 
+/// Высота фотографии сотрудника и плитки «Добавить» (25.09.2026).
+///
+/// Раньше картинка была квадратной по ширине ячейки, и на телефоне карточка
+/// вырастала выше пол-экрана: список из четырёх человек приходилось листать.
+const double _photoHeight = 159;
+
 class _ProductStaffScreenState extends State<ProductStaffScreen> {
   PublicationStaff _staff = const PublicationStaff();
 
@@ -723,8 +729,10 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
           children: [
             GestureDetector(
               onTap: _addMember,
-              child: AspectRatio(
-                aspectRatio: 1,
+              child: SizedBox(
+                // Ровно столько же, сколько фотография сотрудника: квадратная
+                // плитка на узком телефоне занимала пол-экрана (25.09.2026).
+                height: _photoHeight,
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -758,8 +766,8 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
             onLongPress: () => _deleteMember(member),
             child: Stack(
               children: [
-                AspectRatio(
-                  aspectRatio: 1,
+                SizedBox(
+                  height: _photoHeight,
                   child: Container(
                     width: double.infinity,
                     decoration: BoxDecoration(

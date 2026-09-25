@@ -98,6 +98,16 @@ class GroupedBlockConfig {
   /// больше (должность и галочка), поэтому карточка выше (25.09.2026).
   final double cardAspect;
 
+  /// Высота карточки числом вместо пропорций, и высота картинки внутри неё
+  /// (25.09.2026).
+  ///
+  /// У сотрудников картинка ростом с фотографию на паспорт: квадратная по
+  /// ширине ячейки, она занимала пол-экрана, и список из четырёх человек
+  /// приходилось листать. Пусто — высота считается из пропорций, как было.
+  final double? cardHeight;
+
+  final double? photoHeight;
+
   const GroupedBlockConfig({
     required this.amountShort,
     required this.amountUnit,
@@ -112,6 +122,8 @@ class GroupedBlockConfig {
     this.staff = false,
     this.roleLabel,
     this.cardAspect = 0.72,
+    this.cardHeight,
+    this.photoHeight,
     this.amountLabel,
     this.showCuisine = false,
   });
@@ -204,6 +216,8 @@ class GroupedBlockConfig {
     staff: true,
     roleLabel: 'Должность',
     cardAspect: 0.6,
+    cardHeight: 250,
+    photoHeight: 159,
     descriptionHint: 'Расскажите о сотруднике: что делает, чем помогает гостю. '
         'Без ссылок, телефонов, матерных слов.',
     howItWorks: 'Сотрудники у вас одни на все ваши объявления и товары: завели '
@@ -1055,13 +1069,19 @@ class _MenuScreenState extends State<MenuScreen> {
                   // групп ещё нет: человека можно завести и без группы, он
                   // ляжет в «Без группы» (25.09.2026).
                   if (group != null || widget.config.staff)
-                    GridView.count(
-                      crossAxisCount: 2,
+                    GridView(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: widget.config.cardAspect,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: widget.config.cardAspect,
+
+                        // Задана высота — она главнее пропорций: карточка
+                        // сотрудника одинаковая на любом экране (25.09.2026).
+                        mainAxisExtent: widget.config.cardHeight,
+                      ),
                       children: [
                         for (final dish in dishes)
                           _DishCard(
@@ -1075,6 +1095,9 @@ class _MenuScreenState extends State<MenuScreen> {
                         GestureDetector(
                           onTap: () => _openItem(),
                           child: Container(
+                            // Ровно с картинку соседней карточки, а не во всю
+                            // ячейку (25.09.2026).
+                            height: widget.config.photoHeight,
                             decoration: BoxDecoration(
                               color: formBackground,
                               borderRadius: BorderRadius.circular(6),
@@ -1255,18 +1278,29 @@ class _DishCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final photo = config.photoHeight;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: MenuPhoto(
+        if (photo == null)
+          Expanded(
+            child: MenuPhoto(
+              localPath: dish.localPath,
+              url: dish.imageUrl,
+              height: double.infinity,
+              hint: '',
+              onTap: onEdit,
+            ),
+          )
+        else
+          MenuPhoto(
             localPath: dish.localPath,
             url: dish.imageUrl,
-            height: double.infinity,
+            height: photo,
             hint: '',
             onTap: onEdit,
           ),
-        ),
         const SizedBox(height: 6),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
