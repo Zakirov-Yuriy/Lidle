@@ -56,10 +56,13 @@ import 'widgets/form_block_fields.dart';
 import 'block/block_item_screen.dart';
 import 'block/menu_screen.dart';
 import 'block/scenarios_screen.dart';
+import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/models/scenario.dart';
+import 'package:lidle/pages/products/add_product/product_payment_screen.dart';
 import 'package:lidle/services/scenarios_service.dart';
 import 'widgets/period_fields.dart';
 import 'package:lidle/models/block_item.dart';
+import 'package:lidle/models/menu_content.dart';
 import 'package:lidle/services/block_items_service.dart';
 import 'package:lidle/services/company_contact_service.dart';
 import 'package:lidle/models/advert_form_config.dart';
@@ -3473,9 +3476,15 @@ class _DynamicFilterState extends State<DynamicFilter>
     // список с галочками «работает здесь», а не отдельные карточки в
     // объявлении.
     final isStaff = title.contains('сотрудник');
+
+    // Оплата (25.09.2026): список способов один и тот же у всех и живёт на
+    // сервере, поэтому экран тот же, что в разделе товаров, а в объявлении
+    // остаётся только выбор и реквизиты этого места.
+    final isPayment = title.contains('оплат');
+
     final isGrouped = isMenu || isProducts || isServices || isDelivery || isStaff;
 
-    if (fields.isEmpty && !isGrouped) {
+    if (fields.isEmpty && !isGrouped && !isPayment) {
       return AddListBlockField(attribute: attr);
     }
 
@@ -3483,6 +3492,27 @@ class _DynamicFilterState extends State<DynamicFilter>
 
     Future<void> open([int? index]) async {
       final initial = index == null ? null : items[index];
+
+      // Оплата: свой экран, тот же, что в товарах. Возвращает выбор способов
+      // и их реквизиты, а не экран блока, поэтому собираем содержимое сами
+      // (25.09.2026).
+      if (isPayment) {
+        final draft = await _openPayment(initial);
+
+        if (draft == null || !mounted) return;
+
+        setState(() {
+          final list = _blockItems.putIfAbsent(attr.id, () => []);
+
+          if (index == null) {
+            list.add(draft);
+          } else {
+            list[index] = draft;
+          }
+        });
+
+        return;
+      }
 
       final draft = await Navigator.push<BlockItemDraft>(
         context,
@@ -3549,8 +3579,10 @@ class _DynamicFilterState extends State<DynamicFilter>
         onAdd: () => open(),
         onOpen: (i) => open(i),
         onRemove: remove,
-        details: isGrouped ? _menuLines : null,
-        titleOf: isGrouped ? _groupedTitle : null,
+        // Оплата показывается так же: у неё есть содержимое (способы), а
+        // своих полей нет (25.09.2026).
+        details: isGrouped || isPayment ? _menuLines : null,
+        titleOf: isGrouped || isPayment ? _groupedTitle : null,
       );
     }
 
@@ -3569,6 +3601,17 @@ class _DynamicFilterState extends State<DynamicFilter>
     if (item.summary.isNotEmpty && item.summary.first.value.trim().isNotEmpty) {
       return item.summary.first.value;
     }
+
+    // Оплата: своих полей у блока нет, и после перезахода в объявление
+    // подписи взяться неоткуда. Собираем её из выбранных способов
+    // (25.09.2026).
+    final chosen = item.menu.items
+        .where((i) => i.key.startsWith('p') && i.selected)
+        .map((i) => i.name)
+        .where((name) => name.trim().isNotEmpty)
+        .toList();
+
+    if (chosen.isNotEmpty) return chosen.join(', ');
 
     final groups = item.menu.sortedGroups;
 
@@ -3592,26 +3635,92 @@ class _DynamicFilterState extends State<DynamicFilter>
         final amount = dish.weight > 0 ? '${dish.weight}' : null;
 
         // У сотрудника вместо цены должность, а справа галочка: список общий,
-        // и в этом заведении работают не все (25.09.2026).
-        final isStaff = dish.role.isNotEmpty || dish.selected;
+        // и в этом заведении работают не все (25.09.2026). У способа оплаты
+        // справа просто «подключено».
+        final isStaff = dish.key.startsWith('s');
+        final isPayment = dish.key.startsWith('p');
 
         lines.add(BlockLine(
           title: '${dish.position}. ${dish.name}',
           subtitle: isStaff
-              ? dish.role.isEmpty
-                  ? null
-                  : dish.role
+              ? (dish.role.isEmpty ? null : dish.role)
               : dish.description.isEmpty
                   ? null
                   : dish.description,
           trailing: isStaff
               ? (dish.selected ? 'работает здесь' : '')
-              : [price, amount].whereType<String>().join(' · '),
+              : isPayment
+                  ? (dish.selected ? 'подключено' : '')
+                  : [price, amount].whereType<String>().join(' · '),
         ));
       }
     }
 
     return lines;
+  }
+
+  /// Экран оплаты: тот же, что в разделе товаров (25.09.2026).
+  ///
+  /// Человек отмечает способы, настраивает реквизиты и возвращается. Выбор
+  /// уезжает вместе с объявлением содержимым блока: позиция на способ, ключ
+  /// `p<способ>`, галочка и реквизиты этого места.
+  Future<BlockItemDraft?> _openPayment(BlockItemDraft? initial) async {
+    final chosen = <String>[];
+    final settings = <String, PaymentSetting>{};
+
+    for (final item in initial?.menu.items ?? const <MenuItem>[]) {
+      if (!item.key.startsWith('p')) continue;
+
+      final key = item.key.substring(1);
+
+      if (item.selected) chosen.add(key);
+
+      if (item.settings.isNotEmpty) {
+        final parsed = PaymentSetting.tryFrom(item.settings);
+
+        if (parsed != null) settings[key] = parsed;
+      }
+    }
+
+    final choice = await Navigator.push<PaymentChoice>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductPaymentScreen(chosen: chosen, settings: settings),
+      ),
+    );
+
+    if (choice == null || !mounted) return null;
+
+    final menu = MenuContent();
+    final names = <String>[];
+
+    menu.groups.add(MenuGroup(key: 'g0', name: 'Оплата', position: 1));
+
+    var position = 0;
+
+    for (final key in choice.methods) {
+      final name = choice.titles[key] ?? key;
+
+      names.add(name);
+
+      menu.items.add(MenuItem(
+        key: 'p$key',
+        group: 'g0',
+        name: name,
+        selected: true,
+        settings: choice.settings[key]?.toJson() ?? <String, dynamic>{},
+        position: ++position,
+      ));
+    }
+
+    final draft = initial ?? BlockItemDraft();
+
+    return draft
+      ..menu = menu
+      ..summary = [
+        MapEntry('Оплата', names.isEmpty ? 'Не выбрана' : names.join(', ')),
+      ]
+      ..dirty = true;
   }
 
   /// Сотрудники, отмеченные галочкой на экранах блока «Добавить сотрудника»

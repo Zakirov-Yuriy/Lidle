@@ -27,12 +27,22 @@ import 'package:lidle/widgets/components/header.dart';
 
 /// Что человек выбрал в оплате: способы и их настройки.
 class PaymentChoice {
-  const PaymentChoice({required this.methods, required this.settings});
+  const PaymentChoice({
+    required this.methods,
+    required this.settings,
+    this.titles = const {},
+  });
 
   final List<String> methods;
 
   /// Ключ способа → его настройка.
   final Map<String, PaymentSetting> settings;
+
+  /// Ключ способа → название из справочника сервера (25.09.2026).
+  ///
+  /// Нужны тому, кто показывает выбор списком до сохранения: держать вторую
+  /// копию названий в приложении значит однажды разойтись с сервером.
+  final Map<String, String> titles;
 }
 
 class ProductPaymentScreen extends StatefulWidget {
@@ -143,11 +153,30 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
   /// человек ещё может вернуться и поправить отметки, и запоминать
   /// промежуточное состояние значит сохранить то, чего он не подтверждал.
   Future<void> _openSetup() async {
-    if (_chosen.isEmpty) {
+    // Снять все способы можно, но только если раньше они были: это
+    // осознанное «здесь больше ничем» (25.09.2026). До этого экран не
+    // выпускал человека без единой отметки, и убрать выбранную раньше оплату
+    // было нечем. А вот пустой выбор на пустом месте это промах по кнопке.
+    if (_chosen.isEmpty && widget.chosen.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Отметьте хотя бы один способ оплаты'),
           backgroundColor: secondaryBackground,
+        ),
+      );
+
+      return;
+    }
+
+    if (_chosen.isEmpty) {
+      Navigator.pop(
+        context,
+        PaymentChoice(
+          methods: const [],
+          settings: const {},
+          titles: {
+            for (final method in _dictionary.methods) method.key: method.title,
+          },
         ),
       );
 
@@ -169,7 +198,13 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
 
     Navigator.pop(
       context,
-      PaymentChoice(methods: _chosen.toList(), settings: saved),
+      PaymentChoice(
+        methods: _chosen.toList(),
+        settings: saved,
+        titles: {
+          for (final method in _dictionary.methods) method.key: method.title,
+        },
+      ),
     );
   }
 

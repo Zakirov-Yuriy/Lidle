@@ -72,6 +72,12 @@ class MenuItem {
   /// по ней экран стола отбирает официантов и администраторов.
   String role;
 
+  /// Настройки позиции для этого места (25.09.2026).
+  ///
+  /// Пока только у оплаты: реквизиты способа свои у каждого места, и уезжают
+  /// они вместе с объявлением, как цена у доставки. У остальных блоков пусто.
+  Map<String, dynamic> settings;
+
   /// Работает ли сотрудник в этом заведении (25.09.2026).
   ///
   /// Справочник сотрудников общий у человека, а галочка своя у каждого места,
@@ -96,11 +102,13 @@ class MenuItem {
     this.description = '',
     this.role = '',
     this.selected = false,
+    Map<String, dynamic>? settings,
     this.position = 1,
     this.image,
     this.imageUrl,
     this.localPath,
-  }) : cuisines = cuisines ?? [];
+  })  : cuisines = cuisines ?? [],
+        settings = settings ?? {};
 
   bool get hasImage => localPath != null || imageUrl != null;
 
@@ -114,6 +122,7 @@ class MenuItem {
         description: description,
         role: role,
         selected: selected,
+        settings: Map<String, dynamic>.of(settings),
         position: position,
         image: image,
         imageUrl: imageUrl,
@@ -130,6 +139,7 @@ class MenuItem {
         'description': description,
         'role': role,
         'selected': selected,
+        'settings': settings,
         'position': position,
         'image': image ?? '',
       };
@@ -155,6 +165,9 @@ class MenuItem {
       description: '${raw['description'] ?? ''}',
       role: '${raw['role'] ?? ''}',
       selected: raw['selected'] == true || raw['selected'] == 1 || '${raw['selected']}' == 'true',
+      settings: raw['settings'] is Map
+          ? Map<String, dynamic>.from(raw['settings'] as Map)
+          : <String, dynamic>{},
       position: number(raw['position']) < 1 ? 1 : number(raw['position']),
       image: '${raw['image'] ?? ''}'.isEmpty ? null : '${raw['image']}',
       imageUrl: raw['image_url']?.toString(),
@@ -217,8 +230,16 @@ class MenuContent {
       final group = keys[item.group];
       if (group == null) continue;
 
+      // Позиции справочников (способ доставки `o`, сотрудник `s`, способ
+      // оплаты `p`) ключ не меняют: по нему сервер узнаёт, о ком речь, а
+      // новый ключ означал бы «эта строка ни к чему не относится»
+      // (25.09.2026).
+      final directory = item.key.startsWith('o')
+          || item.key.startsWith('s')
+          || item.key.startsWith('p');
+
       items.add(MenuItem(
-        key: newKey('i'),
+        key: directory ? item.key : newKey('i'),
         group: group,
         name: item.name,
         cuisines: List.of(item.cuisines),
@@ -227,6 +248,7 @@ class MenuContent {
         description: item.description,
         role: item.role,
         selected: item.selected,
+        settings: Map<String, dynamic>.of(item.settings),
         position: item.position,
         image: item.image,
         imageUrl: item.imageUrl,

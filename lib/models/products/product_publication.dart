@@ -403,7 +403,7 @@ class ProductPublication {
                 .where((item) => item.isNotEmpty)
                 .toList()
           : const [],
-      paymentSettings: _settings(data['payment_settings']),
+      paymentSettings: paymentSettingsFromJson(data['payment_settings']),
       groups: groups is List
           ? groups
                 .whereType<Map<String, dynamic>>()
@@ -508,6 +508,16 @@ class PaymentSetting {
   /// Номер карты так, как его показывают везде: «•••• •••• •••• 2345».
   String get maskedCard => last4 == null ? '' : '•••• •••• •••• $last4';
 
+  /// Разобрать настройку из ответа сервера (25.09.2026).
+  ///
+  /// Нужна экрану блока в объявлении: реквизиты приезжают там внутри
+  /// содержимого блока, а не отдельным полем публикации.
+  static PaymentSetting? tryFrom(Map<String, dynamic> raw) {
+    final parsed = paymentSettingsFromJson({'x': raw});
+
+    return parsed['x'];
+  }
+
   Map<String, dynamic> toJson() => {
         'account': account,
         if (last4 != null) 'last4': last4,
@@ -529,7 +539,7 @@ class PaymentSetting {
 }
 
 /// Настройки способов из ответа сервера.
-Map<String, PaymentSetting> _settings(dynamic raw) {
+Map<String, PaymentSetting> paymentSettingsFromJson(dynamic raw) {
   if (raw is! Map) return const {};
 
   final result = <String, PaymentSetting>{};
