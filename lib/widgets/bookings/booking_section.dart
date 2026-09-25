@@ -88,8 +88,12 @@ class _BookingSectionState extends State<BookingSection> {
     if (!mounted) return;
 
     // День, который человек уже выбрал, сохраняем при смене зала или
-    // гостей: он выбирает зал под дату, а не наоборот.
+    // гостей: он выбирает зал под дату, а не наоборот. Выбранные ночи по той
+    // же причине (25.09.2026): число гостей на них не влияет, а терять их
+    // при каждом нажатии «плюс» — мучение.
     final keepDay = _selectedDay;
+    final keepFirstNight = _firstNight;
+    final keepLastNight = _lastNight;
 
     setState(() {
       _availability = data;
@@ -105,9 +109,26 @@ class _BookingSectionState extends State<BookingSection> {
 
       _selectedDay = _sameDayIn(data, keepDay) ?? _firstDayWithFreeSlots(data);
       _selectedSlot = null;
-      _firstNight = null;
-      _lastNight = null;
+
+      // Ночи держим, только если они по-прежнему свободны: в другом домике
+      // те же даты могут быть заняты.
+      final keptFirst = _sameNightIn(data, keepFirstNight);
+      final keptLast = _sameNightIn(data, keepLastNight);
+
+      _firstNight = keptFirst;
+      _lastNight = keptFirst == null ? null : keptLast;
     });
+  }
+
+  /// Та же ночь в новом ответе, если она свободна (25.09.2026).
+  BookingNight? _sameNightIn(BookingAvailability? data, BookingNight? night) {
+    if (data == null || night == null) return null;
+
+    for (final n in data.nights) {
+      if (_isSameDate(n.date, night.date) && n.isFree) return n;
+    }
+
+    return null;
   }
 
   BookingDay? _sameDayIn(BookingAvailability? data, BookingDay? day) {
@@ -154,9 +175,16 @@ class _BookingSectionState extends State<BookingSection> {
     final data = _availability;
     if (data == null) return const SizedBox.shrink();
 
-    // Ресторан с залами: блок виден всегда, даже если в выбранном зале нет
-    // свободного времени, иначе вместе с ним пропал бы и выбор зала.
-    if (data.hasHalls) return _buildHalls(data);
+    // Объявление с единицами (залы, домики, кабинеты): блок виден всегда,
+    // даже если в выбранной единице нет свободного времени, иначе вместе с
+    // ним пропал бы и сам выбор.
+    if (data.hasHalls) {
+      // Посуточно единицу берут целиком, мест внутри нет: выбор единицы плюс
+      // календарь ночей (25.09.2026).
+      return data.mode == BookingMode.daily
+          ? _buildDailyUnits(data)
+          : _buildHalls(data);
+    }
 
     if (!data.hasAnythingFree) return const SizedBox.shrink();
 
@@ -326,6 +354,34 @@ class _BookingSectionState extends State<BookingSection> {
         style: const TextStyle(color: Colors.white, fontSize: 15),
       );
 
+  /// Счётчик гостей: минус, число, плюс (25.09.2026).
+  Widget _guestsRow({required int guests, required int min, required int max}) {
+    return Row(
+      children: [
+        _stepButton(
+          Icons.remove,
+          guests > min ? () => _choose(guests: guests - 1) : null,
+        ),
+        SizedBox(
+          width: 44,
+          child: Text(
+            '$guests',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        _stepButton(
+          Icons.add,
+          guests < max ? () => _choose(guests: guests + 1) : null,
+        ),
+      ],
+    );
+  }
+
   Widget _chip({
     required String text,
     required bool selected,
@@ -369,6 +425,70 @@ class _BookingSectionState extends State<BookingSection> {
           size: 20,
         ),
       ),
+    );
+  }
+
+  /// Посуточное жильё с единицами (25.09.2026): выбор домика, потом ночи.
+  ///
+  /// Единица берётся целиком, поэтому ни столиков, ни выбора «часть или
+  /// целиком» здесь нет. Число гостей ограничено вместимостью, если её задали.
+  Widget _buildDailyUnits(BookingAvailability data) {
+    final unit = data.selectedHall!;
+    final guests = _guests ?? 1;
+    final maxGuests = unit.capacity > 0 ? unit.capacity : (data.maxGuests ?? 500);
+
+    return _shell(
+      title: data.labels.bookTitle,
+      children: [
+        _label('Что бронируем'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final h in data.halls)
+              _chip(
+                text: h.name,
+                selected: h.id == unit.id,
+                onTap: () => _choose(hallId: h.id),
+              ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _label('Сколько гостей'),
+        const SizedBox(height: 8),
+        _guestsRow(guests: guests, min: 1, max: maxGuests),
+        if (unit.capacity > 0) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Помещается до ${unit.capacity} гостей.',
+            style: const TextStyle(color: textSecondary, fontSize: 12, height: 1.35),
+          ),
+        ],
+        const SizedBox(height: 14),
+        if (_isReloading) ...[
+          const LinearProgressIndicator(minHeight: 2, color: activeIconColor),
+          const SizedBox(height: 12),
+        ],
+        if (!data.hasAnythingFree)
+          const Text(
+            'Здесь на ближайшие дни свободных дат нет. Посмотрите другой вариант '
+            'или загляните позже.',
+            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+          )
+        else ...[
+          BookingNightsPicker(
+            availability: data,
+            firstNight: _firstNight,
+            lastNight: _lastNight,
+            onNightTap: (night) => _onNightTap(data, night),
+          ),
+          const SizedBox(height: 14),
+          _buildDailySummary(data),
+          const SizedBox(height: 12),
+          _buildDailyButton(data),
+        ],
+      ],
     );
   }
 
@@ -762,8 +882,12 @@ class _BookingSectionState extends State<BookingSection> {
           hallId: data.hasHalls ? _hallId : null,
           wholeHall: _wholeHall,
           fixedGuests: data.hasHalls ? _guests : null,
+          // Подпись места: у ресторана «Зал 1, столик», у домика просто его
+          // название — делить там нечего (25.09.2026).
           place: data.hasHalls
-              ? '${data.selectedHall!.name}, ${_wholeHall ? 'весь зал' : 'столик'}'
+              ? (data.mode == BookingMode.daily || !data.selectedHall!.hasTables
+                  ? data.selectedHall!.name
+                  : '${data.selectedHall!.name}, ${_wholeHall ? 'весь зал' : 'столик'}')
               : null,
         ),
       ),
