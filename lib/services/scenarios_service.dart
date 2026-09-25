@@ -33,12 +33,27 @@ class ScenariosService {
     final data = (jsonDecode(response.body) as Map)['data'];
     if (data is! List) return [];
 
-    // Все экраны объявления по номеру: залы и сотрудники в `tables`.
+    // Все экраны объявления по номеру: в `tables` по ним находится зал.
     final byId = <int, BlockItemDraft>{
       for (final list in items.values)
         for (final i in list)
           if (i.serverId != null) i.serverId!: i,
     };
+
+    // Сотрудники, отмеченные на экранах блока «Добавить сотрудника»
+    // (25.09.2026): за столом стоит человек из справочника, а не экран.
+    final people = <int, StaffRef>{};
+
+    for (final list in items.values) {
+      for (final screen in list) {
+        for (final item in screen.menu.items) {
+          if (!item.selected) continue;
+
+          final person = StaffRef.tryFrom(item);
+          if (person != null) people[person.id] = person;
+        }
+      }
+    }
 
     return data.whereType<Map>().map((row) {
       final selected = <int, List<BlockItemDraft>>{};
@@ -66,7 +81,7 @@ class ScenariosService {
 
           hallTables.forEach((tableKey, staff) {
             if (staff is! Map) return;
-            BlockItemDraft? pick(dynamic id) => id is num ? byId[id.toInt()] : null;
+            StaffRef? pick(dynamic id) => id is num ? people[id.toInt()] : null;
             final entry = TableStaff(waiter: pick(staff['waiter_id']), admin: pick(staff['admin_id']));
             if (!entry.isEmpty) tables.putIfAbsent(hall, () => {})['$tableKey'] = entry;
           });
@@ -101,8 +116,10 @@ class ScenariosService {
                     for (final t in hall.value.entries)
                       if (!t.value.isEmpty)
                         t.key: {
-                          'waiter_id': t.value.waiter?.serverId,
-                          'admin_id': t.value.admin?.serverId,
+                          // Номер сотрудника из справочника человека
+                          // (25.09.2026), а не экрана блока.
+                          'waiter_id': t.value.waiter?.id,
+                          'admin_id': t.value.admin?.id,
                         },
                   },
             },

@@ -19,6 +19,7 @@ import 'package:lidle/pages/products/add_product/product_staff_member_screen.dar
 import 'package:lidle/pages/products/add_product/product_review_screen.dart';
 import 'package:lidle/pages/products/add_product/tile_grid.dart';
 import 'package:lidle/services/api/products_staff_api.dart';
+import 'package:lidle/services/staff_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 class ProductStaffScreen extends StatefulWidget {
@@ -238,10 +239,35 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
     await _reload();
   }
 
+  /// Галочка «работает здесь» (25.09.2026).
+  ///
+  /// Список сотрудников у человека один на все его товары и объявления, а
+  /// работает человек не везде: в этой публикации его показывает галочка.
+  /// Снятая галочка сотрудника не удаляет — он остаётся в списке и в других
+  /// местах.
+  Future<void> _togglePlace(StaffMember member) async {
+    final ok = await StaffService.setPlace(
+      memberId: member.id,
+      placeType: 'publication',
+      placeId: widget.publication.id,
+      works: !member.worksHere,
+    );
+
+    if (!ok) {
+      _say('Не получилось сохранить.');
+
+      return;
+    }
+
+    await _reload();
+  }
+
   Future<void> _deleteMember(StaffMember member) async {
     final confirmed = await _confirm(
       'Удалить сотрудника?',
-      '${member.name}\n\nУдаление безвозвратно.',
+      '${member.name}\n\nСписок сотрудников у вас один на все товары и '
+          'объявления: человек пропадёт везде. Чтобы убрать его только отсюда, '
+          'снимите галочку «Работает здесь».',
     );
 
     if (!confirmed) return;
@@ -799,6 +825,34 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
                 ? 'Должность не указана'
                 : 'Роль: ${member.position}',
             style: const TextStyle(color: textSecondary, fontSize: 13),
+          ),
+
+          // Работает ли он в этой публикации (25.09.2026): список общий, и
+          // здесь работают не все.
+          const SizedBox(height: 3),
+          GestureDetector(
+            onTap: () => _togglePlace(member),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                Icon(
+                  member.worksHere
+                      ? Icons.check_box
+                      : Icons.check_box_outline_blank,
+                  size: 18,
+                  color: member.worksHere ? activeIconColor : textSecondary,
+                ),
+                const SizedBox(width: 4),
+                const Expanded(
+                  child: Text(
+                    'Работает здесь',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: textSecondary, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
           ),
 
           // Дальше то, что человек заполнил. Незаполненное не показываем

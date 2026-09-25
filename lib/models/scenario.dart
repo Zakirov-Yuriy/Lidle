@@ -1,10 +1,46 @@
 import 'package:lidle/models/block_item.dart';
+import 'package:lidle/models/menu_content.dart';
 
-/// Кто обслуживает стол в сценарии (22.09.2026). Официант и администратор
-/// это экраны блока «Добавить сотрудника».
+/// Сотрудник из справочника человека (25.09.2026).
+///
+/// Раньше за столом стоял экран блока «Добавить сотрудника», и у каждого
+/// заведения были свои карточки людей. Теперь справочник общий: за столом
+/// стоит сам человек, а экран блока только отмечает галочкой, кто здесь
+/// работает.
+class StaffRef {
+  final int id;
+  final String name;
+  final String role;
+  final String? imageUrl;
+
+  const StaffRef({
+    required this.id,
+    required this.name,
+    this.role = '',
+    this.imageUrl,
+  });
+
+  /// Из позиции экрана блока: её ключ это «s<номер сотрудника>».
+  static StaffRef? tryFrom(MenuItem item) {
+    if (!item.key.startsWith('s')) return null;
+
+    final id = int.tryParse(item.key.substring(1));
+    if (id == null || id <= 0) return null;
+
+    return StaffRef(id: id, name: item.name, role: item.role, imageUrl: item.imageUrl);
+  }
+
+  @override
+  bool operator ==(Object other) => other is StaffRef && other.id == id;
+
+  @override
+  int get hashCode => id;
+}
+
+/// Кто обслуживает стол в сценарии (22.09.2026, справочник с 25.09.2026).
 class TableStaff {
-  BlockItemDraft? waiter;
-  BlockItemDraft? admin;
+  StaffRef? waiter;
+  StaffRef? admin;
 
   TableStaff({this.waiter, this.admin});
 
@@ -57,14 +93,32 @@ class ScenarioDraft {
       list.remove(item);
     }
 
-    // Удалённый зал уносит свои столы, удалённый сотрудник снимается со
-    // столов.
+    // Удалённый зал уносит свои столы.
     tables.remove(item);
+  }
+
+  /// Снять со столов тех, кого больше нет среди отмеченных сотрудников
+  /// (25.09.2026): галочку сняли или человека удалили из справочника.
+  /// Возвращает, пришлось ли кого-то снять: по этому признаку форма решает,
+  /// нужно ли отправлять сценарии заново.
+  bool keepOnly(Iterable<StaffRef> staff) {
+    final ids = staff.map((s) => s.id).toSet();
+    var changed = false;
+
     for (final hall in tables.values) {
-      for (final staff in hall.values) {
-        if (staff.waiter == item) staff.waiter = null;
-        if (staff.admin == item) staff.admin = null;
+      for (final entry in hall.values) {
+        if (entry.waiter != null && !ids.contains(entry.waiter!.id)) {
+          entry.waiter = null;
+          changed = true;
+        }
+
+        if (entry.admin != null && !ids.contains(entry.admin!.id)) {
+          entry.admin = null;
+          changed = true;
+        }
       }
     }
+
+    return changed;
   }
 }

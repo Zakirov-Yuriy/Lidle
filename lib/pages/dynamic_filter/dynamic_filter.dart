@@ -3468,7 +3468,12 @@ class _DynamicFilterState extends State<DynamicFilter>
     final isProducts = title.contains('товар');
     final isServices = title.contains('услуг');
     final isDelivery = title.contains('доставк');
-    final isGrouped = isMenu || isProducts || isServices || isDelivery;
+
+    // Сотрудники с 25.09.2026 тоже справочник человека: экран показывает
+    // список с галочками «работает здесь», а не отдельные карточки в
+    // объявлении.
+    final isStaff = title.contains('сотрудник');
+    final isGrouped = isMenu || isProducts || isServices || isDelivery || isStaff;
 
     if (fields.isEmpty && !isGrouped) {
       return AddListBlockField(attribute: attr);
@@ -3492,9 +3497,11 @@ class _DynamicFilterState extends State<DynamicFilter>
                       ? GroupedBlockConfig.menu
                       : isDelivery
                           ? GroupedBlockConfig.delivery
-                          : isServices
-                              ? GroupedBlockConfig.services
-                              : GroupedBlockConfig.products,
+                          : isStaff
+                              ? GroupedBlockConfig.staffDirectory
+                              : isServices
+                                  ? GroupedBlockConfig.services
+                                  : GroupedBlockConfig.products,
                 )
               : BlockItemScreen(block: attr, fields: fields, initial: initial),
         ),
@@ -3509,6 +3516,10 @@ class _DynamicFilterState extends State<DynamicFilter>
         } else {
           list[index] = draft;
         }
+
+        // Галочку сотрудника могли снять: снимаем его и со столов, иначе на
+        // сервер уехало бы назначение, которого там уже нет (25.09.2026).
+        if (isStaff) _dropUncheckedStaff();
       });
     }
 
@@ -3520,6 +3531,10 @@ class _DynamicFilterState extends State<DynamicFilter>
           for (final scenario in _scenarios) {
             scenario.forget(removed);
           }
+
+          // Удалённый экран сотрудников уносит и своих людей со столов.
+          if (isStaff) _dropUncheckedStaff();
+
           if (_scenarios.isNotEmpty) _scenariosDirty = true;
         });
 
@@ -3576,15 +3591,64 @@ class _DynamicFilterState extends State<DynamicFilter>
         final price = dish.price > 0 ? '${dish.price} ₽' : null;
         final amount = dish.weight > 0 ? '${dish.weight}' : null;
 
+        // У сотрудника вместо цены должность, а справа галочка: список общий,
+        // и в этом заведении работают не все (25.09.2026).
+        final isStaff = dish.role.isNotEmpty || dish.selected;
+
         lines.add(BlockLine(
           title: '${dish.position}. ${dish.name}',
-          subtitle: dish.description.isEmpty ? null : dish.description,
-          trailing: [price, amount].whereType<String>().join(' · '),
+          subtitle: isStaff
+              ? dish.role.isEmpty
+                  ? null
+                  : dish.role
+              : dish.description.isEmpty
+                  ? null
+                  : dish.description,
+          trailing: isStaff
+              ? (dish.selected ? 'работает здесь' : '')
+              : [price, amount].whereType<String>().join(' · '),
         ));
       }
     }
 
     return lines;
+  }
+
+  /// Сотрудники, отмеченные галочкой на экранах блока «Добавить сотрудника»
+  /// (25.09.2026).
+  ///
+  /// Ключ позиции «s<номер>» ставит сервер, поэтому ищем по нему, а не по
+  /// названию блока: блок в админке могут переименовать.
+  List<StaffRef> get _checkedStaff {
+    final people = <int, StaffRef>{};
+
+    for (final list in _blockItems.values) {
+      for (final screen in list) {
+        for (final item in screen.menu.items) {
+          if (!item.selected) continue;
+
+          final person = StaffRef.tryFrom(item);
+          if (person != null) people[person.id] = person;
+        }
+      }
+    }
+
+    return people.values.toList();
+  }
+
+  /// Снять со столов тех, у кого галочки больше нет (25.09.2026).
+  void _dropUncheckedStaff() {
+    if (_scenarios.isEmpty) return;
+
+    final staff = _checkedStaff;
+    var changed = false;
+
+    for (final scenario in _scenarios) {
+      if (scenario.keepOnly(staff)) changed = true;
+    }
+
+    // Отправляем заново только если кого-то действительно сняли.
+    if (changed) _scenariosDirty = true;
   }
 
   /// «Перейти» у «Таблицы распределения»: сценарии из блоков этой формы.

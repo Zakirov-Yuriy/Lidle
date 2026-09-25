@@ -35,55 +35,80 @@ class DeliveriesService {
   static String optionKey(int id) => 'o$id';
 
   /// Весь справочник с ценами этого экрана.
-  static Future<MenuContent> load(int? blockItemId) async {
+  ///
+  /// Возвращает `null`, если справочник не приехал: пустой список и обрыв
+  /// связи это разные вещи, и экран не должен подменять своё содержимое
+  /// пустотой (25.09.2026).
+  static Future<MenuContent?> load(int? blockItemId) async {
     final query = blockItemId == null || blockItemId <= 0
         ? ''
         : '?place_type=block_item&place_id=$blockItemId';
 
-    final response = await http.get(Uri.parse(_url(query)), headers: _headers);
+    try {
+      final response = await http.get(Uri.parse(_url(query)), headers: _headers);
 
-    if (response.statusCode != 200) return MenuContent();
+      if (response.statusCode != 200) return null;
 
-    final body = jsonDecode(response.body);
-    final data = body is Map ? body['data'] : null;
+      final body = jsonDecode(response.body);
+      final data = body is Map ? body['data'] : null;
 
-    if (data is! Map) return MenuContent();
+      if (data is! Map) return null;
 
-    final content = MenuContent();
-    var position = 0;
+      final content = MenuContent();
+      var position = 0;
 
-    for (final row in (data['groups'] as List? ?? []).whereType<Map>()) {
-      content.groups.add(MenuGroup(
-        key: groupKey((row['id'] as num).toInt()),
-        name: '${row['name'] ?? ''}',
-        position: ++position,
-        imageUrl: row['image']?.toString(),
-      ));
+      for (final row in (data['groups'] as List? ?? []).whereType<Map>()) {
+        final id = _int(row['id']);
+        if (id <= 0) continue;
 
-      for (final option in (row['options'] as List? ?? []).whereType<Map>()) {
-        content.items.add(_option(option, groupKey((row['id'] as num).toInt()),
-            content.ofGroup(groupKey((row['id'] as num).toInt())).length + 1));
+        final key = groupKey(id);
+
+        content.groups.add(MenuGroup(
+          key: key,
+          name: '${row['name'] ?? ''}',
+          position: ++position,
+          imageUrl: row['image']?.toString(),
+        ));
+
+        for (final option in (row['options'] as List? ?? []).whereType<Map>()) {
+          final parsed = _option(option, key, content.ofGroup(key).length + 1);
+          if (parsed != null) content.items.add(parsed);
+        }
       }
-    }
 
-    final loose = (data['ungrouped'] as List? ?? []).whereType<Map>().toList();
-
-    if (loose.isNotEmpty) {
-      content.groups.add(MenuGroup(key: groupKey(0), name: 'Доставка', position: ++position));
+      final loose = (data['ungrouped'] as List? ?? []).whereType<Map>().toList();
+      final ungrouped = <MenuItem>[];
 
       for (var i = 0; i < loose.length; i++) {
-        content.items.add(_option(loose[i], groupKey(0), i + 1));
+        final parsed = _option(loose[i], groupKey(0), ungrouped.length + 1);
+        if (parsed != null) ungrouped.add(parsed);
       }
-    }
 
-    return content;
+      if (ungrouped.isNotEmpty) {
+        content.groups.add(MenuGroup(key: groupKey(0), name: 'Доставка', position: ++position));
+        content.items.addAll(ungrouped);
+      }
+
+      return content;
+    } catch (_) {
+      // Справочник не приехал: экран оставит то, что у него уже есть
+      // (25.09.2026).
+      return null;
+    }
   }
 
-  static MenuItem _option(Map row, String group, int position) {
+  static int _int(dynamic value) =>
+      value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+
+  static MenuItem? _option(Map row, String group, int position) {
+    final id = _int(row['id']);
+
+    if (id <= 0) return null;
+
     final price = row['price_from'];
 
     return MenuItem(
-      key: optionKey((row['id'] as num).toInt()),
+      key: optionKey(id),
       group: group,
       name: '${row['name'] ?? ''}',
       description: '${row['description'] ?? ''}',

@@ -442,11 +442,30 @@ class _ScenarioEditScreenState extends State<ScenarioEditScreen> {
     });
   }
 
-  /// Сотрудники из блока «Добавить сотрудника» (22.09.2026).
-  List<BlockItemDraft> get _staff => [
-        for (final r in widget.rows)
-          if (r.label == 'Сотрудники') ...r.items,
-      ];
+  /// Сотрудники, отмеченные на экранах блока «Добавить сотрудника»
+  /// (25.09.2026).
+  ///
+  /// Справочник у человека общий, поэтому за стол ставим только тех, у кого на
+  /// экране стоит галочка «работает здесь»: остальные к этому заведению
+  /// отношения не имеют.
+  List<StaffRef> get _staff {
+    final people = <int, StaffRef>{};
+
+    // По ключу позиции, а не по подписи строки: блок в админке могут
+    // переименовать, а ключ «s<номер>» ставит сам сервер (25.09.2026).
+    for (final row in widget.rows) {
+      for (final screen in row.items) {
+        for (final item in screen.menu.items) {
+          if (!item.selected) continue;
+
+          final person = StaffRef.tryFrom(item);
+          if (person != null) people[person.id] = person;
+        }
+      }
+    }
+
+    return people.values.toList();
+  }
 
   /// Стрелка у зала: «Настройка столов в зале» (22.09.2026). Столы
   /// записываются в зал, персонал столов в этот сценарий. Зал, у которого
@@ -525,6 +544,11 @@ class _ScenarioEditScreenState extends State<ScenarioEditScreen> {
 
     final name = _name.text.trim();
     _draft.name = name.isEmpty ? (widget.initial?.name ?? widget.defaultName) : name;
+
+    // Галочку могли снять уже после того, как человека поставили за стол
+    // (25.09.2026): такие назначения снимаем, иначе сервер их всё равно
+    // отбросит, а человек продолжал бы видеть их на плане.
+    _draft.keepOnly(_staff);
 
     Navigator.pop(context, _draft);
   }

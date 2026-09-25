@@ -68,6 +68,17 @@ class MenuItem {
   int weight;
   String description;
 
+  /// Должность сотрудника (25.09.2026). Только у блока «Добавить сотрудника»:
+  /// по ней экран стола отбирает официантов и администраторов.
+  String role;
+
+  /// Работает ли сотрудник в этом заведении (25.09.2026).
+  ///
+  /// Справочник сотрудников общий у человека, а галочка своя у каждого места,
+  /// как цена у доставки. Без галочки человек остаётся в справочнике, но в
+  /// этом объявлении не показывается и на столы не ставится.
+  bool selected;
+
   /// Порядок в группе. Ставится сам, но его можно поменять руками.
   int position;
 
@@ -83,6 +94,8 @@ class MenuItem {
     this.price = 0,
     this.weight = 0,
     this.description = '',
+    this.role = '',
+    this.selected = false,
     this.position = 1,
     this.image,
     this.imageUrl,
@@ -99,6 +112,8 @@ class MenuItem {
         price: price,
         weight: weight,
         description: description,
+        role: role,
+        selected: selected,
         position: position,
         image: image,
         imageUrl: imageUrl,
@@ -113,6 +128,8 @@ class MenuItem {
         'price': price,
         'weight': weight,
         'description': description,
+        'role': role,
+        'selected': selected,
         'position': position,
         'image': image ?? '',
       };
@@ -136,6 +153,8 @@ class MenuItem {
       price: number(raw['price']),
       weight: number(raw['weight']),
       description: '${raw['description'] ?? ''}',
+      role: '${raw['role'] ?? ''}',
+      selected: raw['selected'] == true || raw['selected'] == 1 || '${raw['selected']}' == 'true',
       position: number(raw['position']) < 1 ? 1 : number(raw['position']),
       image: '${raw['image'] ?? ''}'.isEmpty ? null : '${raw['image']}',
       imageUrl: raw['image_url']?.toString(),
@@ -206,6 +225,8 @@ class MenuContent {
         price: item.price,
         weight: item.weight,
         description: item.description,
+        role: item.role,
+        selected: item.selected,
         position: item.position,
         image: item.image,
         imageUrl: item.imageUrl,

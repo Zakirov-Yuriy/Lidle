@@ -488,6 +488,7 @@ class StaffMember {
     this.city,
     this.groupId,
     this.order = 0,
+    this.worksHere = true,
   });
 
   final int id;
@@ -527,6 +528,14 @@ class StaffMember {
 
   final int? groupId;
   final int order;
+
+  /// Работает ли человек в этом месте (25.09.2026).
+  ///
+  /// Справочник сотрудников у человека один на все категории, а место
+  /// отмечается галочкой: «Иван» может числиться в ресторане и не числиться в
+  /// цветочном. Старый ответ поля не отдаёт вовсе — тогда считаем, что
+  /// работает, иначе список выглядел бы пустым.
+  final bool worksHere;
 
   /// Зарплата так, как её читают: «40 000 ₽». Пусто — не указана.
   ///
@@ -580,6 +589,7 @@ class StaffMember {
       city: _text(data['city']),
       groupId: _int(data['group_id']),
       order: _int(data['order']) ?? 0,
+      worksHere: data.containsKey('works_here') ? data['works_here'] == true : true,
     );
   }
 }

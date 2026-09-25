@@ -15,7 +15,9 @@
 //
 // Решения заказчика:
 //   - столы ресторан ставит сам на свой план (картинку зала);
-//   - сотрудники берутся из блока «Добавить сотрудника» формы объявления;
+//   - сотрудники берутся из справочника человека: за стол можно поставить
+//     тех, кто отмечен галочкой на экране блока «Добавить сотрудника»
+//     (25.09.2026);
 //   - персонал свой в каждом сценарии, а стол (место, номер, число мест)
 //     общий: это мебель зала;
 //   - у стола есть «Мест за столом»: столы на плане заменяют поля зала
@@ -38,13 +40,9 @@ const Color _divider = Color(0xFF474747);
 const Color _green = Color(0xFF2BD13F);
 const Color _yellow = Color(0xFFE8E337);
 
-/// Должности из поля «Должность» экрана сотрудника.
+/// Должности из поля «Должность» карточки сотрудника.
 const String roleWaiter = 'Официант';
 const String roleAdmin = 'Администратор';
-
-String staffName(BlockItemDraft s) => s.title;
-
-String? staffRole(BlockItemDraft s) => s.summaryValue('Должность');
 
 void _soon(BuildContext context) {
   ScaffoldMessenger.of(context)
@@ -127,8 +125,8 @@ class HallTablesScreen extends StatefulWidget {
   /// Зал: его план и столы. Столы меняются только после «Сохранить».
   final BlockItemDraft hall;
 
-  /// Сотрудники из блока «Добавить сотрудника».
-  final List<BlockItemDraft> staff;
+  /// Сотрудники, отмеченные на экранах блока «Добавить сотрудника».
+  final List<StaffRef> staff;
 
   /// Персонал столов этого зала в текущем сценарии (копия).
   final Map<String, TableStaff> tableStaff;
@@ -432,7 +430,7 @@ class TableSettingsScreen extends StatefulWidget {
   });
 
   final HallTable table;
-  final List<BlockItemDraft> staff;
+  final List<StaffRef> staff;
   final TableStaff current;
   final bool isNew;
 
@@ -499,7 +497,7 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
     );
   }
 
-  Widget _select(String label, BlockItemDraft? value, VoidCallback onTap) {
+  Widget _select(String label, StaffRef? value, VoidCallback onTap) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -515,7 +513,7 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    value == null ? 'Выбрать' : staffName(value),
+                    value == null ? 'Выбрать' : value.name,
                     style: const TextStyle(color: textPrimary, fontSize: 14),
                   ),
                 ),
@@ -627,7 +625,7 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
 
 /// Результат выбора: сотрудник или null («Отменить» у выбранного).
 class _PickResult {
-  final BlockItemDraft? person;
+  final StaffRef? person;
 
   const _PickResult(this.person);
 }
@@ -645,18 +643,18 @@ class StaffPickerScreen extends StatefulWidget {
   final String title;
   final String subtitle;
   final String role;
-  final List<BlockItemDraft> staff;
-  final BlockItemDraft? selected;
+  final List<StaffRef> staff;
+  final StaffRef? selected;
 
   @override
   State<StaffPickerScreen> createState() => _StaffPickerScreenState();
 }
 
 class _StaffPickerScreenState extends State<StaffPickerScreen> {
-  late BlockItemDraft? _selected = widget.selected;
+  late StaffRef? _selected = widget.selected;
 
-  List<BlockItemDraft> get _people =>
-      widget.staff.where((s) => (staffRole(s) ?? '').toLowerCase() == widget.role.toLowerCase()).toList();
+  List<StaffRef> get _people =>
+      widget.staff.where((s) => s.role.trim().toLowerCase() == widget.role.toLowerCase()).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -682,8 +680,9 @@ class _StaffPickerScreenState extends State<StaffPickerScreen> {
                   const SizedBox(height: 12),
                   if (people.isEmpty)
                     Text(
-                      'Сотрудников с должностью «${widget.role}» пока нет. Добавьте их в форме '
-                      'объявления, в блоке «Добавить сотрудника», и сохраните.',
+                      'Сотрудников с должностью «${widget.role}» здесь пока нет. Откройте в форме '
+                      'объявления блок «Добавить сотрудника», заведите человека с этой должностью '
+                      'или поставьте ему галочку «Работает здесь».',
                       style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
                     )
                   else
@@ -718,17 +717,17 @@ class _StaffPickerScreenState extends State<StaffPickerScreen> {
 class _PersonCard extends StatelessWidget {
   const _PersonCard({required this.person, required this.selected, required this.onTap});
 
-  final BlockItemDraft person;
+  final StaffRef person;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     Widget photo;
-    if (person.localFilePath != null && !person.isPdf) {
-      photo = Image.file(File(person.localFilePath!), fit: BoxFit.cover);
-    } else if (person.remoteFileUrl != null && !person.isPdf) {
-      photo = Image.network(person.remoteFileUrl!, fit: BoxFit.cover);
+    final url = person.imageUrl;
+
+    if (url != null && url.isNotEmpty) {
+      photo = Image.network(url, fit: BoxFit.cover);
     } else {
       photo = Container(
         color: formBackground,
@@ -748,7 +747,7 @@ class _PersonCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(staffName(person),
+        Text(person.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: textPrimary, fontSize: 13)),

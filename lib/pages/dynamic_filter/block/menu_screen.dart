@@ -28,6 +28,7 @@ import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/models/menu_content.dart';
 import 'package:lidle/pages/dynamic_filter/block/block_fields_form.dart';
 import 'package:lidle/services/deliveries_service.dart';
+import 'package:lidle/services/staff_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 const Color _divider = Color(0xFF474747);
@@ -79,8 +80,21 @@ class GroupedBlockConfig {
 
   /// Общий справочник человека (23.09.2026): группы и позиции живут не в
   /// объявлении, а у человека, и видны во всех его категориях. Здесь своя
-  /// только цена. Пока так работает доставка.
+  /// только цена. Так работают доставка и сотрудники.
   final bool directory;
+
+  /// Справочник сотрудников, а не доставки (25.09.2026).
+  ///
+  /// Отличий два: ходим на свои ручки (`/me/staff`) и вместо цены у позиции
+  /// галочка «работает здесь» и должность.
+  final bool staff;
+
+  /// Подпись поля должности вместо цены (25.09.2026).
+  final String? roleLabel;
+
+  /// Пропорции карточки в сетке. У сотрудника под картинкой на две строки
+  /// больше (должность и галочка), поэтому карточка выше (25.09.2026).
+  final double cardAspect;
 
   const GroupedBlockConfig({
     required this.amountShort,
@@ -93,6 +107,9 @@ class GroupedBlockConfig {
     required this.whatAreGroups,
     this.priceLabel = 'Цена',
     this.directory = false,
+    this.staff = false,
+    this.roleLabel,
+    this.cardAspect = 0.72,
     this.amountLabel,
     this.showCuisine = false,
   });
@@ -172,6 +189,32 @@ class GroupedBlockConfig {
     whatAreGroups: 'Группа — это способ доставки или район: «Доставка», «По '
         'городу», «За город». Группы и способы общие для всех ваших '
         'объявлений, поэтому и удаление убирает их везде.',
+  );
+
+  /// Сотрудники (25.09.2026): общие у человека, а галочка своя у заведения.
+  static const GroupedBlockConfig staffDirectory = GroupedBlockConfig(
+    amountShort: '',
+    amountUnit: '',
+    itemWord: 'сотрудника',
+    itemsWord: 'сотрудников',
+    groupExample: '«Официанты»',
+    directory: true,
+    staff: true,
+    roleLabel: 'Должность',
+    cardAspect: 0.6,
+    descriptionHint: 'Расскажите о сотруднике: что делает, чем помогает гостю. '
+        'Без ссылок, телефонов, матерных слов.',
+    howItWorks: 'Сотрудники у вас одни на все ваши объявления и товары: завели '
+        'официанта здесь — он появится и в остальных, заводить заново не нужно.'
+        '\n\nГалочка отмечает, кто работает именно в этом заведении. Без '
+        'галочки человек остаётся в вашем списке, но гостю здесь не '
+        'показывается и за стол его не поставить.\n\nГрафик, зарплату, '
+        'контакты и доступы сотрудника можно заполнить на его карточке в '
+        'разделе товаров: список один и тот же.',
+    whatAreGroups: 'Группа — это отдел или смена: «Официанты», «Повара», '
+        '«Администраторы». Группы и сотрудники общие для всех ваших '
+        'объявлений, поэтому и удаление убирает их везде. Чтобы убрать '
+        'человека только из этого заведения, снимите галочку.',
   );
 }
 
@@ -404,6 +447,9 @@ class _MenuScreenState extends State<MenuScreen> {
   /// Справочник ещё едет с сервера (только у доставки).
   bool _loading = false;
 
+  /// Должности для выбора (25.09.2026). Общий список, ведёт администратор.
+  List<String> _positions = const [];
+
   @override
   void initState() {
     super.initState();
@@ -419,6 +465,14 @@ class _MenuScreenState extends State<MenuScreen> {
     // справочника, а не из объявления (23.09.2026). Цены при этом свои у
     // этого экрана, они уже лежат в ответе.
     if (widget.config.directory) _reload();
+
+    // Должности приезжают одним списком на все категории: по ним настройка
+    // столов находит официантов и администраторов (25.09.2026).
+    if (widget.config.staff) {
+      StaffService.positions().then((list) {
+        if (mounted && list.isNotEmpty) setState(() => _positions = list);
+      });
+    }
   }
 
   void _selectFirst() {
@@ -434,19 +488,103 @@ class _MenuScreenState extends State<MenuScreen> {
     _groupName.text = first.name;
   }
 
-  /// Перечитать справочник с сервера, сохранив уже введённые цены.
+  // ── Справочник человека ─────────────────────────────────────────
+  // Доставка и сотрудники устроены одинаково, но ходят на свои ручки, и у
+  // доставки своя у места цена, а у сотрудника галочка (25.09.2026).
+
+  bool get _isStaff => widget.config.staff;
+
+  Future<MenuContent?> _loadDirectory() => _isStaff
+      ? StaffService.load(widget.initial?.serverId)
+      : DeliveriesService.load(widget.initial?.serverId);
+
+  String _groupKeyOf(int id) =>
+      _isStaff ? StaffService.groupKey(id) : DeliveriesService.groupKey(id);
+
+  String _itemKeyOf(int id) =>
+      _isStaff ? StaffService.memberKey(id) : DeliveriesService.optionKey(id);
+
+  Future<int?> _createDirectoryGroup(String name, {String? imagePath}) => _isStaff
+      ? StaffService.createGroup(name, imagePath: imagePath)
+      : DeliveriesService.createGroup(name, imagePath: imagePath);
+
+  Future<bool> _updateDirectoryGroup(int id, String name, {String? imagePath}) => _isStaff
+      ? StaffService.updateGroup(id, name, imagePath: imagePath)
+      : DeliveriesService.updateGroup(id, name, imagePath: imagePath);
+
+  Future<bool> _deleteDirectoryGroup(int id) =>
+      _isStaff ? StaffService.deleteGroup(id) : DeliveriesService.deleteGroup(id);
+
+  Future<int?> _createDirectoryItem(MenuItem item, int? groupId) => _isStaff
+      ? StaffService.createMember(
+          name: item.name,
+          role: item.role,
+          description: item.description,
+          groupId: groupId,
+          imagePath: item.localPath,
+
+          // Место здесь не отмечаем: галочки экрана уезжают полем `content`
+          // вместе с объявлением, и второй источник истины разошёлся бы с
+          // первым — снятую галочку пришлось бы снимать дважды (25.09.2026).
+        )
+      : DeliveriesService.createOption(
+          name: item.name,
+          description: item.description,
+          groupId: groupId,
+          imagePath: item.localPath,
+        );
+
+  Future<bool> _updateDirectoryItem(MenuItem item, int? groupId) => _isStaff
+      ? StaffService.updateMember(
+          id: _idOf(item.key),
+          name: item.name,
+          role: item.role,
+          description: item.description,
+          groupId: groupId,
+          imagePath: item.localPath,
+        )
+      : DeliveriesService.updateOption(
+          id: _idOf(item.key),
+          name: item.name,
+          description: item.description,
+          groupId: groupId,
+          imagePath: item.localPath,
+        );
+
+  Future<bool> _deleteDirectoryItem(int id) =>
+      _isStaff ? StaffService.deleteMember(id) : DeliveriesService.deleteOption(id);
+
+  /// Перечитать справочник с сервера, сохранив уже введённые цены и галочки.
   Future<void> _reload() async {
     setState(() => _loading = true);
 
-    final loaded = await DeliveriesService.load(widget.initial?.serverId);
+    final loaded = await _loadDirectory();
 
     if (!mounted) return;
 
-    // Цена живёт в этом экране: то, что человек только что вписал, важнее
-    // сохранённого.
+    // Справочник не приехал: оставляем то, что на экране уже есть. Иначе
+    // обрыв связи стёр бы цены и галочки, и «Сохранить» отправило бы пустоту
+    // (25.09.2026).
+    if (loaded == null) {
+      setState(() => _loading = false);
+
+      _say(context, 'Справочник не загрузился, проверьте связь');
+
+      return;
+    }
+
+    // Цена и галочка живут в этом экране: то, что человек только что поставил,
+    // важнее сохранённого. У нового объявления экрана на сервере ещё нет, и с
+    // сервера они приходят пустыми.
     for (final item in loaded.items) {
       final local = _menu.items.where((i) => i.key == item.key);
-      if (local.isNotEmpty && local.first.price > 0) item.price = local.first.price;
+      if (local.isEmpty) continue;
+
+      if (local.first.price > 0) item.price = local.first.price;
+
+      // Галочку берём свою целиком: снятая тоже решение человека, а не
+      // «ничего не ставил».
+      item.selected = local.first.selected;
     }
 
     setState(() {
@@ -493,7 +631,7 @@ class _MenuScreenState extends State<MenuScreen> {
     if (group == null || !mounted) return;
 
     if (widget.config.directory) {
-      final id = await DeliveriesService.createGroup(group.name, imagePath: group.localPath);
+      final id = await _createDirectoryGroup(group.name, imagePath: group.localPath);
 
       if (!mounted) return;
 
@@ -506,7 +644,7 @@ class _MenuScreenState extends State<MenuScreen> {
       await _reload();
 
       if (mounted) {
-        final saved = _menu.groups.where((g) => g.key == DeliveriesService.groupKey(id));
+        final saved = _menu.groups.where((g) => g.key == _groupKeyOf(id));
         if (saved.isNotEmpty) _select(saved.first);
       }
 
@@ -525,6 +663,19 @@ class _MenuScreenState extends State<MenuScreen> {
 
   /// «Настроить группу»: картинка, название, номер, удаление (23.09.2026).
   Future<void> _editGroup(MenuGroup group) async {
+    // Папка «без группы» появляется сама и на сервере её нет: править нечего
+    // (25.09.2026).
+    if (widget.config.directory && _idOf(group.key) == 0) {
+      _say(
+        context,
+        _isStaff
+            ? 'Это все, кто не в группе. Чтобы собрать их в папку, добавьте группу'
+            : 'Это всё, что не в группе. Чтобы собрать их в папку, добавьте группу',
+      );
+
+      return;
+    }
+
     final result = await Navigator.push<_GroupResult>(
       context,
       MaterialPageRoute(
@@ -541,8 +692,8 @@ class _MenuScreenState extends State<MenuScreen> {
       final id = _idOf(group.key);
 
       final ok = result.deleted
-          ? await DeliveriesService.deleteGroup(id)
-          : await DeliveriesService.updateGroup(
+          ? await _deleteDirectoryGroup(id)
+          : await _updateDirectoryGroup(
               id,
               result.group.name,
               imagePath: result.group.localPath,
@@ -601,6 +752,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
           groups: _menu.sortedGroups,
           cuisines: _cuisines,
+          positions: _positions,
           isNew: item == null,
           config: widget.config,
         ),
@@ -609,26 +761,21 @@ class _MenuScreenState extends State<MenuScreen> {
 
     if (result == null || !mounted) return;
 
-    // Способ доставки общий: сам он живёт в справочнике человека, а здесь
-    // остаётся только цена (23.09.2026).
+    // Способ доставки и сотрудник общие: сами они живут в справочнике
+    // человека, а здесь остаётся только своё — цена или галочка (23.09.2026).
     if (widget.config.directory) {
       final saved = result.item;
       final groupId = _idOf(saved.group);
       final price = saved.price;
 
       if (result.deleted) {
-        if (!await DeliveriesService.deleteOption(_idOf(saved.key))) {
+        if (!await _deleteDirectoryItem(_idOf(saved.key))) {
           if (mounted) _say(context, 'Не удалось удалить');
 
           return;
         }
       } else if (item == null) {
-        final id = await DeliveriesService.createOption(
-          name: saved.name,
-          description: saved.description,
-          groupId: groupId > 0 ? groupId : null,
-          imagePath: saved.localPath,
-        );
+        final id = await _createDirectoryItem(saved, groupId > 0 ? groupId : null);
 
         if (id == null) {
           if (mounted) _say(context, 'Не удалось сохранить');
@@ -636,23 +783,20 @@ class _MenuScreenState extends State<MenuScreen> {
           return;
         }
 
-        // Цену держим у себя до сохранения объявления: место для неё это
-        // экран блока, а его до этого ещё нет.
+        // Цену и галочку держим у себя до сохранения объявления: место для них
+        // это экран блока, а его до этого ещё нет. Заведённый здесь сотрудник
+        // сразу отмечен: иначе человек добавил бы его и не увидел в заведении.
         _menu.items.add(MenuItem(
-          key: DeliveriesService.optionKey(id),
+          key: _itemKeyOf(id),
           group: saved.group,
           name: saved.name,
           description: saved.description,
+          role: saved.role,
+          selected: _isStaff,
           price: price,
         ));
       } else {
-        final ok = await DeliveriesService.updateOption(
-          id: _idOf(saved.key),
-          name: saved.name,
-          description: saved.description,
-          groupId: groupId > 0 ? groupId : null,
-          imagePath: saved.localPath,
-        );
+        final ok = await _updateDirectoryItem(saved, groupId > 0 ? groupId : null);
 
         if (!ok) {
           if (mounted) _say(context, 'Не удалось сохранить');
@@ -794,6 +938,14 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                   ),
                   const SizedBox(height: 7),
+                  // Справочник общий и едет с сервера: пока он в пути, видно,
+                  // что экран занят, а не пуст (25.09.2026).
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 6),
+                      child: Text('Обновляем список…',
+                          style: TextStyle(color: textSecondary, fontSize: 12)),
+                    ),
                   Text(
                     group == null
                         ? 'Добавьте группу, например ${widget.config.groupExample}, '
@@ -813,13 +965,16 @@ class _MenuScreenState extends State<MenuScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisSpacing: 10,
                       mainAxisSpacing: 16,
-                      childAspectRatio: 0.72,
+                      childAspectRatio: widget.config.cardAspect,
                       children: [
                         for (final dish in dishes)
                           _DishCard(
                             dish: dish,
                             config: widget.config,
                             onEdit: () => _openItem(dish),
+                            onToggle: widget.config.staff
+                                ? () => setState(() => dish.selected = !dish.selected)
+                                : null,
                           ),
                         GestureDetector(
                           onTap: () => _openItem(),
@@ -828,13 +983,19 @@ class _MenuScreenState extends State<MenuScreen> {
                               color: formBackground,
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Column(
+                            child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.add_circle_outline, color: textSecondary, size: 30),
-                                SizedBox(height: 8),
-                                Text('Добавить позицию',
-                                    style: TextStyle(color: textSecondary, fontSize: 14)),
+                                const Icon(Icons.add_circle_outline,
+                                    color: textSecondary, size: 30),
+                                const SizedBox(height: 8),
+                                Text(
+                                  widget.config.staff
+                                      ? 'Добавить сотрудника'
+                                      : 'Добавить позицию',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: textSecondary, fontSize: 14),
+                                ),
                               ],
                             ),
                           ),
@@ -982,11 +1143,19 @@ class _GroupCard extends StatelessWidget {
 }
 
 class _DishCard extends StatelessWidget {
-  const _DishCard({required this.dish, required this.onEdit, required this.config});
+  const _DishCard({
+    required this.dish,
+    required this.onEdit,
+    required this.config,
+    this.onToggle,
+  });
 
   final MenuItem dish;
   final GroupedBlockConfig config;
   final VoidCallback onEdit;
+
+  /// Галочка «работает здесь» у сотрудника (25.09.2026).
+  final VoidCallback? onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -1020,7 +1189,34 @@ class _DishCard extends StatelessWidget {
             ),
           ],
         ),
-        if (dish.price > 0)
+        if (config.staff && dish.role.isNotEmpty)
+          Text(dish.role, style: const TextStyle(color: textSecondary, fontSize: 12)),
+        if (onToggle != null)
+          GestureDetector(
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                children: [
+                  Icon(
+                    dish.selected ? Icons.check_box : Icons.check_box_outline_blank,
+                    size: 18,
+                    color: dish.selected ? activeIconColor : textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  const Expanded(
+                    child: Text(
+                      'Работает здесь',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: textSecondary, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (!config.staff && dish.price > 0)
           Text('${config.priceLabel} ${dish.price} ₽',
               style: const TextStyle(color: textSecondary, fontSize: 12)),
         if (dish.weight > 0 && config.amountShort.isNotEmpty)
@@ -1260,6 +1456,7 @@ class MenuItemScreen extends StatefulWidget {
     required this.item,
     required this.groups,
     required this.cuisines,
+    this.positions = const [],
     this.isNew = false,
     this.config = GroupedBlockConfig.menu,
   });
@@ -1269,6 +1466,11 @@ class MenuItemScreen extends StatefulWidget {
   final MenuItem item;
   final List<MenuGroup> groups;
   final List<String> cuisines;
+
+  /// Должности для выбора у сотрудника (25.09.2026). Пусто — справочник не
+  /// заведён, и должность вписывают руками.
+  final List<String> positions;
+
   final bool isNew;
 
   @override
@@ -1286,6 +1488,9 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
   late final TextEditingController _position =
       TextEditingController(text: '${widget.item.position}');
 
+  /// Должность сотрудника (25.09.2026). У остальных блоков поля нет.
+  late final TextEditingController _role = TextEditingController(text: widget.item.role);
+
   late String _group = widget.item.group;
   late List<String> _cuisines = List.of(widget.item.cuisines);
   late String? _localPath = widget.item.localPath;
@@ -1298,6 +1503,7 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
     _weight.dispose();
     _description.dispose();
     _position.dispose();
+    _role.dispose();
     super.dispose();
   }
 
@@ -1332,6 +1538,33 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
     if (key != null && mounted) setState(() => _group = key);
   }
 
+  /// Выбрать должность из общего списка (25.09.2026).
+  Future<void> _pickRole() async {
+    final chosen = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: secondaryBackground,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final position in widget.positions)
+                ListTile(
+                  title: Text(position, style: const TextStyle(color: textPrimary)),
+                  trailing: position == _role.text.trim()
+                      ? const Icon(Icons.check, color: activeIconColor)
+                      : null,
+                  onTap: () => Navigator.pop(context, position),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (chosen != null && mounted) setState(() => _role.text = chosen);
+  }
+
   Future<void> _pickCuisines() async {
     final chosen = await showDialog<List<String>>(
       context: context,
@@ -1347,7 +1580,12 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
     final description = _description.text.trim();
 
     if (name.isEmpty) {
-      _say(context, 'Введите название позиции');
+      _say(context, widget.config.staff ? 'Введите имя сотрудника' : 'Введите название позиции');
+      return;
+    }
+
+    if (widget.config.staff && _role.text.trim().isEmpty) {
+      _say(context, 'Укажите должность: по ней сотрудника ставят за стол');
       return;
     }
 
@@ -1367,6 +1605,7 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
       ..cuisines = _cuisines
       ..price = price
       ..weight = int.tryParse(_weight.text.trim()) ?? 0
+      ..role = _role.text.trim()
       ..description = description
       ..position = int.tryParse(_position.text.trim()) ?? 1
       ..localPath = _localPath
@@ -1382,9 +1621,12 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
       context: context,
       builder: (_) => _DeleteDialog(
         what: widget.config.itemWord,
-        warning: widget.config.directory
-            ? 'этот способ общий, он пропадёт во всех ваших объявлениях и товарах.'
-            : 'позиция пропадёт из списка.',
+        warning: widget.config.staff
+            ? 'сотрудник общий, он пропадёт во всех ваших объявлениях и товарах. '
+                'Чтобы убрать его только отсюда, снимите галочку.'
+            : widget.config.directory
+                ? 'этот способ общий, он пропадёт во всех ваших объявлениях и товарах.'
+                : 'позиция пропадёт из списка.',
       ),
     );
 
@@ -1437,11 +1679,11 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
                 padding: const EdgeInsets.fromLTRB(25, 8, 25, 30),
                 children: [
                   _barRow(
-                    title: 'Добавить позицию',
+                    title: widget.config.staff ? 'Добавить сотрудника' : 'Добавить позицию',
                     onBack: () => Navigator.pop(context),
                     onCancel: () => Navigator.pop(context),
                   ),
-                  _label('Изображение позиции'),
+                  _label(widget.config.staff ? 'Фото сотрудника' : 'Изображение позиции'),
                   const SizedBox(height: 9),
                   MenuPhoto(
                     localPath: _localPath,
@@ -1458,7 +1700,7 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  _label('Название позиции'),
+                  _label(widget.config.staff ? 'Имя сотрудника' : 'Название позиции'),
                   const SizedBox(height: 9),
                   _field(controller: _name),
                   const SizedBox(height: 16),
@@ -1475,25 +1717,51 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
                   _label('Номер позиции'),
                   const SizedBox(height: 9),
                   _field(controller: _position, keyboard: TextInputType.number),
-                  const SizedBox(height: 16),
-                  _label('Цена позиции'),
-                  const SizedBox(height: 9),
-                  Row(
-                    children: [
-                      Expanded(child: _field(controller: _price, keyboard: TextInputType.number)),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 48,
-                        height: 45,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: formBackground,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text('₽', style: TextStyle(color: textPrimary, fontSize: 16)),
+                  // У сотрудника вместо цены должность: по ней экран стола
+                  // отбирает официантов и администраторов (25.09.2026).
+                  if (widget.config.staff) ...[
+                    const SizedBox(height: 16),
+                    // Список должностей ведёт администратор: «Официант» и
+                    // «Администратор» должны писаться одинаково, по ним
+                    // настройка столов и находит людей. Справочника нет —
+                    // вписывают руками (25.09.2026).
+                    if (widget.positions.isEmpty) ...[
+                      _label(widget.config.roleLabel ?? 'Должность'),
+                      const SizedBox(height: 9),
+                      _field(controller: _role, hint: 'Официант, Администратор, Повар'),
+                    ] else
+                      _select(
+                        widget.config.roleLabel ?? 'Должность',
+                        _role.text,
+                        _pickRole,
                       ),
-                    ],
-                  ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'За стол можно поставить только «Официанта» и «Администратора»: '
+                      'так их находит настройка столов.',
+                      style: TextStyle(color: textSecondary, fontSize: 12, height: 1.35),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 16),
+                    _label('Цена позиции'),
+                    const SizedBox(height: 9),
+                    Row(
+                      children: [
+                        Expanded(child: _field(controller: _price, keyboard: TextInputType.number)),
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 48,
+                          height: 45,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: formBackground,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('₽', style: TextStyle(color: textPrimary, fontSize: 16)),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (widget.config.amountLabel != null) ...[
                     const SizedBox(height: 16),
                     _label(widget.config.amountLabel!),
@@ -1501,7 +1769,7 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
                     _field(controller: _weight, keyboard: TextInputType.number),
                   ],
                   const SizedBox(height: 16),
-                  _label('Описание позиции'),
+                  _label(widget.config.staff ? 'Описание сотрудника' : 'Описание позиции'),
                   const SizedBox(height: 9),
                   _field(
                     controller: _description,
