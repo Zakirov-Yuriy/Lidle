@@ -29,6 +29,7 @@ import 'package:lidle/models/menu_content.dart';
 import 'package:lidle/models/products/product_staff.dart';
 import 'package:lidle/pages/dynamic_filter/block/block_fields_form.dart';
 import 'package:lidle/pages/products/add_product/product_staff_member_screen.dart';
+import 'package:lidle/pages/products/add_product/tile_grid.dart';
 import 'package:lidle/services/deliveries_service.dart';
 import 'package:lidle/services/staff_service.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -215,8 +216,9 @@ class GroupedBlockConfig {
     directory: true,
     staff: true,
     roleLabel: 'Должность',
-    cardAspect: 0.6,
-    cardHeight: 250,
+
+    // Высота карточки не задаётся: сотрудники раскладываются по содержимому,
+    // и под галочкой «Работает здесь» ничего не остаётся (25.09.2026).
     photoHeight: 159,
     descriptionHint: 'Расскажите о сотруднике: что делает, чем помогает гостю. '
         'Без ссылок, телефонов, матерных слов.',
@@ -1095,7 +1097,26 @@ class _MenuScreenState extends State<MenuScreen> {
                   // У сотрудников плитка «Добавить сотрудника» нужна и когда
                   // групп ещё нет: человека можно завести и без группы, он
                   // ляжет в «Без группы» (25.09.2026).
-                  if (group != null || widget.config.staff)
+                  // Сотрудники раскладываются по содержимому, как в кабинете
+                  // товаров: у карточки под фотографией всего три строки, и
+                  // ячейка заданной высоты оставляла под ними пустоту
+                  // (25.09.2026).
+                  if (widget.config.staff)
+                    TileGrid(
+                      spacing: 10,
+                      runSpacing: 16,
+                      children: [
+                        for (final dish in dishes)
+                          _DishCard(
+                            dish: dish,
+                            config: widget.config,
+                            onEdit: () => _openItem(dish),
+                            onToggle: () => setState(() => dish.selected = !dish.selected),
+                          ),
+                        _addTile(),
+                      ],
+                    )
+                  else if (group != null)
                     GridView(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -1289,6 +1310,9 @@ class _DishCard extends StatelessWidget {
     final photo = config.photoHeight;
 
     return Column(
+      // Высота по содержимому: карточка сотрудника живёт в раскладке, где
+      // высоту никто не задаёт (25.09.2026).
+      mainAxisSize: photo == null ? MainAxisSize.max : MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (photo == null)
