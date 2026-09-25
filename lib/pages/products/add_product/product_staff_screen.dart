@@ -76,7 +76,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
 
         final ids = fresh.groups.map((group) => group.id).toSet();
 
-        // Выбор «Без группы» держится, пока там кто-то есть: человек ушёл
+        // Выбор папки «Сотрудники» держится, пока там кто-то есть: человек ушёл
         // править сотрудника и вернулся, и экран должен остаться там же.
         final keepUngrouped =
             _openGroupId == _ungrouped && fresh.ungrouped.isNotEmpty;
@@ -101,7 +101,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
   }
 
   /// Что показывать в содержимом: сотрудники открытой группы, а если открыта
-  /// плитка «Без группы» или групп нет вовсе — те, что лежат без группы.
+  /// плитка «Сотрудники» или групп нет вовсе — те, что лежат без группы.
   List<StaffMember> get _visibleMembers {
     if (_openGroupId == _ungrouped) return _staff.ungrouped;
 
@@ -114,7 +114,10 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
 
     if (group != null) return 'Содержимое группы: ${group.name}';
 
-    return _staff.groups.isEmpty ? 'Сотрудники' : 'Сотрудники без группы';
+    // Папка для тех, кого в группы не положили, называется одинаково здесь и
+    // на экране блока в объявлении: список сотрудников один, и два названия
+    // одного и того же места сбивали с толку (25.09.2026).
+    return 'Сотрудники';
   }
 
   // ── Группы ──────────────────────────────────────────────────────
@@ -209,7 +212,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
           categoryId: widget.publication.categoryId,
           groups: _staff.groups,
 
-          // Из плитки «Без группы» заводим тоже без группы, а не в первую
+          // Из плитки «Сотрудники» заводим тоже без группы, а не в первую
           // попавшуюся: человек смотрит именно на тех, кто вне групп.
           groupId: _openGroupId == _ungrouped ? null : _openGroupId,
         ),
@@ -469,7 +472,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
                         child: Text(
                           group?.name ??
                               (_openGroupId == _ungrouped
-                                  ? 'Без группы'
+                                  ? 'Сотрудники'
                                   : 'Группы пока нет'),
                           style: TextStyle(
                             color: group == null ? textMuted : textPrimary,
@@ -670,7 +673,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
     );
   }
 
-  /// Плитка «Без группы»: те, кого завели, не выбрав группу.
+  /// Плитка «Сотрудники»: те, кого завели, не выбрав группу.
   ///
   /// Обложки у неё нет и быть не может, поэтому значок людей, а не пустая
   /// рамка: пустая читалась бы как группа без картинки.
@@ -700,7 +703,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Без группы: ${_staff.ungrouped.length}',
+              'Сотрудники: ${_staff.ungrouped.length}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
