@@ -29,6 +29,7 @@ import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_staff_schedule_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/services/api/products_staff_api.dart';
+import 'package:lidle/services/staff_service.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/custom_radio_button.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -36,17 +37,21 @@ import 'package:lidle/widgets/components/header.dart';
 class ProductStaffMemberScreen extends StatefulWidget {
   const ProductStaffMemberScreen({
     super.key,
-    required this.publicationId,
-    required this.categoryId,
     required this.groups,
+    this.publicationId,
+    this.categoryId,
     this.existing,
     this.groupId,
   });
 
-  final int publicationId;
+  /// Публикация, с экрана которой пришли. Пусто — сотрудника заводят из
+  /// объявления (ресторан), где публикации нет вовсе (25.09.2026). Карточка
+  /// одна и та же: справочник сотрудников общий у человека.
+  final int? publicationId;
 
-  /// Раздел публикации: из него берётся список должностей.
-  final int categoryId;
+  /// Раздел публикации: из него берётся список должностей. Пусто — берём
+  /// общий список, один на все категории.
+  final int? categoryId;
 
   final List<StaffGroup> groups;
   final StaffMember? existing;
@@ -152,8 +157,11 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
   /// списков сотрудник всё равно сохранится, просто без должности и галочек.
   Future<void> _load() async {
     try {
-      final positions =
-          await ProductsCabinetApi.staffPositions(widget.categoryId);
+      final categoryId = widget.categoryId;
+
+      final positions = categoryId == null
+          ? await StaffService.positions()
+          : await ProductsCabinetApi.staffPositions(categoryId);
 
       if (mounted) setState(() => _positions = positions);
     } catch (e) {
@@ -374,19 +382,36 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
           touchGroup: true,
         );
       } else {
-        final created = await ProductsStaffApi.createMember(
-          publicationId: widget.publicationId,
-          name: _name.text.trim(),
-          position: _position,
-          number: int.tryParse(_number.text.trim()),
-          salary: salary,
-          venueAccess: _venue.toList(),
-          accountAccess: _account.toList(),
-          schedule: _schedule,
-          description: _description.text.trim(),
-          contacts: contacts,
-          groupId: _groupId,
-        );
+        final publicationId = widget.publicationId;
+
+        // Из объявления заводим в общий справочник: публикации там нет, а
+        // место (экран блока) отмечается галочкой уже на самом экране.
+        final created = publicationId == null
+            ? await StaffService.createFullMember(
+                name: _name.text.trim(),
+                position: _position,
+                number: int.tryParse(_number.text.trim()),
+                salary: salary,
+                venueAccess: _venue.toList(),
+                accountAccess: _account.toList(),
+                schedule: _schedule,
+                description: _description.text.trim(),
+                contacts: contacts,
+                groupId: _groupId,
+              )
+            : await ProductsStaffApi.createMember(
+                publicationId: publicationId,
+                name: _name.text.trim(),
+                position: _position,
+                number: int.tryParse(_number.text.trim()),
+                salary: salary,
+                venueAccess: _venue.toList(),
+                accountAccess: _account.toList(),
+                schedule: _schedule,
+                description: _description.text.trim(),
+                contacts: contacts,
+                groupId: _groupId,
+              );
 
         // Фотография вторым запросом: её принимают только к существующей
         // записи. Неудача сотрудника не отменяет.
@@ -427,7 +452,9 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
         title: const Text('Удалить сотрудника?',
             style: TextStyle(color: textPrimary, fontSize: 17)),
         content: Text(
-          '${existing.name}\n\nУдаление безвозвратно.',
+          '${existing.name}\n\nСписок сотрудников у вас один на все товары и '
+          'объявления: человек пропадёт везде. Чтобы убрать его только из '
+          'этого места, снимите галочку «Работает здесь».',
           style: const TextStyle(color: textSecondary, fontSize: 14),
         ),
         actions: [
@@ -514,7 +541,7 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
                           color: textPrimary, size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          _isEditing ? 'Изменить позицию' : 'Добавить позицию',
+                          _isEditing ? 'Изменить сотрудника' : 'Добавить сотрудника',
                           style: const TextStyle(
                             color: textPrimary,
                             fontSize: 20,

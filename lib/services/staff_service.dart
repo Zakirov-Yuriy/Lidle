@@ -21,6 +21,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:lidle/models/menu_content.dart';
+import 'package:lidle/models/products/product_staff.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 
@@ -127,6 +128,70 @@ class StaffService {
       selected: row['works_here'] == true,
       position: position,
       imageUrl: row['image']?.toString(),
+    );
+  }
+
+  /// Справочник целиком в том же виде, в каком его читает экран сотрудников
+  /// товаров (25.09.2026).
+  ///
+  /// Нужен полной карточке сотрудника: там зарплата, график, доступы и
+  /// контакты, а `load` отдаёт только то, что видно на экране блока.
+  static Future<PublicationStaff?> directory({int? blockItemId}) async {
+    final query = blockItemId == null || blockItemId <= 0
+        ? ''
+        : '?place_type=block_item&place_id=$blockItemId';
+
+    try {
+      final response = await http.get(Uri.parse(_url(query)), headers: _headers);
+
+      if (response.statusCode != 200) return null;
+
+      final body = jsonDecode(response.body);
+      final data = body is Map ? body['data'] : null;
+
+      if (data is! Map) return null;
+
+      return PublicationStaff.fromJson(Map<String, dynamic>.from(data));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Завести сотрудника со всей карточкой: зарплата, график, доступы,
+  /// контакты (25.09.2026).
+  ///
+  /// Тело то же, что у товарной ручки, только без публикации: справочник
+  /// общий, а место отмечается отдельно.
+  static Future<StaffMember> createFullMember({
+    required String name,
+    String? position,
+    int? number,
+    num? salary,
+    List<String>? venueAccess,
+    List<String>? accountAccess,
+    StaffSchedule? schedule,
+    String? description,
+    StaffContacts? contacts,
+    int? groupId,
+  }) async {
+    final response = await ApiService.post('/me/staff/members', {
+      'name': name,
+      if (position != null) 'position': position,
+      if (number != null) 'number': number,
+      if (salary != null) 'salary': salary,
+      if (venueAccess != null) 'venue_access': venueAccess,
+      if (accountAccess != null) 'account_access': accountAccess,
+      if (schedule != null) 'schedule': schedule.toJson(),
+      if (description != null) 'description': description,
+      if (contacts != null) ...contacts.toJson(),
+      if (groupId != null) 'group_id': groupId,
+    });
+
+    // Сознательно без мягкой обработки: ответ без `data` это отказ сервера
+    // (например, 422), и он должен долететь до экрана ошибкой, а не тихим
+    // «сохранено» (25.09.2026).
+    return StaffMember.fromJson(
+      Map<String, dynamic>.from(response['data'] as Map),
     );
   }
 

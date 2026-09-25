@@ -26,7 +26,9 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/block_item.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/models/menu_content.dart';
+import 'package:lidle/models/products/product_staff.dart';
 import 'package:lidle/pages/dynamic_filter/block/block_fields_form.dart';
+import 'package:lidle/pages/products/add_product/product_staff_member_screen.dart';
 import 'package:lidle/services/deliveries_service.dart';
 import 'package:lidle/services/staff_service.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -447,8 +449,10 @@ class _MenuScreenState extends State<MenuScreen> {
   /// Справочник ещё едет с сервера (только у доставки).
   bool _loading = false;
 
-  /// Должности для выбора (25.09.2026). Общий список, ведёт администратор.
-  List<String> _positions = const [];
+  /// Должности для выбора. Экран блока их не грузит: карточку сотрудника
+  /// открывает свой экран, и список он берёт сам (25.09.2026). Поле осталось
+  /// для остальных блоков, у которых должности не бывает вовсе.
+  final List<String> _positions = const [];
 
   @override
   void initState() {
@@ -466,13 +470,8 @@ class _MenuScreenState extends State<MenuScreen> {
     // этого экрана, они уже лежат в ответе.
     if (widget.config.directory) _reload();
 
-    // Должности приезжают одним списком на все категории: по ним настройка
-    // столов находит официантов и администраторов (25.09.2026).
-    if (widget.config.staff) {
-      StaffService.positions().then((list) {
-        if (mounted && list.isNotEmpty) setState(() => _positions = list);
-      });
-    }
+    // Должности здесь не нужны: карточку сотрудника открывает свой экран,
+    // и список он грузит сам (25.09.2026).
   }
 
   void _selectFirst() {
@@ -734,6 +733,15 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   Future<void> _openItem([MenuItem? item]) async {
+    // У сотрудника карточка своя и полная: зарплата, график, доступы,
+    // контакты. Это тот же экран, что в товарах, справочник-то общий
+    // (25.09.2026).
+    if (_isStaff) {
+      await _openStaffMember(item);
+
+      return;
+    }
+
     final group = _group;
     if (group == null) {
       _say(context, 'Сначала добавьте группу');
@@ -816,6 +824,85 @@ class _MenuScreenState extends State<MenuScreen> {
     setState(() {
       _menu.items.removeWhere((i) => i.key == result.item.key);
       if (!result.deleted) _menu.items.add(result.item);
+    });
+  }
+
+  /// Карточка сотрудника: тот же экран, что в разделе товаров (25.09.2026).
+  ///
+  /// Сохраняет он сам, прямо в справочник человека, поэтому после возврата
+  /// экран перечитывает список. Заведённый здесь сразу отмечается галочкой:
+  /// иначе человек добавил бы сотрудника и не увидел его в заведении.
+  Future<void> _openStaffMember(MenuItem? item) async {
+    setState(() => _loading = true);
+
+    final directory = await StaffService.directory(blockItemId: widget.initial?.serverId);
+
+    if (!mounted) return;
+
+    setState(() => _loading = false);
+
+    if (directory == null) {
+      _say(context, 'Справочник не загрузился, проверьте связь');
+
+      return;
+    }
+
+    final people = <StaffMember>[
+      ...directory.ungrouped,
+      for (final group in directory.groups) ...group.members,
+    ];
+
+    StaffMember? existing;
+
+    if (item != null) {
+      final id = _idOf(item.key);
+
+      for (final person in people) {
+        if (person.id == id) {
+          existing = person;
+
+          break;
+        }
+      }
+
+      if (existing == null) {
+        _say(context, 'Сотрудник не найден, обновите список');
+
+        return;
+      }
+    }
+
+    // Новый попадает в открытую сейчас группу, а из папки «Без группы» —
+    // тоже без группы.
+    final open = _group;
+    final openId = open == null ? 0 : _idOf(open.key);
+
+    // Кто был в справочнике до этого. Берём из только что прочитанного
+    // справочника, а не с экрана: экран мог не успеть загрузиться, и тогда
+    // «новыми» оказались бы все (25.09.2026).
+    final before = people.map((person) => person.id).toSet();
+
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductStaffMemberScreen(
+          groups: directory.groups,
+          existing: existing,
+          groupId: existing?.groupId ?? (openId > 0 ? openId : null),
+        ),
+      ),
+    );
+
+    if (saved != true || !mounted) return;
+
+    await _reload();
+
+    if (!mounted || item != null) return;
+
+    setState(() {
+      for (final person in _menu.items) {
+        if (!before.contains(_idOf(person.key))) person.selected = true;
+      }
     });
   }
 
@@ -947,10 +1034,16 @@ class _MenuScreenState extends State<MenuScreen> {
                           style: TextStyle(color: textSecondary, fontSize: 12)),
                     ),
                   Text(
-                    group == null
-                        ? 'Добавьте группу, например ${widget.config.groupExample}, '
-                            'и положите в неё ${widget.config.itemsWord}.'
-                        : 'Содержимое группы: ${group.name}',
+                    group != null
+                        ? 'Содержимое группы: ${group.name}'
+                        : widget.config.staff
+                            // Сотрудника можно завести и без группы: он ляжет
+                            // в «Без группы» (25.09.2026).
+                            ? 'Добавьте сотрудника. Группы, например '
+                                '${widget.config.groupExample}, нужны, чтобы '
+                                'их было удобнее искать.'
+                            : 'Добавьте группу, например ${widget.config.groupExample}, '
+                                'и положите в неё ${widget.config.itemsWord}.',
                     style: const TextStyle(
                       color: textPrimary,
                       fontSize: 16,
@@ -958,7 +1051,10 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (group != null)
+                  // У сотрудников плитка «Добавить сотрудника» нужна и когда
+                  // групп ещё нет: человека можно завести и без группы, он
+                  // ляжет в «Без группы» (25.09.2026).
+                  if (group != null || widget.config.staff)
                     GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
