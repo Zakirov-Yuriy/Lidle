@@ -841,6 +841,33 @@ class _MenuScreenState extends State<MenuScreen> {
     });
   }
 
+  /// Плитка «Добавить …» в конце сетки.
+  Widget _addTile() {
+    return GestureDetector(
+      onTap: () => _openItem(),
+      child: Container(
+        height: widget.config.photoHeight,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.add_circle_outline, color: textSecondary, size: 30),
+            const SizedBox(height: 8),
+            Text(
+              widget.config.staff ? 'Добавить сотрудника' : 'Добавить позицию',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: textSecondary, fontSize: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Карточка сотрудника: тот же экран, что в разделе товаров (25.09.2026).
   ///
   /// Сохраняет он сам, прямо в справочник человека, поэтому после возврата
@@ -1092,33 +1119,14 @@ class _MenuScreenState extends State<MenuScreen> {
                                 ? () => setState(() => dish.selected = !dish.selected)
                                 : null,
                           ),
-                        GestureDetector(
-                          onTap: () => _openItem(),
-                          child: Container(
-                            // Ровно с картинку соседней карточки, а не во всю
-                            // ячейку (25.09.2026).
-                            height: widget.config.photoHeight,
-                            decoration: BoxDecoration(
-                              color: formBackground,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.add_circle_outline,
-                                    color: textSecondary, size: 30),
-                                const SizedBox(height: 8),
-                                Text(
-                                  widget.config.staff
-                                      ? 'Добавить сотрудника'
-                                      : 'Добавить позицию',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: textSecondary, fontSize: 14),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        // Ячейка сетки задаёт высоту жёстко. У блоков без
+                        // заданной высоты плитка занимает ячейку целиком, как
+                        // и было, а у сотрудников прижимается к верху и стоит
+                        // ровно с фотографию рядом (25.09.2026).
+                        if (widget.config.photoHeight == null)
+                          _addTile()
+                        else
+                          Align(alignment: Alignment.topCenter, child: _addTile()),
                       ],
                     ),
                   const SizedBox(height: 26),
