@@ -190,8 +190,11 @@ class _BookingSectionState extends State<BookingSection> {
     final days = data.days.where((d) => d.isWorking && d.hasFreeSlots).toList();
 
     // Сколько гостей можно выбрать: за столик не больше самого большого
-    // столика, на банкет сколько угодно (разумный предел 500).
-    final maxGuests = _wholeHall ? 500 : (hall.maxTable > 0 ? hall.maxTable : 500);
+    // столика, целиком — не больше вместимости, если она задана (25.09.2026).
+    // Ноль значит «ограничения нет», тогда разумный предел 500.
+    final maxGuests = _wholeHall
+        ? (hall.capacity > 0 ? hall.capacity : 500)
+        : (hall.maxTable > 0 ? hall.maxTable : 500);
     final minGuests = _wholeHall ? hall.banquetMinGuests : 1;
 
     return _shell(
@@ -294,8 +297,17 @@ class _BookingSectionState extends State<BookingSection> {
 
   String _hallHint(BookingHall hall, int guests) {
     if (_wholeHall) {
-      return 'Весь зал на ${hall.banquetHours} ч, от ${hall.banquetMinGuests} гостей. '
-          'Ресторан подтвердит банкет.';
+      // Часы и вместимость показываем, только если их задали: у ресторанного
+      // банкета длительность жёсткая, у переговорной её нет (25.09.2026).
+      final parts = <String>[
+        if (hall.banquetHours > 0) 'на ${hall.banquetHours} ч',
+        if (hall.banquetMinGuests > 1) 'от ${hall.banquetMinGuests} гостей',
+        if (hall.capacity > 0) 'до ${hall.capacity} гостей',
+      ];
+
+      final about = parts.isEmpty ? '' : ' ${parts.join(', ')}';
+
+      return 'Бронируете целиком$about. Владелец подтвердит бронь.';
     }
 
     final tables = hall.tables

@@ -186,7 +186,14 @@ class BookingHall {
   /// Можно ли забронировать зал целиком (банкет).
   final bool banquetEnabled;
   final int banquetMinGuests;
+
+  /// Жёсткая длительность брони целиком, часов. Ноль — длительность обычная
+  /// (25.09.2026): у ресторанного банкета она есть, у переговорной нет.
   final int banquetHours;
+
+  /// Сколько человек помещается, если брать целиком (25.09.2026). Ноль —
+  /// ограничения нет, действует общий предел объявления.
+  final int capacity;
 
   const BookingHall({
     required this.id,
@@ -197,6 +204,7 @@ class BookingHall {
     required this.banquetEnabled,
     required this.banquetMinGuests,
     required this.banquetHours,
+    this.capacity = 0,
   });
 
   bool get hasTables => tables.isNotEmpty;
@@ -228,7 +236,8 @@ class BookingHall {
       maxTable: _int(raw['max_table']) ?? 0,
       banquetEnabled: banquet['enabled'] == true,
       banquetMinGuests: _int(banquet['min_guests']) ?? 1,
-      banquetHours: _int(banquet['hours']) ?? 5,
+      banquetHours: _int(banquet['hours']) ?? 0,
+      capacity: _int(raw['capacity']) ?? 0,
     );
   }
 
