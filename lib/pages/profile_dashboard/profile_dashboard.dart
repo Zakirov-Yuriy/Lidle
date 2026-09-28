@@ -1631,12 +1631,24 @@ class _MenuItem extends StatelessWidget {
               child: Text(
                 title,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
+                // Место в строке теперь делится с рамкой счётчика, которая
+                // растёт по числу: подпись при нехватке ужимается, а не лезет
+                // за край (28.09.2026).
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (count != null) const SizedBox(width: 8),
             if (count != null)
+              // Рамка растёт по числу (28.09.2026). Ширина была жёстко 26, и
+              // всё, что не влезало, обрезалось многоточием: у продавца с
+              // тысячей объявлений счётчик читался как «1 1 …», то есть не
+              // читался вовсе. Теперь 26 это МИНИМУМ — при одной-двух цифрах
+              // рамка остаётся прежней, при большем числе раздаётся вширь.
               Container(
-                width: 26,
                 height: 26,
+                constraints: const BoxConstraints(minWidth: 26),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(9),
                   border: Border.all(
@@ -1657,7 +1669,9 @@ class _MenuItem extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  // Без обрезки: число показывается целиком, рамка под него
+                  // подстраивается сама.
+                  softWrap: false,
                 ),
               ),
 

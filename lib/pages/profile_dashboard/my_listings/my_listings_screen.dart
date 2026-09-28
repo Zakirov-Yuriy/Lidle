@@ -490,11 +490,15 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       if (mounted) setState(() => _crmLoading = true);
 
+      // Без фильтра по категории (28.09.2026): вкладка «CRM», как и «Все»,
+      // кросс-категорийная. Раньше список просили по выбранной категории, а
+      // число в подписи приходило общее (_loadTabCounts грузит CRM без
+      // фильтра). Получалось «CRM 810», а листалось до конца объявлений одной
+      // категории — шестьдесят штук, и список замолкал.
       final response = await MyAdvertsService.getCrmPublishedList(
         token: token,
         page: 1,
         limit: _pageSize,
-        categoryId: _selectedCategoryId,
       );
 
       if (mounted) {
@@ -676,8 +680,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             statusId: 3, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
             statusId: 8, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
+        // «CRM» — по ВСЕМ категориям, как и «Все» (28.09.2026).
         MyAdvertsService.getCrmPublishedList(
-            catalogId: catalogId, token: token, page: 1, limit: _pageSize),
+            token: token, page: 1, limit: _pageSize),
         // «Все» — ручные активные по ВСЕМ категориям (без фильтра каталога).
         MyAdvertsService.getMyAdverts(
             statusId: 1, manualOnly: true, token: token, page: 1, limit: _pageSize),
@@ -782,8 +787,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             statusId: 3, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
             statusId: 8, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
+        // «CRM» — по ВСЕМ категориям, как и «Все» (28.09.2026).
         MyAdvertsService.getCrmPublishedList(
-            categoryId: categoryId, token: token, page: 1, limit: _pageSize),
+            token: token, page: 1, limit: _pageSize),
         // «Все» — ручные активные по ВСЕМ категориям (без фильтра категории).
         MyAdvertsService.getMyAdverts(
             statusId: 1, manualOnly: true, token: token, page: 1, limit: _pageSize),
@@ -951,12 +957,13 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       final MyAdvertsResponse response;
 
       if (tab == 4) {
-        // CRM — отдельный эндпоинт, с фильтром по выбранной категории.
+        // CRM — отдельный эндпоинт, по ВСЕМ категориям (28.09.2026).
+        // Фильтр категории здесь обрывал список: он сужал выдачу, а счётчик
+        // вкладки оставался общим.
         response = await MyAdvertsService.getCrmPublishedList(
           token: token,
           page: nextPage,
           limit: _pageSize,
-          categoryId: _selectedCategoryId,
         );
       } else if (tab == 5) {
         // «Все» — ручные активные по ВСЕМ категориям (без фильтра категории).
