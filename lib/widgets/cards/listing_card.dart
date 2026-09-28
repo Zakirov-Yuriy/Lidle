@@ -252,14 +252,18 @@ class _ListingCardState extends State<ListingCard> {
 
               // Точки ПОД картинкой, а не поверх неё (15.09.2026): на снимке
               // они спорят с самим снимком и теряются на светлом.
+              // Отступ от снимка до названия вдвое меньше прежнего
+              // (28.09.2026): со строкой звёзд карточка перестала помещаться
+              // и обрезала дату снизу. Забирать место у самого снимка или у
+              // текста хуже, чем убрать воздух, которого тут было с запасом.
               if (_productImages.length > 1) ...[
-                SizedBox(height: 4 * scale),
+                SizedBox(height: 2 * scale),
                 _productDots(),
-                SizedBox(height: 4 * scale),
+                SizedBox(height: 2 * scale),
               ] else
-                SizedBox(height: 8 * scale),
+                SizedBox(height: 4 * scale),
 
-              SizedBox(height: 10),
+              SizedBox(height: 5),
 
               Expanded(
                 child: Column(
