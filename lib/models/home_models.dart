@@ -141,6 +141,14 @@ class Listing {
   /// Сколько оценок. Ноль означает то же самое, что пустая оценка.
   final int reviewsCount;
 
+  /// Показывать ли в карточке звёзды (28.09.2026).
+  ///
+  /// Решает сервер: оценку в списке он отдаёт только объявлениям каталога
+  /// «Бронирование». В остальных разделах отзывов почти нет, и пустые звёзды
+  /// у каждой карточки были бы шумом. Пустая оценка при этом звёзды не
+  /// скрывает: у заведения без отзывов они просто не закрашены.
+  final bool showsRating;
+
   /// Конструктор для создания экземпляра [Listing].
   Listing({
     // Changed to non-const constructor
@@ -175,6 +183,7 @@ class Listing {
     this.productId,
     this.rating,
     this.reviewsCount = 0,
+    this.showsRating = false,
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -409,6 +418,12 @@ class Listing {
           json['sellerRegistrationDate'],
       description: json['description'],
       characteristics: characteristics,
+      // Оценка объявления: сервер кладёт её в список только там, где она
+      // нужна (каталог «Бронирование»), поэтому наличие самого ключа и
+      // означает «рисуй звёзды».
+      rating: (json['rating'] as num?)?.toDouble(),
+      reviewsCount: (json['reviews_count'] as num?)?.toInt() ?? 0,
+      showsRating: json.containsKey('rating'),
     );
   }
 

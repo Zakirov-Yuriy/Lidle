@@ -229,6 +229,10 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         sellerRegistrationDate: advert.sellerRegistrationDate,
         characteristics: advert.characteristics ?? {},
         isFavorited: false,
+        // Оценка заведения: карточка рисует звёзды под ценой (28.09.2026).
+        rating: advert.rating,
+        reviewsCount: advert.reviewsCount,
+        showsRating: advert.showsRating,
       );
       
       log.d('   ✅ Listing created: ${listing.title} - ${listing.price}');

@@ -28,6 +28,13 @@ class Advert {
   /// Возможен торг (показывать кнопку "Предложить свою цену" или нет)
   final bool isBargain;
 
+  /// Средняя оценка объявления и число отзывов (28.09.2026). Сервер кладёт их
+  /// в список только там, где карточка показывает звёзды (каталог
+  /// «Бронирование»), поэтому наличие самого ключа и означает «показывать».
+  final double? rating;
+  final int reviewsCount;
+  final bool showsRating;
+
   Advert({
     required this.id,
     this.slug,
@@ -49,6 +56,9 @@ class Advert {
     this.description,
     this.characteristics,
     this.isBargain = false,
+    this.rating,
+    this.reviewsCount = 0,
+    this.showsRating = false,
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -284,6 +294,9 @@ class Advert {
       description: json['description'],
       characteristics: characteristics,
       isBargain: json['is_bargain'] ?? false,
+      rating: (json['rating'] as num?)?.toDouble(),
+      reviewsCount: (json['reviews_count'] as num?)?.toInt() ?? 0,
+      showsRating: json.containsKey('rating'),
     );
   }
 }
@@ -468,6 +481,9 @@ extension AdvertToListingExtension on Advert {
       date: date,
       isFavorited: false, // Default, can be updated later
       isBargain: isBargain,
+      rating: rating,
+      reviewsCount: reviewsCount,
+      showsRating: showsRating,
       sellerName: sellerName,
       sellerAvatar: sellerAvatar,
       sellerRegistrationDate: sellerRegistrationDate,
