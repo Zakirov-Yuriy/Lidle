@@ -13,6 +13,7 @@ import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/products/my_orders_screen.dart';
 import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
+import 'package:lidle/services/guest_orders_store.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/services/products_service.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
@@ -69,11 +70,74 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
     final token = HiveService.getUserData('token');
     _isGuest = token == null || '$token'.isEmpty;
 
+    // Гостю грузим его заказы с телефона (28.09.2026). Раньше экран сразу
+    // говорил «войдите», хотя покупки у человека есть: просто лежат не на
+    // сервере, а у него в приложении.
     if (_isGuest) {
-      _isLoading = false;
+      _loadGuest();
     } else {
       _load();
     }
+  }
+
+  /// Покупки гостя.
+  ///
+  /// Отличие от вошедшего одно: здесь показываем позиции ВСЕХ его заказов, а
+  /// не только выданных. У человека с учётной записью живые заказы видны на
+  /// экране заказов, и история покупок честно остаётся историей. У гостя
+  /// другого места нет, и спрятать от него только что оформленный заказ
+  /// значило бы вернуть ту же беду: купил, а нигде не видно.
+  Future<void> _loadGuest() async {
+    final stored = GuestOrdersStore.all();
+
+    if (stored.isNotEmpty && mounted) {
+      setState(() {
+        _purchases = _entriesOf(stored);
+        _isLoading = false;
+      });
+
+      _loadImages(_purchases);
+    }
+
+    if (stored.isEmpty) {
+      setState(() => _isLoading = false);
+
+      return;
+    }
+
+    final fresh = await GuestOrdersStore.refresh();
+
+    if (!mounted) return;
+
+    final entries = _entriesOf(fresh);
+
+    setState(() {
+      _purchases = entries;
+      _isLoading = false;
+    });
+
+    _loadImages(entries);
+  }
+
+  /// Разложить заказы на отдельные позиции и отсортировать.
+  List<_PurchaseEntry> _entriesOf(List<OrderModel> orders) {
+    final entries = <_PurchaseEntry>[];
+
+    for (final order in orders) {
+      for (final line in order.items) {
+        entries.add(
+          _PurchaseEntry(
+            line: line,
+            shopName: order.shop?.name ?? '',
+            date: order.pickedUpAt ?? order.createdAt,
+          ),
+        );
+      }
+    }
+
+    _sort(entries);
+
+    return entries;
   }
 
   Future<void> _load() async {
@@ -162,8 +226,8 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
   Widget build(BuildContext context) {
     return BlocListener<ConnectivityBloc, ConnectivityState>(
       listener: (context, connectivityState) {
-        if (connectivityState is ConnectedState && !_isGuest) {
-          _load();
+        if (connectivityState is ConnectedState) {
+          _isGuest ? _loadGuest() : _load();
         }
       },
       child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
@@ -257,7 +321,11 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
   }
 
   Widget _buildBody() {
-    if (_isGuest) return _buildGuestNotice();
+    // Гостю без покупок — прежнее предложение войти. С покупками показываем
+    // их так же, как всем (28.09.2026).
+    if (_isGuest && _purchases.isEmpty && !_isLoading) {
+      return _buildGuestNotice();
+    }
 
     if (_isLoading) {
       return const Center(
@@ -269,7 +337,7 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
 
     return RefreshIndicator(
       color: activeIconColor,
-      onRefresh: _load,
+      onRefresh: _isGuest ? _loadGuest : _load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(25, 0, 25, 24),
