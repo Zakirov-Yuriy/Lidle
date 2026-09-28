@@ -44,6 +44,13 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   /// говорить «покупок нет» там, где правильный ответ «войдите».
   late bool _isGuest;
 
+  /// Есть ли у гостя хоть один заказ на телефоне (28.09.2026).
+  ///
+  /// Отдельно от `_orders`: те могут быть пустыми просто потому, что галочка
+  /// «Показывать завершённые» снята, а всё купленное уже выдано. Показать в
+  /// этом случае «войдите» было бы враньём.
+  bool _guestHasAny = false;
+
   List<OrderModel> _orders = const [];
 
   @override
@@ -69,21 +76,39 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   /// Именно в таком порядке: код получения нужен человеку сразу, даже когда
   /// связи нет, а состояние подтянется следом.
   Future<void> _loadGuest() async {
+    final stored = GuestOrdersStore.all();
+
     setState(() {
-      _orders = GuestOrdersStore.all();
-      _isLoading = _orders.isNotEmpty;
+      _guestHasAny = stored.isNotEmpty;
+      _orders = _visible(stored);
+      _isLoading = stored.isNotEmpty;
     });
 
-    if (_orders.isEmpty) return;
+    if (stored.isEmpty) return;
 
     final fresh = await GuestOrdersStore.refresh();
 
     if (!mounted) return;
 
     setState(() {
-      _orders = fresh;
+      _guestHasAny = fresh.isNotEmpty;
+      _orders = _visible(fresh);
       _isLoading = false;
     });
+  }
+
+  /// Что показать гостю при текущем состоянии галочки «Показывать
+  /// завершённые».
+  ///
+  /// У вошедшего это решает сервер (`all`), у гостя заказы лежат на телефоне,
+  /// поэтому отбираем их здесь. Правило то же: по умолчанию живые, с галочкой
+  /// всё подряд.
+  List<OrderModel> _visible(List<OrderModel> orders) {
+    if (_showAll) return orders;
+
+    const done = {'completed', 'cancelled_by_buyer', 'cancelled_by_seller'};
+
+    return orders.where((order) => !done.contains(order.status)).toList();
   }
 
   Future<void> _load() async {
@@ -130,12 +155,13 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 ),
               ),
             ),
-            if (!_isGuest) ...[
-              if (!widget.onlyMine) _buildTabs(),
-              _buildScopeRow(),
-            ],
+            // Вкладки гостю не нужны: «Заказы ко мне» бывают только у
+            // продавца, а продавцом без учётной записи не станешь
+            // (28.09.2026). Всё остальное у него как у всех.
+            if (!widget.onlyMine && !_isGuest) _buildTabs(),
+            if (!_isGuest || _guestHasAny || _isLoading) _buildScopeRow(),
             Expanded(
-              child: _isGuest && _orders.isEmpty && !_isLoading
+              child: _isGuest && !_guestHasAny && !_isLoading
                   ? _buildGuestNotice()
                   : _isLoading
                   ? const Center(
@@ -307,7 +333,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           GestureDetector(
             onTap: () {
               setState(() => _showAll = !_showAll);
-              _load();
+              _isGuest ? _loadGuest() : _load();
             },
             child: Row(
               children: [

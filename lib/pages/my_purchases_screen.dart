@@ -407,12 +407,18 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
             onPressed: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+                // Гостю переключатель сторон не нужен: «Заказы ко мне»
+                // бывают только у продавца (28.09.2026).
+                MaterialPageRoute(
+                  builder: (_) => MyOrdersScreen(onlyMine: _isGuest),
+                ),
               );
 
               // Пока человек ходил по заказам, он мог забрать один из них:
               // вернувшись, список покупок должен это знать.
-              if (mounted) _load();
+              if (mounted) {
+                _isGuest ? _loadGuest() : _load();
+              }
             },
             child: const Text(
               'Мои заказы',
