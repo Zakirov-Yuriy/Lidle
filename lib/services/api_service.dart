@@ -1110,28 +1110,30 @@ class ApiService {
       if (filters != null && filters.isNotEmpty) {
         // log.d('📦 API getAdverts - Processing filters:');
         filters.forEach((key, value) {
-          // 🟢 СПЕЦИАЛЬНАЯ ОБРАБОТКА для filters[value_selected] (для атрибутов выбранных значений, ID < 1000)
+          // Выбранные в фильтре варианты.
+          //
+          // Каждый вариант уходит своей парой в квадратных скобках:
+          // filters[value_selected][2751][]=40&filters[value_selected][2751][]=41
+          //
+          // Скобки обязательны (28.09.2026). Без них одинаковые ключи в строке
+          // запроса затирают друг друга, и до сервера доезжал только последний
+          // выбранный вариант: человек отмечал подвал и мансарду, а искалось
+          // по мансарде.
           if (key == 'value_selected' && value is Map<String, dynamic>) {
             log.d('   📍 Processing value_selected:');
-            // � FIX: API ожидает БЕЗ индексов, но поддерживает множественные значения через List!
-            // getWithQuery() будет перевести List в: filters[value_selected][6]=40&filters[value_selected][6]=41
             value.forEach((attrId, attrValue) {
+              final paramKey = 'filters[value_selected][$attrId][]';
+
               if (attrValue is Set) {
-                // 🟢 FIX: Преобразуем Set в List чтобы getWithQuery() создал несколько параметров
-                final paramKey = 'filters[value_selected][$attrId]';
-                final listValue = (attrValue as Set).toList().cast<String>();
+                final listValue = attrValue.map((v) => v.toString()).toList();
                 queryParams[paramKey] = listValue;
-                log.d(
-                    '      ✅ $paramKey = ${listValue.toList()} (as List for multiple params)');
+                log.d('      ✅ $paramKey = $listValue');
               } else if (attrValue is List) {
-                // Список значений
-                final paramKey = 'filters[value_selected][$attrId]';
-                queryParams[paramKey] = attrValue;
-                log.d('      ✅ $paramKey = ${attrValue.toList()}');
+                final listValue = attrValue.map((v) => v.toString()).toList();
+                queryParams[paramKey] = listValue;
+                log.d('      ✅ $paramKey = $listValue');
               } else {
-                // Простое значение
-                final paramKey = 'filters[value_selected][$attrId]';
-                queryParams[paramKey] = attrValue.toString();
+                queryParams[paramKey] = [attrValue.toString()];
                 log.d('      ✅ $paramKey = ${attrValue.toString()}');
               }
             });

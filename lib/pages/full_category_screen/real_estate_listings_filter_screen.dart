@@ -9,6 +9,7 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/cities_filter_dialog.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
+import 'package:lidle/widgets/components/custom_radio_button.dart';
 import 'package:lidle/widgets/components/j_calendar/j_calendar_widget.dart';
 import 'package:lidle/widgets/components/k_calendar/k_calendar_widget.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
@@ -65,6 +66,11 @@ class _RealEstateListingsFilterScreenState
     extends State<RealEstateListingsFilterScreen> {
   // =============== Filter State ===============
   List<Attribute> _attributes = [];
+
+  /// Поля, у которых в окне выбора кружки: выбрать можно один вариант
+  /// («Количество залов в заведении», 28.09.2026).
+  Set<int> _singleSelectIds = <int>{};
+
   Map<int, dynamic> _selectedValues = {};
   bool _isLoading = true;
   String? _errorMessage;
@@ -277,6 +283,17 @@ class _RealEstateListingsFilterScreenState
     });
   }
 
+  /// Номер единственного варианта поля-галочки, если он есть.
+  String? _singleValueIdOf(int attributeId) {
+    for (final attribute in _attributes) {
+      if (attribute.id == attributeId && attribute.values.isNotEmpty) {
+        return attribute.values.first.id.toString();
+      }
+    }
+
+    return null;
+  }
+
   Future<void> _loadFilters() async {
     try {
       setState(() {
@@ -304,12 +321,21 @@ class _RealEstateListingsFilterScreenState
 
         log.d('📋 Total attributes in response: ${attributesData.length}');
 
+        // Поля, у которых окно выбора с кружками: один вариант, а не
+        // несколько. В модель Attribute это не кладём — она собирается
+        // генератором (freezed), поэтому держим рядом, как поля блоков.
+        final singleSelect = <int>{};
+
         for (int i = 0; i < attributesData.length; i++) {
           try {
-            final attr = Attribute.fromJson(
-              attributesData[i] as Map<String, dynamic>,
-            );
+            final raw = attributesData[i] as Map<String, dynamic>;
+            final attr = Attribute.fromJson(raw);
             attributes.add(attr);
+
+            if (raw['is_single_select'] == true) {
+              singleSelect.add(attr.id);
+            }
+
             log.d(
               '  ✅ [$i] ID=${attr.id}, Title="${attr.title}", Style="${attr.style}", IsRange=${attr.isRange}, IsMultiple=${attr.isMultiple}',
             );
@@ -318,8 +344,24 @@ class _RealEstateListingsFilterScreenState
           }
         }
 
+        // Экран фильтра получает ВСЕ поля формы подачи, включая блоки
+        // «Добавить меню», «Добавить оплату» и «Таблицу распределения»:
+        // фильтровать по ним нечего, и в списке фильтров они только мешают.
+        //
+        // Поэтому оставляем отмеченные администратором как фильтруемые. Если
+        // в категории не отмечено ни одного поля, показываем всё, как раньше:
+        // иначе человек остался бы вообще без фильтров (28.09.2026).
+        final marked = attributes.where((a) => a.isFilter).toList();
+        final visible = marked.isNotEmpty ? marked : attributes;
+
+        log.d(
+          '📋 В фильтре ${visible.length} из ${attributes.length} полей'
+          '${marked.isEmpty ? ' (пометок «в фильтре» нет, показываю все)' : ''}',
+        );
+
         setState(() {
-          _attributes = attributes;
+          _attributes = visible;
+          _singleSelectIds = singleSelect;
           _isLoading = false;
         });
 
@@ -611,17 +653,23 @@ class _RealEstateListingsFilterScreenState
 
     // Добавить атрибуты в структуру values {} и value_selected {} (как требует API)
     // ВАЖНО: API разделяет фильтры на:
-    // - filters[value_selected][attr_id] = [selected_value_ids] - для выбранных значений (ID < 1000)
-    // - filters[values][attr_id] = {min, max} - для диапазонов (ID >= 1000)
-    final valueSelectedMap = <String, dynamic>{}; // ID < 1000
-    final valuesMap = <String, dynamic>{}; // ID >= 1000
+    // - filters[value_selected][attr_id][] = [номера вариантов] — отмеченное в списках
+    // - filters[values][attr_id] = {min, max} или текст — вписанное человеком
+    //
+    // Куда попадёт поле, решает ВИД значения, а не номер поля (28.09.2026).
+    // Раньше правилом было «номер меньше тысячи — вариант», и оно молча
+    // сломалось на полях, заведённых позже: варианты «Видов залов» уезжали в
+    // `values`, где сервер ищет вписанный текст, и фильтр не находил ничего.
+    final valueSelectedMap = <String, dynamic>{};
+    final valuesMap = <String, dynamic>{};
 
     _selectedValues.forEach((key, value) {
       bool shouldInclude = false;
       dynamic processedValue = value;
 
-      // Определяем тип фильтра по ID атрибута
-      final isValueSelectedType = key < 1000;
+      // Отмеченное в списках (набор номеров) и галочка уходят вариантами,
+      // остальное вписанным значением.
+      final isValueSelectedType = value is Set || value is bool;
       final filterType = isValueSelectedType ? 'value_selected' : 'values';
 
       if (value is Map<String, dynamic>) {
@@ -652,9 +700,18 @@ class _RealEstateListingsFilterScreenState
           log.d('⏭️  Skipped: [$key] = {empty range}');
         }
       } else if (value is bool && value == true) {
-        // Включаем только true boolean'ы
-        shouldInclude = true;
-        log.d('✅ Attribute: [$key] = $value (type: $filterType, bool)');
+        // Галочка («Можно с животными»): у поля один вариант, и отмеченная
+        // галочка означает именно его. Серверу нужен номер варианта, а не
+        // «true» — иначе фильтр уходит пустым (28.09.2026).
+        final valueId = _singleValueIdOf(key);
+
+        if (valueId != null) {
+          shouldInclude = true;
+          processedValue = <String>{valueId};
+          log.d('✅ Attribute: [$key] = вариант $valueId (галочка)');
+        } else {
+          log.d('⏭️  Skipped: [$key] = галочка без вариантов');
+        }
       } else if (value is bool && value == false) {
         // Исключаем false boolean'ы
         log.d('⏭️  Skipped: [$key] = false (checkbox not selected)');
@@ -1291,6 +1348,14 @@ class _RealEstateListingsFilterScreenState
       'styleSingle="${attr.styleSingle ?? ""}"',
     );
 
+    // Окно выбора с кружками: один вариант («Количество залов в заведении»,
+    // 28.09.2026). Идёт первым: то же окно, что у галочек, только выбрать
+    // можно одно, и прежние ветки об этом не знают.
+    if (_singleSelectIds.contains(attr.id) && attr.values.isNotEmpty) {
+      log.d('    -> Rendering as POPUP SELECT RADIO - is_single_select');
+      return _buildPopupSingleSelectFilter(attr);
+    }
+
     // Style F: Popup диалог с квадратными чекбоксами - определяется по styleSingle="F"
     // Это наивысший приоритет, так как API явно указывает этот стиль
     if (attr.styleSingle == "F" && attr.values.isNotEmpty) {
@@ -1302,9 +1367,13 @@ class _RealEstateListingsFilterScreenState
 
     // Style B1: Одиночный чекбокс - определяется по styleSingle="B1"
     // Высокий приоритет, так как API явно указывает этот стиль
-    if (attr.styleSingle == "B1") {
+    //
+    // «B» без единицы это тот же одиночный чекбокс: так заведено «Можно с
+    // животными» в форме ресторана. Без этой строки поле уезжало в
+    // выпадающий список с единственным вариантом (28.09.2026).
+    if (attr.styleSingle == "B1" || attr.styleSingle == "B") {
       log.d(
-        '    -> Rendering as SINGLE CHECKBOX (Style B1) - styleSingle="B1"',
+        '    -> Rendering as SINGLE CHECKBOX (Style B) - styleSingle="${attr.styleSingle}"',
       );
       return _buildB1Field(attr);
     }
@@ -2111,6 +2180,214 @@ class _RealEstateListingsFilterScreenState
                             );
                             setState(() {
                               _selectedValues[attr.id] = tempSelected;
+                            });
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text(
+                            'Готово',
+                            style: TextStyle(
+                              color: Color(0xFF0EA5E9),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Окно выбора с кружками: один вариант (28.09.2026).
+  ///
+  /// Такое же окно, как у списков с галочками, но выбрать можно только одно:
+  /// «Количество залов в заведении» это одно число, а не набор. Выбранное
+  /// хранится тем же набором номеров, что и у галочек, просто из одного
+  /// номера: тогда сборка фильтра и сохранение настроек работают без
+  /// отдельной ветки.
+  Widget _buildPopupSingleSelectFilter(Attribute attr) {
+    _selectedValues[attr.id] ??= <String>{};
+    final Set<String> selected = _selectedValues[attr.id] is Set
+        ? (_selectedValues[attr.id] as Set).cast<String>()
+        : <String>{};
+
+    final displayValues = <String>[
+      for (final value in attr.values)
+        if (selected.contains(value.id.toString())) value.value,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        if (!attr.isTitleHidden)
+          _buildTitle(attr.title + (attr.isRequired ? '*' : '')),
+        if (!attr.isTitleHidden) const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => _showPopupSingleSelectDialog(attr, selected),
+          child: Container(
+            height: 45,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: secondaryBackground,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    selected.isEmpty ? 'Выбрать' : displayValues.join(', '),
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected.isEmpty ? Colors.white70 : Colors.white,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Само окно выбора с кружками.
+  void _showPopupSingleSelectDialog(Attribute attr, Set<String> current) {
+    String? chosen = current.isEmpty ? null : current.first;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: const Color(0xFF222E3A),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+              ),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 10, 13, 20),
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            attr.title,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 23),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: attr.values.map((value) {
+                            final valueId = value.id.toString();
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 15.0),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => setDialogState(() {
+                                        // Повторное нажатие снимает выбор:
+                                        // иначе передумавшему пришлось бы
+                                        // сбрасывать весь фильтр.
+                                        chosen = chosen == valueId
+                                            ? null
+                                            : valueId;
+                                      }),
+                                      child: Text(
+                                        value.value,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  CustomRadioButton<String>(
+                                    value: valueId,
+                                    groupValue: chosen,
+                                    onChanged: (picked) => setDialogState(() {
+                                      chosen = chosen == picked ? null : picked;
+                                    }),
+                                    selectedBorderColor: activeIconColor,
+                                    unselectedBorderColor: Colors.white70,
+                                    selectedFillColor: activeIconColor,
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(127, 35),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text(
+                            'Отмена',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              decoration: TextDecoration.underline,
+                              decorationColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            side: const BorderSide(color: Color(0xFF0EA5E9)),
+                            minimumSize: const Size(127, 35),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _selectedValues[attr.id] = chosen == null
+                                  ? <String>{}
+                                  : <String>{chosen!};
                             });
                             Navigator.of(context).pop();
                           },
