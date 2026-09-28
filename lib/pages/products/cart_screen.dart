@@ -6,10 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
 import 'package:lidle/pages/products/checkout_screen.dart';
-import 'package:lidle/hive_service.dart';
-import 'package:lidle/models/orders/order_item.dart';
-import 'package:lidle/pages/products/my_orders_screen.dart';
-import 'package:lidle/services/guest_orders_store.dart';
 import 'package:lidle/services/cart_service.dart';
 import 'package:lidle/services/product_favorites_service.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
@@ -81,47 +77,9 @@ class _CartScreenState extends State<CartScreen> {
   int? _activeFolderId;
 
   @override
-  /// Заказы гостя (28.09.2026).
-  ///
-  /// Значок корзины у гостя ведёт сюда, а не в «Покупки»: заказы к учётной
-  /// записи не привязаны, и раздел покупок у него пуст. Выходило, что человек
-  /// оформил заказ, вернулся в корзину и не видит ни его, ни кода получения.
-  /// Поэтому свои заказы гость видит прямо здесь, над корзиной.
-  ///
-  /// У вошедшего список пуст: его заказы живут на сервере и показываются
-  /// обычным путём.
-  List<OrderModel> _guestOrders = const [];
-
-  bool _isGuest = false;
-
-  @override
   void initState() {
     super.initState();
-
-    final token = HiveService.getUserData('token');
-    _isGuest = token == null || '$token'.isEmpty;
-
     _load();
-
-    if (_isGuest) _loadGuestOrders();
-  }
-
-  /// Сначала показываем запомненное, потом обновляем с сервера: код получения
-  /// нужен человеку сразу, даже когда связи нет.
-  Future<void> _loadGuestOrders() async {
-    final stored = GuestOrdersStore.all();
-
-    if (stored.isNotEmpty && mounted) {
-      setState(() => _guestOrders = stored);
-    }
-
-    if (stored.isEmpty) return;
-
-    final fresh = await GuestOrdersStore.refresh();
-
-    if (!mounted) return;
-
-    setState(() => _guestOrders = fresh);
   }
 
   Future<void> _load() async {
@@ -300,40 +258,6 @@ class _CartScreenState extends State<CartScreen> {
   /// первой покупки («К 1 сентября», «Подарки»). Раньше создать папку можно
   /// было только из карусели, а карусель в пустой корзине не показывается.
   Widget _buildEmpty() {
-    // Корзина пуста, но заказы у гостя есть: показываем их, иначе экран врёт,
-    // будто ничего не происходило (28.09.2026).
-    if (_guestOrders.isNotEmpty) {
-      return ListView(
-        padding: const EdgeInsets.fromLTRB(25, 0, 25, 24),
-        children: [
-          _buildGuestOrders(),
-          const SizedBox(height: 28),
-          const Text(
-            'Корзина пуста.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: textMuted, fontSize: 16),
-          ),
-          const SizedBox(height: 14),
-          Center(
-            child: OutlinedButton.icon(
-              onPressed: _isBusy ? null : _createFolder,
-              icon: const Icon(Icons.create_new_folder_outlined, size: 20),
-              label: const Text('Создать папку'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: activeIconColor,
-                side: const BorderSide(color: activeIconColor),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -366,128 +290,10 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  /// Заказы гостя над корзиной (28.09.2026).
-  ///
-  /// Показываем только живые: выданный и отменённый заказ человеку здесь уже
-  /// не нужен, а место занимает. Полный список лежит в «Покупках», туда же
-  /// ведёт ссылка снизу.
-  Widget _buildGuestOrders() {
-    final alive = _guestOrders
-        .where((order) =>
-            order.status != 'completed' &&
-            order.status != 'cancelled_by_buyer' &&
-            order.status != 'cancelled_by_seller')
-        .toList();
-
-    if (alive.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Ваши заказы',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 10),
-        ...alive.map(_buildGuestOrderCard),
-        GestureDetector(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const MyOrdersScreen(onlyMine: true),
-            ),
-          ),
-          behavior: HitTestBehavior.opaque,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 6),
-            child: Text(
-              'Все мои заказы',
-              style: TextStyle(
-                color: activeIconColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Карточка заказа. Главное в ней — код получения: за ним человек сюда и
-  /// возвращается.
-  Widget _buildGuestOrderCard(OrderModel order) {
-    final code = (order.pickupCode ?? '').trim();
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: formBackground,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  order.shop?.name ?? 'Точка выдачи',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '№ ${order.number}',
-                style: const TextStyle(color: textMuted, fontSize: 13),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            order.statusTitle.isEmpty ? 'Ждёт продавца' : order.statusTitle,
-            style: const TextStyle(color: textSecondary, fontSize: 13),
-          ),
-          if (code.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            const Text(
-              'Код получения',
-              style: TextStyle(color: textMuted, fontSize: 12),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              code,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 3,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildList(CartSnapshot cart) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(25, 0, 25, 24),
       children: [
-        if (_guestOrders.isNotEmpty) ...[
-          _buildGuestOrders(),
-          const SizedBox(height: 24),
-        ],
         const Text(
           'Корзина',
           style: TextStyle(
@@ -1680,10 +1486,6 @@ class _CartScreenState extends State<CartScreen> {
     // несколько, и каждый новый пришлось бы не забыть научить его
     // возвращать. Лишний запрос к корзине стоит дешевле такой забывчивости.
     _load();
-
-    // И заказы гостя: он только что мог оформить один из них, и вернувшись
-    // сюда должен увидеть его с кодом получения (28.09.2026).
-    if (_isGuest) _loadGuestOrders();
   }
 
   /// «1 позиция», «2 позиции», «5 позиций».
