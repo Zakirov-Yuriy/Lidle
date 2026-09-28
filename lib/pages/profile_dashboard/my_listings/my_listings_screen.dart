@@ -191,6 +191,90 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
+  /// Кончились ли страницы (28.09.2026).
+  ///
+  /// Раньше ответ был один: `1 >= (response.lastPage ?? 1)`. Если сервер не
+  /// прислал `meta.last_page` (или прислал не в том месте), выходило
+  /// «страница и так последняя», и подгрузка выключалась сразу после первой
+  /// пачки. Со стороны это выглядело так: пролистал два-три экрана и список
+  /// кончился, хотя объявлений сотни.
+  ///
+  /// Теперь решение принимается по трём признакам, от надёжного к запасному:
+  ///
+  ///   1. знаем, сколько всего (`meta.total`) — грузим, пока не набрали
+  ///      столько же;
+  ///   2. страница пришла пустой — брать больше нечего;
+  ///   3. пришло МЕНЬШЕ, чем просили — значит это хвост списка.
+  ///
+  /// `last_page` учитывается, но только как подтверждение: сам по себе он
+  /// больше ничего не выключает.
+  ///
+  /// [loadedCount] — сколько всего уже лежит в списке вкладки ПОСЛЕ добавления
+  /// этой страницы.
+  bool _noMorePages(MyAdvertsResponse response, int loadedCount, {int? added}) {
+    // Страница пришла, но ни одной новой карточки в ней не оказалось: дальше
+    // листать бессмысленно, иначе экран будет вечно просить одно и то же.
+    if (added != null && added == 0) {
+      return true;
+    }
+
+    final int total = response.meta?.total ?? response.total ?? 0;
+
+    if (total > 0) {
+      return loadedCount >= total;
+    }
+
+    if (response.data.isEmpty) {
+      return true;
+    }
+
+    return response.data.length < _pageSize;
+  }
+
+  /// Дописать страницу в конец списка, пропуская то, что уже есть
+  /// (28.09.2026).
+  ///
+  /// Страницы считаются по смещению, и если между запросами объявление
+  /// сменило статус, соседние страницы съезжают и один и тот же объект
+  /// приезжает дважды. На экране это дубль карточки, а в счётчике расхождение
+  /// с `meta.total`.
+  /// Возвращает, сколько карточек реально добавилось.
+  int _appendUnique(List<UserAdvert> target, List<UserAdvert> incoming) {
+    final seen = target.map((a) => a.id).toSet();
+    int added = 0;
+
+    for (final advert in incoming) {
+      if (seen.add(advert.id)) {
+        target.add(advert);
+        added++;
+      }
+    }
+
+    return added;
+  }
+
+  /// Дотянуть следующую страницу, если экран ещё не прокручивается
+  /// (28.09.2026).
+  ///
+  /// Карточки высокие, но на планшете и в длинном экране двадцати штук может
+  /// не хватить, чтобы появился скролл. Без скролла не будет и события
+  /// прокрутки, а значит подгрузка никогда не начнётся: список замирает на
+  /// первой странице. Поэтому после каждой загрузки проверяем, есть ли куда
+  /// прокручивать, и если нет — тянем дальше сами.
+  void _ensureScrollable() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_outerScrollController.hasClients) return;
+      if (_isLoadingMore || _currentTabIsLastPage()) return;
+
+      final position = _outerScrollController.position;
+
+      if (position.maxScrollExtent <= 0 ||
+          position.pixels >= position.maxScrollExtent - 300) {
+        _loadMoreListings();
+      }
+    });
+  }
+
   /// Достигнут ли конец списка для текущей вкладки.
   bool _currentTabIsLastPage() {
     switch (_currentTab) {
@@ -417,9 +501,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         setState(() {
           _crmListings = response.data;
           _crmListingsPage = 1;
-          _crmIsLastPage = 1 >= (response.lastPage ?? 1);
+          _crmIsLastPage = _noMorePages(response, response.data.length);
           _crmLoading = false;
         });
+        _ensureScrollable();
       }
     } catch (e) {
       if (mounted) setState(() => _crmLoading = false);
@@ -449,9 +534,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         setState(() {
           _manualListings = response.data;
           _manualListingsPage = 1;
-          _manualIsLastPage = 1 >= (response.lastPage ?? 1);
+          _manualIsLastPage = _noMorePages(response, response.data.length);
           _manualLoading = false;
         });
+        _ensureScrollable();
       }
     } catch (e) {
       if (mounted) setState(() => _manualLoading = false);
@@ -621,16 +707,20 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _moderationTotal = results[2].meta?.total ?? results[2].data.length;
           _archiveTotal = results[3].meta?.total ?? results[3].data.length;
 
-          _activeIsLastPage = 1 >= (results[0].lastPage ?? 1);
-          _inactiveIsLastPage = 1 >= (results[1].lastPage ?? 1);
-          _moderationIsLastPage = 1 >= (results[2].lastPage ?? 1);
-          _archiveIsLastPage = 1 >= (results[3].lastPage ?? 1);
-          _crmIsLastPage = 1 >= (results[4].lastPage ?? 1);
-          _manualIsLastPage = 1 >= (results[5].lastPage ?? 1);
+          _activeIsLastPage = _noMorePages(results[0], results[0].data.length);
+          _inactiveIsLastPage = _noMorePages(results[1], results[1].data.length);
+          _moderationIsLastPage = _noMorePages(results[2], results[2].data.length);
+          _archiveIsLastPage = _noMorePages(results[3], results[3].data.length);
+          _crmIsLastPage = _noMorePages(results[4], results[4].data.length);
+          _manualIsLastPage = _noMorePages(results[5], results[5].data.length);
 
           _isLoadingMore = false;
           _listingsLoading = false;
         });
+
+        // Если первой страницы не хватило, чтобы экран начал прокручиваться,
+        // сами дотянем следующую (28.09.2026).
+        _ensureScrollable();
 
         // 📢 Проверяем - может это только что созданное объявление, которое теперь активно?
         // (т.е. прошло модерацию и стало видно в списке активных)
@@ -725,16 +815,20 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _moderationTotal = results[2].meta?.total ?? results[2].data.length;
           _archiveTotal = results[3].meta?.total ?? results[3].data.length;
 
-          _activeIsLastPage = 1 >= (results[0].lastPage ?? 1);
-          _inactiveIsLastPage = 1 >= (results[1].lastPage ?? 1);
-          _moderationIsLastPage = 1 >= (results[2].lastPage ?? 1);
-          _archiveIsLastPage = 1 >= (results[3].lastPage ?? 1);
-          _crmIsLastPage = 1 >= (results[4].lastPage ?? 1);
-          _manualIsLastPage = 1 >= (results[5].lastPage ?? 1);
+          _activeIsLastPage = _noMorePages(results[0], results[0].data.length);
+          _inactiveIsLastPage = _noMorePages(results[1], results[1].data.length);
+          _moderationIsLastPage = _noMorePages(results[2], results[2].data.length);
+          _archiveIsLastPage = _noMorePages(results[3], results[3].data.length);
+          _crmIsLastPage = _noMorePages(results[4], results[4].data.length);
+          _manualIsLastPage = _noMorePages(results[5], results[5].data.length);
 
           _isLoadingMore = false;
           _listingsLoading = false;
         });
+
+        // Если первой страницы не хватило, чтобы экран начал прокручиваться,
+        // сами дотянем следующую (28.09.2026).
+        _ensureScrollable();
 
         // 📢 Проверяем - может это только что созданное объявление, которое теперь активно?
         // (т.е. прошло модерацию и стало видно в списке активных)
@@ -886,8 +980,12 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       if (!mounted) return;
 
-      final int loadedPage = response.page ?? nextPage;
-      final bool isLast = loadedPage >= (response.lastPage ?? 1);
+      // Номер страницы берём СВОЙ, а не из ответа (28.09.2026). Если сервер
+      // пришлёт мету без `current_page`, разбор подставит единицу, счётчик
+      // страниц откатится назад, и вкладка начнёт бесконечно запрашивать одну
+      // и ту же вторую страницу.
+      final int loadedPage = nextPage;
+
       // Для Активных/Неактивных/Архива/Модерации держим счётчик в синхроне со
       // списком (он по категории). Все/CRM — общий счётчик (_loadTabCounts).
       final int total = response.meta?.total ?? 0;
@@ -895,42 +993,64 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       setState(() {
         switch (tab) {
           case 0:
-            _activeListings.addAll(response.data);
-            _activeListingsPage = loadedPage;
-            _activeIsLastPage = isLast;
-            if (total > 0) _activeTotal = total;
-            break;
+            {
+              final int added = _appendUnique(_activeListings, response.data);
+              _activeListingsPage = loadedPage;
+              _activeIsLastPage =
+                  _noMorePages(response, _activeListings.length, added: added);
+              if (total > 0) _activeTotal = total;
+              break;
+            }
           case 1:
-            _inactiveListings.addAll(response.data);
-            _inactiveListingsPage = loadedPage;
-            _inactiveIsLastPage = isLast;
-            if (total > 0) _inactiveTotal = total;
-            break;
+            {
+              final int added = _appendUnique(_inactiveListings, response.data);
+              _inactiveListingsPage = loadedPage;
+              _inactiveIsLastPage =
+                  _noMorePages(response, _inactiveListings.length, added: added);
+              if (total > 0) _inactiveTotal = total;
+              break;
+            }
           case 2:
-            _archiveListings.addAll(response.data);
-            _archiveListingsPage = loadedPage;
-            _archiveIsLastPage = isLast;
-            if (total > 0) _archiveTotal = total;
-            break;
+            {
+              final int added = _appendUnique(_archiveListings, response.data);
+              _archiveListingsPage = loadedPage;
+              _archiveIsLastPage =
+                  _noMorePages(response, _archiveListings.length, added: added);
+              if (total > 0) _archiveTotal = total;
+              break;
+            }
           case 3:
-            _moderationListings.addAll(response.data);
-            _moderationListingsPage = loadedPage;
-            _moderationIsLastPage = isLast;
-            if (total > 0) _moderationTotal = total;
-            break;
+            {
+              final int added = _appendUnique(_moderationListings, response.data);
+              _moderationListingsPage = loadedPage;
+              _moderationIsLastPage =
+                  _noMorePages(response, _moderationListings.length, added: added);
+              if (total > 0) _moderationTotal = total;
+              break;
+            }
           case 4:
-            _crmListings.addAll(response.data);
-            _crmListingsPage = loadedPage;
-            _crmIsLastPage = isLast;
-            break;
+            {
+              final int added = _appendUnique(_crmListings, response.data);
+              _crmListingsPage = loadedPage;
+              _crmIsLastPage =
+                  _noMorePages(response, _crmListings.length, added: added);
+              break;
+            }
           case 5:
-            _manualListings.addAll(response.data);
-            _manualListingsPage = loadedPage;
-            _manualIsLastPage = isLast;
-            break;
+            {
+              final int added = _appendUnique(_manualListings, response.data);
+              _manualListingsPage = loadedPage;
+              _manualIsLastPage =
+                  _noMorePages(response, _manualListings.length, added: added);
+              break;
+            }
         }
         _isLoadingMore = false;
       });
+
+      // Экран мог так и не стать прокручиваемым (например, страница пришла
+      // короткой) — тогда сразу тянем следующую, иначе подгрузка замрёт.
+      _ensureScrollable();
     } catch (e) {
       // log.d('=== Ошибка загрузки дополнительных объявлений: $e');
       if (mounted) {
