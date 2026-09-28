@@ -307,7 +307,12 @@ class _ListingCardState extends State<ListingCard> {
                     // и пустые звёзды у каждой карточки только шумят.
                     if (widget.listing.showsRating) ...[
                       SizedBox(height: 3 * scale),
-                      _advertStars(scale),
+                      // Тот же вид, что у товара: без отзывов одна пустая
+                      // звезда и «Будь первым!», с отзывами звезда, оценка и
+                      // сколько оценок. Один вид на всё приложение, чтобы
+                      // одна и та же строка не выглядела в двух местах
+                      // по-разному (28.09.2026).
+                      _ratingRow(scale),
                     ],
 
                     SizedBox(height: 3 * scale),
@@ -796,46 +801,6 @@ class _ListingCardState extends State<ListingCard> {
   /// разъезжались по высоте. Ноль писать тоже нельзя: «0,0» читается как
   /// плохая оценка, хотя оценок просто нет, а «будьте первым» в ленте из
   /// двадцати карточек превращается в двадцать одинаковых просьб.
-  /// Пять звёзд и оценка (28.09.2026).
-  ///
-  /// Незаполненная звезда рисуется той же золотой обводкой, что и полная:
-  /// заведение без отзывов не выглядит хуже других, у него просто пока нет
-  /// оценки. Половина звезды показывается от 0.25 до 0.75 доли: округлять
-  /// 4.5 до пяти значит приписывать заведению чужую оценку.
-  Widget _advertStars(double scale) {
-    final rating = widget.listing.rating ?? 0;
-    final size = 13.0 * scale;
-    const gold = Color(0xFFFFB800);
-
-    return Row(
-      children: [
-        for (int star = 1; star <= 5; star++)
-          Padding(
-            padding: EdgeInsets.only(right: 1 * scale),
-            child: Icon(
-              rating >= star - 0.25
-                  ? Icons.star
-                  : (rating >= star - 0.75 ? Icons.star_half : Icons.star_border),
-              color: gold,
-              size: size,
-            ),
-          ),
-        if (widget.listing.rating != null) ...[
-          SizedBox(width: 4 * scale),
-          Text(
-            // Запятая, а не точка: по-русски дробную часть отделяют запятой.
-            rating.toStringAsFixed(1).replaceAll('.', ','),
-            style: TextStyle(
-              color: textPrimary,
-              fontSize: 12 * scale,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   Widget _ratingRow(double scale) {
     final rating = widget.listing.rating ?? 0;
     final count = widget.listing.reviewsCount;
