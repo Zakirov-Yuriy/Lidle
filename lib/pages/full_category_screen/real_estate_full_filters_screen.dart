@@ -98,6 +98,11 @@ class _RealEstateFullFiltersScreenState
 
   // Динамические фильтры из API
   List<Attribute> _attributes = [];
+
+  /// Поля, у которых в окне выбора кружки: выбрать можно один вариант
+  /// («Количество залов в заведении», 28.09.2026).
+  Set<int> _singleSelectIds = <int>{};
+
   Map<int, dynamic> _selectedValues = {};
   bool _isLoadingFilters = true;
   String? _errorMessage;
@@ -350,12 +355,21 @@ class _RealEstateFullFiltersScreenState
 
         log.d('📋 Total attributes in response: ${attributesData.length}');
 
+        // Поля, у которых окно выбора с кружками: один вариант, а не
+        // несколько. В модель Attribute это не кладём — она собирается
+        // генератором (freezed), поэтому держим рядом.
+        final singleSelect = <int>{};
+
         for (int i = 0; i < attributesData.length; i++) {
           try {
-            final attr = Attribute.fromJson(
-              attributesData[i] as Map<String, dynamic>,
-            );
+            final raw = attributesData[i] as Map<String, dynamic>;
+            final attr = Attribute.fromJson(raw);
             attributes.add(attr);
+
+            if (raw['is_single_select'] == true) {
+              singleSelect.add(attr.id);
+            }
+
             log.d(
               '  ✅ [$i] ID=${attr.id}, Title="${attr.title}", Style="${attr.style}", IsRange=${attr.isRange}, IsMultiple=${attr.isMultiple}',
             );
@@ -364,8 +378,22 @@ class _RealEstateFullFiltersScreenState
           }
         }
 
+        // Экран получает ВСЕ поля формы подачи, включая блоки «Добавить
+        // меню», «Добавить оплату» и «Таблицу распределения»: фильтровать по
+        // ним нечего. Оставляем отмеченные администратором как фильтруемые, а
+        // если в категории не отмечено ни одного поля — показываем всё, как
+        // раньше, иначе человек остался бы вообще без фильтров (28.09.2026).
+        final marked = attributes.where((a) => a.isFilter).toList();
+        final visible = marked.isNotEmpty ? marked : attributes;
+
+        log.d(
+          '📋 В фильтре ${visible.length} из ${attributes.length} полей'
+          '${marked.isEmpty ? ' (пометок «в фильтре» нет, показываю все)' : ''}',
+        );
+
         setState(() {
-          _attributes = attributes;
+          _attributes = visible;
+          _singleSelectIds = singleSelect;
           _isLoadingFilters = false;
         });
         
@@ -518,6 +546,28 @@ class _RealEstateFullFiltersScreenState
       }
     });
 
+    // Вид каждого поля: отмеченные варианты, вписанное значение или «от и до»
+    // (28.09.2026). Экран выдачи раскладывает фильтры по веткам запроса, а
+    // сами поля он не загружает, и раньше угадывал вид по номеру поля:
+    // «меньше тысячи — варианты, меньше двух тысяч — значения, дальше
+    // булево». На полях, заведённых позже, это стало давать неверную ветку, и
+    // фильтр молча не работал.
+    final kinds = <String, String>{};
+
+    for (final attribute in _attributes) {
+      if (!stateToSave.containsKey(attribute.id.toString())) {
+        continue;
+      }
+
+      kinds[attribute.id.toString()] = attribute.isRange
+          ? 'range'
+          : (attribute.values.isEmpty ? 'text' : 'selected');
+    }
+
+    if (kinds.isNotEmpty) {
+      stateToSave['_kinds'] = kinds;
+    }
+
     // 🟢 ИСПРАВЛЕНИЕ: Сохраняем выбранный город!
     if (selectedCity.isNotEmpty) {
       stateToSave['_city'] = selectedCity.toList(); // Преобразуем Set в List
@@ -647,6 +697,14 @@ class _RealEstateFullFiltersScreenState
     //   'isTitleHidden=${attr.isTitleHidden}, isPopup=${attr.isPopup}, '
     //   'styleSingle="${attr.styleSingle ?? ""}"',
     // );
+
+    // Окно выбора с кружками: один вариант («Количество залов в заведении»,
+    // 28.09.2026). Идёт первым: окно то же, что у галочек, и прежние ветки
+    // об этом не знают.
+    if (_singleSelectIds.contains(attr.id) && attr.values.isNotEmpty) {
+      log.d('    -> Rendering as POPUP SELECT RADIO - is_single_select');
+      return _buildPopupSingleSelectFilter(attr);
+    }
 
     // Style F: Popup диалог с квадратными чекбоксами - определяется по styleSingle="F"
     if (attr.styleSingle == "F" && attr.values.isNotEmpty) {
@@ -1115,6 +1173,81 @@ class _RealEstateFullFiltersScreenState
                   });
                 },
                 allowMultipleSelection: true,
+              ),
+            );
+          },
+          child: Container(
+            height: 45,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: secondaryBackground,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    storedIds.isEmpty ? 'Выбрать' : displayValues.join(', '),
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: storedIds.isEmpty ? Colors.white70 : Colors.white,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Окно выбора с кружками: один вариант (28.09.2026).
+  ///
+  /// То же окно, что у списков с галочками, но выбрать можно только одно:
+  /// «Количество залов в заведении» это одно число, а не набор. Выбранное
+  /// хранится тем же набором номеров, просто из одного: тогда и сохранение
+  /// настроек, и сборка запроса работают без отдельной ветки.
+  Widget _buildPopupSingleSelectFilter(Attribute attr) {
+    _selectedValues[attr.id] ??= <String>{};
+    final Set<String> storedIds = _selectedValues[attr.id] is Set
+        ? (_selectedValues[attr.id] as Set).cast<String>()
+        : <String>{};
+
+    final displayValues = <String>[
+      for (final value in attr.values)
+        if (storedIds.contains(value.id.toString())) value.value,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!attr.isTitleHidden) _buildTitle(attr.title),
+        if (!attr.isTitleHidden) const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => SelectionDialog(
+                title: attr.title,
+                options: attr.values.map((v) => v.value).toList(),
+                selectedOptions: displayValues.toSet(),
+                onSelectionChanged: (newSelected) {
+                  setState(() {
+                    final selectedIds = <String>{};
+
+                    for (final value in attr.values) {
+                      if (newSelected.contains(value.value)) {
+                        selectedIds.add(value.id.toString());
+                      }
+                    }
+
+                    _selectedValues[attr.id] = selectedIds;
+                  });
+                },
+                allowMultipleSelection: false,
               ),
             );
           },

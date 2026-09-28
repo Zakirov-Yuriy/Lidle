@@ -1149,6 +1149,14 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
     final valuesMap = <String, dynamic>{};
     final booleanMap = <String, dynamic>{};
 
+    // Вид каждого поля, записанный экраном фильтров: 'selected' — отмеченные
+    // варианты, 'text' и 'range' — вписанное значение (28.09.2026).
+    final kinds = flatFilters['_kinds'] is Map
+        ? (flatFilters['_kinds'] as Map).map(
+            (key, value) => MapEntry('$key', '$value'),
+          )
+        : <String, String>{};
+
     flatFilters.forEach((keyStr, value) {
       // 🟢 ПРОПУСКАЕМ СПЕЦИАЛЬНЫЕ КЛЮЧИ (город, сортировка и т.д.) - они не передаются серверу
       if (keyStr.startsWith('_')) {
@@ -1161,7 +1169,25 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
 
       log.d('   🔍 Обработка: key=$keyStr, attrId=$attrId, value=$value, type=${value.runtimeType}');
 
-      // Определяем тип фильтра по ID атрибута
+      final kind = kinds[keyStr];
+
+      if (kind != null) {
+        // Поле известно: раскладываем по его виду.
+        if (kind == 'selected') {
+          log.d('      ├─ Тип: value_selected (отмеченные варианты)');
+          valueSelectedMap[keyStr] = value;
+        } else {
+          log.d('      ├─ Тип: values (вписанное значение)');
+          valuesMap[keyStr] = value;
+        }
+
+        log.d('      └─ Разложено по виду поля');
+
+        return;
+      }
+
+      // Вида нет: так бывает у настроек, сохранённых прошлой версией
+      // приложения. Тогда работает прежнее правило по номеру поля.
       if (attrId < 1000) {
         // Это value_selected фильтр (категориальный)
         log.d('      ├─ Тип: value_selected (ID < 1000)');
