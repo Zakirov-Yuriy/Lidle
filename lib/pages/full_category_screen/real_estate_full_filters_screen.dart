@@ -6,7 +6,8 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/place_search_dialog.dart';
+import 'package:lidle/services/places_service.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_filtered_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_subfilters_screen.dart';
@@ -978,10 +979,14 @@ class _RealEstateFullFiltersScreenState
       () => TextEditingController(text: range['max'] ?? ''),
     );
 
+    // Знак валюты справа от «До» (28.09.2026): у средней суммы чека это ₽.
+    // Приходит полем `vm_text` того же атрибута.
+    final unit = (attr.vmText ?? '').trim();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!attr.isTitleHidden) _buildTitle(attr.title),
+        if (!attr.isTitleHidden) _buildFieldTitle(attr.title),
         if (!attr.isTitleHidden) const SizedBox(height: 8),
         Row(
           children: [
@@ -1002,9 +1007,59 @@ class _RealEstateFullFiltersScreenState
                 });
               }),
             ),
+            if (unit.isNotEmpty) ...[
+              const SizedBox(width: 12),
+              Container(
+                width: 56,
+                height: 45,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: secondaryBackground,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  unit,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ],
           ],
         ),
       ],
+    );
+  }
+
+  /// Название поля, где часть в скобках приглушена (28.09.2026).
+  ///
+  /// «Средняя сумма чека (на одного человека)»: скобка это пояснение, а не
+  /// часть названия, и на макете она серая и мельче.
+  Widget _buildFieldTitle(String title) {
+    final match = RegExp(r'^(.*?)\s*(\(.*\))\s*$').firstMatch(title.trim());
+
+    if (match == null) {
+      return _buildTitle(title);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: match.group(1),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            TextSpan(
+              text: ' ${match.group(2)}',
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1665,28 +1720,28 @@ class _RealEstateFullFiltersScreenState
         _buildTitle("Выберите город"),
         _buildSelector(
           selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
-          onTap: () {
-            final citiesToShow = apiCities;
-            log.d('\n📱 Открытие диалога выбора города (real_estate_full_filters)...');
-            log.d('   - apiCities.length: ${apiCities.length}');
-            log.d('   - citiesToShow.length: ${citiesToShow.length}');
-            showDialog(
+          onTap: () async {
+            // Тот же поиск по всей стране, что в форме подачи (28.09.2026).
+            // Раньше здесь был список городов, собранный заранее: в нём не
+            // было ни мелких посёлков, ни самой Москвы, а на запрос «москва»
+            // выпадали автодороги с этим словом в названии.
+            final picked = await showDialog<PlaceSuggestion>(
               context: context,
-              builder: (_) {
-                return CitySelectionDialog(
-                  title: "Выберите город",
-                  options: citiesToShow,
-                  selectedOptions: selectedCity,
-                  onSelectionChanged: (v) {
-                    setState(() => selectedCity = v);
-                    // Загружаем улицы для выбранного города
-                    if (v.isNotEmpty) {
-                      _loadStreetsForCity(v.first);
-                    }
-                  },
-                );
-              },
+              builder: (_) => PlaceSearchDialog(
+                title: 'Город или посёлок',
+                hint: 'Например, Мариуполь',
+                promptText: 'Введите название города или посёлка',
+                emptyText: 'Такого населённого пункта не нашлось',
+                onSearch: (query) => PlacesService.cities(query),
+              ),
             );
+
+            if (picked == null || !mounted) return;
+
+            setState(() => selectedCity = {picked.name});
+
+            // Улицы выбранного города: экран показывает их отдельным полем.
+            _loadStreetsForCity(picked.name);
           },
           showArrow: true,
         ),
@@ -2116,6 +2171,11 @@ class _RealEstateFullFiltersScreenState
   Widget _buildBottomButtons() {
     return Column(
       children: [
+        // Свободные даты это поле фильтра, а не кнопка, и стоять оно должно
+        // среди полей (28.09.2026). Раньше блок разделял «Сохранить настройки
+        // фильтра» и «Показать», и кнопки выглядели не парой.
+        _buildBookingDatesBlock(),
+        const SizedBox(height: 14),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
@@ -2142,8 +2202,6 @@ class _RealEstateFullFiltersScreenState
             ),
           ),
         ),
-        const SizedBox(height: 14),
-        _buildBookingDatesBlock(),
         const SizedBox(height: 14),
         // const SizedBox(height: 14),
         // SizedBox(
