@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/auth/register_screen.dart';
+import 'package:lidle/pages/products/my_orders_screen.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/products/payment_link_block.dart';
@@ -77,7 +78,26 @@ class OrderPlacedScreen extends StatelessWidget {
               // Возвращаем признак успеха: экран корзины перечитывает себя
               // в любом случае, но признак пригодится другим экранам, с
               // которых сюда придут позже.
-              onPressed: () => Navigator.pop(context, true),
+              //
+              // Гостя после этого ведём в «Покупки» (28.09.2026). Раньше он
+              // возвращался в корзину, а она после оформления пуста, и
+              // выходило, что заказ будто испарился. В «Покупках» лежат его
+              // заказы вместе с кодами получения.
+              onPressed: () {
+                final token = TokenService.currentToken;
+                final isGuest = token == null || token.isEmpty;
+                final navigator = Navigator.of(context);
+
+                navigator.pop(true);
+
+                if (isGuest) {
+                  navigator.push(
+                    MaterialPageRoute(
+                      builder: (_) => const MyOrdersScreen(onlyMine: true),
+                    ),
+                  );
+                }
+              },
               child: const Text(
                 'Готово',
                 style: TextStyle(

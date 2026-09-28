@@ -1,5 +1,7 @@
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/services/guest_orders_store.dart';
 import 'package:lidle/models/orders/order_payment.dart';
 import 'package:lidle/services/api_service.dart';
 
@@ -187,13 +189,21 @@ class OrdersService {
 
       final data = response['data'];
 
+      final raw = data is List
+          ? data.whereType<Map<String, dynamic>>().toList()
+          : const <Map<String, dynamic>>[];
+
+      // Гость нигде больше свой заказ не увидит: список покупок есть только у
+      // вошедшего. Поэтому оформленное запоминаем на телефоне, вместе с кодом
+      // получения (28.09.2026). У вошедшего заказ и так уедет в «Покупки».
+      final token = HiveService.getUserData('token');
+
+      if (token == null || '$token'.isEmpty) {
+        await GuestOrdersStore.remember(raw);
+      }
+
       return CheckoutResult.success(
-        data is List
-            ? data
-                  .whereType<Map<String, dynamic>>()
-                  .map(OrderModel.fromJson)
-                  .toList()
-            : const [],
+        raw.map(OrderModel.fromJson).toList(),
         message: response['message']?.toString(),
         payment: response['payment'] is Map<String, dynamic>
             ? OrderPaymentInfo.fromJson(response['payment'])

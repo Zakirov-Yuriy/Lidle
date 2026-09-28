@@ -4,6 +4,7 @@ import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/products/your_order_screen.dart';
+import 'package:lidle/services/guest_orders_store.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -54,10 +55,35 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     _isGuest = token == null || '$token'.isEmpty;
 
     if (_isGuest) {
-      _isLoading = false;
+      // У гостя заказы лежат на телефоне (28.09.2026): своего списка на
+      // сервере у него нет, но состояние каждого заказа мы обновляем по
+      // номеру и коду получения.
+      _loadGuest();
     } else {
       _load();
     }
+  }
+
+  /// Заказы гостя: сначала показываем запомненное, потом обновляем с сервера.
+  ///
+  /// Именно в таком порядке: код получения нужен человеку сразу, даже когда
+  /// связи нет, а состояние подтянется следом.
+  Future<void> _loadGuest() async {
+    setState(() {
+      _orders = GuestOrdersStore.all();
+      _isLoading = _orders.isNotEmpty;
+    });
+
+    if (_orders.isEmpty) return;
+
+    final fresh = await GuestOrdersStore.refresh();
+
+    if (!mounted) return;
+
+    setState(() {
+      _orders = fresh;
+      _isLoading = false;
+    });
   }
 
   Future<void> _load() async {
@@ -109,7 +135,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               _buildScopeRow(),
             ],
             Expanded(
-              child: _isGuest
+              child: _isGuest && _orders.isEmpty && !_isLoading
                   ? _buildGuestNotice()
                   : _isLoading
                   ? const Center(
@@ -132,11 +158,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                         )
                       : RefreshIndicator(
                           color: activeIconColor,
-                          onRefresh: _load,
+                          onRefresh: _isGuest ? _loadGuest : _load,
                           child: ListView(
                             padding:
                                 const EdgeInsets.fromLTRB(25, 4, 25, 24),
-                            children: _orders.map(_buildOrder).toList(),
+                            children: [
+                              if (_isGuest) _buildGuestHint(),
+                              ..._orders.map(_buildOrder),
+                            ],
                           ),
                         ),
             ),
@@ -178,6 +207,42 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Честная подпись над списком гостя (28.09.2026).
+  ///
+  /// Человек должен понимать границы: эти заказы помнит ЭТОТ телефон. На
+  /// другом устройстве их не будет, и это не поломка. Настоящее место для
+  /// покупок — учётная запись, поэтому рядом лежит и предложение её завести.
+  Widget _buildGuestHint() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Заказы без регистрации',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Они сохранены на этом телефоне. Заведите учётную запись на ту же '
+            'почту, и заказы перейдут в «Покупки»: их будет видно с любого '
+            'устройства.',
+            style: TextStyle(color: textSecondary, fontSize: 13),
+          ),
+        ],
       ),
     );
   }
@@ -285,7 +350,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           // Там могли отказаться от заказа или оценить курьера: перечитываем
           // список, чтобы он не расходился с тем, что человек только что
           // сделал.
-          if (mounted) _load();
+          if (mounted) {
+            _isGuest ? _loadGuest() : _load();
+          }
         },
         child: _orderCardBody(order),
       );
