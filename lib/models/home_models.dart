@@ -260,6 +260,20 @@ class Listing {
     return false;
   }
 
+  /// Название компании продавца, если карточка компании заполнена.
+  ///
+  /// Через кеш (Hive) вложенные объекты возвращаются как
+  /// `Map<dynamic, dynamic>`, поэтому проверяем по `Map`, а не по точному типу.
+  static String? _companyName(Map<String, dynamic> json) {
+    final company = json['company'];
+
+    if (company is! Map) return null;
+
+    final name = '${company['name'] ?? ''}'.trim();
+
+    return name.isEmpty ? null : name;
+  }
+
   factory Listing.fromJson(Map<String, dynamic> json) {
     // DEBUG: Логируем полный JSON адреса
     // log.d('');
@@ -370,7 +384,14 @@ class Listing {
       isBargain: json['is_bargain'] ?? false,
       // API detail endpoint returns seller info under 'user' key,
       // while some responses may use 'seller' key.
+      //
+      // Название КОМПАНИИ важнее личного имени (28.09.2026): сервер отдаёт
+      // отдельный блок `company`, и сайт показывает именно его. Читали только
+      // `user`, поэтому покупатель видел имя владельца аккаунта («Александр»)
+      // вместо названия продавца («Сваи Барнаул»). Пустая карточка компании
+      // ничего не меняет — тогда остаётся имя человека, как было.
       sellerName:
+          _companyName(json) ??
           json['user']?['name'] ??
           json['seller']?['name'] ??
           json['sellerName'],

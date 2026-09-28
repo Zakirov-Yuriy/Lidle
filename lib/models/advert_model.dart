@@ -165,8 +165,11 @@ class Advert {
     //
     // Пустая карточка компании ничего не меняет: тогда остаётся имя человека,
     // как было.
-    if (json['company'] is Map<String, dynamic>) {
-      final company = json['company'] as Map<String, dynamic>;
+    // Проверяем по `Map`, а не по точному типу: из кеша (Hive) вложенные
+    // объекты возвращаются как `Map<dynamic, dynamic>` и строгую проверку не
+    // проходят.
+    if (json['company'] is Map) {
+      final company = json['company'] as Map;
       final companyName = '${company['name'] ?? ''}'.trim();
 
       if (companyName.isNotEmpty) sellerName = companyName;

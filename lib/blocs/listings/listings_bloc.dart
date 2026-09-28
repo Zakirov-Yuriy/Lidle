@@ -781,10 +781,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         try {
           // Безопасно преобразуем Dynamic Map в Map<String, dynamic>
           final cachedAdvert = Map<String, dynamic>.from(cachedAdvertRaw);
-          // log.d('✅ ListingsBloc: Восстановили объявление из кеша');
-          final listing = _jsonToListing(cachedAdvert);
-          emit(AdvertLoaded(listing: listing));
-          return;
+
+          // Запись прошлой версии не читаем: её разбирали по старым правилам
+          // (см. _advertCacheVersion). Спросим сервер и перезапишем.
+          if (cachedAdvert['cache_version'] == _advertCacheVersion) {
+            // log.d('✅ ListingsBloc: Восстановили объявление из кеша');
+            final listing = _jsonToListing(cachedAdvert);
+            emit(AdvertLoaded(listing: listing));
+            return;
+          }
         } catch (e) {
           // Если не удалось восстановить из кеша, загружаем заново
           // log.d('⚠️ ListingsBloc: Ошибка восстановления из кеша: $e');
@@ -1211,9 +1216,20 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     return [...todayListings, ...otherListings];
   }
 
+  /// Версия записи объявления в кеше (28.09.2026).
+  ///
+  /// Кеш переживает обновление приложения, поэтому исправленный разбор ответа
+  /// сам по себе ничего не меняет: экран берёт объявление из старой записи и
+  /// показывает то же, что показывал до исправления. Так и случилось с именем
+  /// продавца: карточка продолжала звать компанию «Сваи Барнаул» личным именем
+  /// владельца. Записи прошлой версии просто не читаются и перезаписываются
+  /// свежим ответом сервера — поднимайте число при любом таком исправлении.
+  static const int _advertCacheVersion = 2;
+
   /// Конвертирует Listing в JSON для кеша.
   Map<String, dynamic> _listingToJson(home.Listing listing) {
     return {
+      'cache_version': _advertCacheVersion,
       'id': listing.id,
       'imagePath': listing.imagePath,
       'images': listing.images,
