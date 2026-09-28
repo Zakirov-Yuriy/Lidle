@@ -82,11 +82,9 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
 
   /// Покупки гостя.
   ///
-  /// Отличие от вошедшего одно: здесь показываем позиции ВСЕХ его заказов, а
-  /// не только выданных. У человека с учётной записью живые заказы видны на
-  /// экране заказов, и история покупок честно остаётся историей. У гостя
-  /// другого места нет, и спрятать от него только что оформленный заказ
-  /// значило бы вернуть ту же беду: купил, а нигде не видно.
+  /// Правило то же, что у вошедшего: покупка это ВЫДАННЫЙ заказ, тот, что
+  /// человек забрал и подтвердил кодом. Живые заказы живут на экране заказов,
+  /// а здесь история, и она должна оставаться историей у всех одинаково.
   Future<void> _loadGuest() async {
     final stored = GuestOrdersStore.all();
 
@@ -124,6 +122,8 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
     final entries = <_PurchaseEntry>[];
 
     for (final order in orders) {
+      if (order.status != 'completed') continue;
+
       for (final line in order.items) {
         entries.add(
           _PurchaseEntry(
@@ -321,11 +321,10 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
   }
 
   Widget _buildBody() {
-    // Гостю без покупок — прежнее предложение войти. С покупками показываем
-    // их так же, как всем (28.09.2026).
-    if (_isGuest && _purchases.isEmpty && !_isLoading) {
-      return _buildGuestNotice();
-    }
+    // Гостю ничего особенного не показываем (28.09.2026): у него тот же
+    // экран, что и у вошедшего, включая пустое состояние с кнопками
+    // «Перейти к товарам» и «Мои заказы». Предложение войти тут только
+    // мешало: покупки у него есть, просто лежат на телефоне.
 
     if (_isLoading) {
       return const Center(
@@ -534,66 +533,6 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
         alignment: Alignment.center,
         child: const Icon(Icons.image_not_supported_outlined,
             color: textMuted, size: 32),
-      ),
-    );
-  }
-
-  /// Что видит гость.
-  ///
-  /// Купить он может, а вот история покупок существует только у аккаунта:
-  /// гостевой заказ ищется по коду получения.
-  Widget _buildGuestNotice() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.person_outline, color: textMuted, size: 44),
-            const SizedBox(height: 12),
-            const Text(
-              'Войдите, чтобы видеть свои покупки',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Покупать можно и без регистрации: код получения мы показываем '
-              'сразу после оформления заказа.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: textSecondary, fontSize: 14),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: 220,
-              height: 46,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: activeIconColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProductsScreen()),
-                ),
-                child: const Text(
-                  'Перейти к товарам',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -44,12 +44,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   /// говорить «покупок нет» там, где правильный ответ «войдите».
   late bool _isGuest;
 
-  /// Есть ли у гостя хоть один заказ на телефоне (28.09.2026).
-  ///
-  /// Отдельно от `_orders`: те могут быть пустыми просто потому, что галочка
-  /// «Показывать завершённые» снята, а всё купленное уже выдано. Показать в
-  /// этом случае «войдите» было бы враньём.
-  bool _guestHasAny = false;
 
   List<OrderModel> _orders = const [];
 
@@ -79,7 +73,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     final stored = GuestOrdersStore.all();
 
     setState(() {
-      _guestHasAny = stored.isNotEmpty;
       _orders = _visible(stored);
       _isLoading = stored.isNotEmpty;
     });
@@ -91,7 +84,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     if (!mounted) return;
 
     setState(() {
-      _guestHasAny = fresh.isNotEmpty;
       _orders = _visible(fresh);
       _isLoading = false;
     });
@@ -155,15 +147,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 ),
               ),
             ),
-            // Вкладки гостю не нужны: «Заказы ко мне» бывают только у
-            // продавца, а продавцом без учётной записи не станешь
-            // (28.09.2026). Всё остальное у него как у всех.
-            if (!widget.onlyMine && !_isGuest) _buildTabs(),
-            if (!_isGuest || _guestHasAny || _isLoading) _buildScopeRow(),
+            if (!widget.onlyMine) _buildTabs(),
+            _buildScopeRow(),
             Expanded(
-              child: _isGuest && !_guestHasAny && !_isLoading
-                  ? _buildGuestNotice()
-                  : _isLoading
+              child: _isLoading
                   ? const Center(
                       child: CircularProgressIndicator(color: activeIconColor),
                     )
@@ -194,42 +181,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                             ],
                           ),
                         ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Что видит гость.
-  ///
-  /// Заказ оформить он может, а вот список своих заказов существует только у
-  /// аккаунта: гостевой заказ ищется по коду получения, который мы показали
-  /// сразу после оформления.
-  Widget _buildGuestNotice() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.person_outline, color: textMuted, size: 44),
-            SizedBox(height: 12),
-            Text(
-              'Войдите, чтобы видеть свои заказы',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Покупать можно и без регистрации: код получения мы показываем '
-              'сразу после оформления заказа.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: textSecondary, fontSize: 14),
             ),
           ],
         ),
@@ -273,6 +224,11 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     );
   }
 
+  /// Вкладки сторон.
+  ///
+  /// У гостя вкладка одна (28.09.2026): заказы В свои точки бывают только у
+  /// продавца, а продавцом без учётной записи не станешь. Полоса при этом
+  /// остаётся на месте, чтобы экран выглядел так же, как у всех.
   Widget _buildTabs() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(25, 0, 25, 8),
@@ -282,11 +238,13 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
             setState(() => _incoming = false);
             _load();
           }),
-          const SizedBox(width: 18),
-          _tab('Заказы ко мне', _incoming, () {
-            setState(() => _incoming = true);
-            _load();
-          }),
+          if (!_isGuest) ...[
+            const SizedBox(width: 18),
+            _tab('Заказы ко мне', _incoming, () {
+              setState(() => _incoming = true);
+              _load();
+            }),
+          ],
         ],
       ),
     );
