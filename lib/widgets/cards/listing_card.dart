@@ -305,8 +305,12 @@ class _ListingCardState extends State<ListingCard> {
                     // бронировании: там человек выбирает, куда пойти, и
                     // звёзды решают. В квартирах и машинах отзывов почти нет,
                     // и пустые звёзды у каждой карточки только шумят.
+                    // Строки в карточке идут плотнее прежнего (28.09.2026):
+                    // со строкой оценки дата перестала помещаться и обрезалась
+                    // снизу. Отступы тут были на глаз, и пары пикселей между
+                    // строками хватает, чтобы они не слипались.
                     if (widget.listing.showsRating) ...[
-                      SizedBox(height: 3 * scale),
+                      SizedBox(height: 1 * scale),
                       // Тот же вид, что у товара: без отзывов одна пустая
                       // звезда и «Будь первым!», с отзывами звезда, оценка и
                       // сколько оценок. Один вид на всё приложение, чтобы
@@ -315,7 +319,7 @@ class _ListingCardState extends State<ListingCard> {
                       _ratingRow(scale),
                     ],
 
-                    SizedBox(height: 3 * scale),
+                    SizedBox(height: 2 * scale),
                     Text(
                       widget.listing.location,
                       style: TextStyle(
