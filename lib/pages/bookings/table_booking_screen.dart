@@ -63,6 +63,7 @@ class TableBookingScreen extends StatefulWidget {
     this.table,
     this.isTakeaway = false,
     this.labels = BookingLabels.standard,
+    this.photos = const [],
     required this.startsAt,
     required this.endsAt,
     required this.startsAtRaw,
@@ -86,6 +87,11 @@ class TableBookingScreen extends StatefulWidget {
   /// Слова по роду заведения (29.09.2026): столик, кресло или место.
   final BookingLabels labels;
 
+  /// Фотографии объявления (29.09.2026). Показываются, когда у зала нет
+  /// плана: пустой серый прямоугольник наверху экрана выглядит поломкой, а
+  /// фотографии заведения человек уже видел в карточке и узнаёт.
+  final List<String> photos;
+
   /// Для показа — время по часам заведения, для отправки — строки сервера.
   final DateTime startsAt;
   final DateTime endsAt;
@@ -102,6 +108,16 @@ class TableBookingScreen extends StatefulWidget {
 class _TableBookingScreenState extends State<TableBookingScreen> {
   List<PreorderBlock> _blocks = const [];
   bool _loading = true;
+
+  /// Листалка фотографий наверху экрана и точка под ней.
+  final PageController _photos = PageController();
+  int _photo = 0;
+
+  @override
+  void dispose() {
+    _photos.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -201,31 +217,70 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     );
   }
 
-  /// План зала вместо фотографии стола: своей фотографии у стола нет, а план
-  /// показывает, где этот стол стоит.
+  /// Что показать наверху экрана.
+  ///
+  /// Сначала план зала: он отвечает на вопрос «где это место». Плана нет —
+  /// фотографии заведения: человек видел их в карточке и узнаёт. Нет и их —
+  /// заглушка.
   Widget _plan() {
-    final url = widget.hall.planImageUrl;
+    final plan = widget.hall.planImageUrl;
+    final photos = plan != null ? [plan] : widget.photos;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: AspectRatio(
-        aspectRatio: 1.6,
-        child: url == null
-            ? Container(
-                color: secondaryBackground,
-                alignment: Alignment.center,
-                child: const Icon(Icons.map_outlined, color: textMuted, size: 40),
-              )
-            : Image.network(
-                url,
+    if (photos.isEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: AspectRatio(
+          aspectRatio: 1.6,
+          child: Container(
+            color: secondaryBackground,
+            alignment: Alignment.center,
+            child: const Icon(Icons.map_outlined, color: textMuted, size: 40),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: AspectRatio(
+            aspectRatio: 1.6,
+            child: PageView.builder(
+              controller: _photos,
+              itemCount: photos.length,
+              onPageChanged: (index) => setState(() => _photo = index),
+              itemBuilder: (_, index) => Image.network(
+                photos[index],
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
                   color: secondaryBackground,
                   alignment: Alignment.center,
-                  child: const Icon(Icons.map_outlined, color: textMuted, size: 40),
+                  child: const Icon(Icons.image_outlined, color: textMuted, size: 40),
                 ),
               ),
-      ),
+            ),
+          ),
+        ),
+        if (photos.length > 1) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < photos.length; i++)
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i == _photo ? activeIconColor : textMuted,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
+import 'package:lidle/models/home_models.dart';
 import 'package:lidle/pages/bookings/booking_confirm_screen.dart';
 import 'package:lidle/pages/bookings/hall_booking_screen.dart';
 import 'package:lidle/pages/bookings/hall_pick_screen.dart';
@@ -25,10 +26,15 @@ class BookingSection extends StatefulWidget {
   final int advertId;
   final String advertTitle;
 
+  /// Объявление, из карточки которого открыт блок (29.09.2026). Нужно, чтобы
+  /// на экранах брони показать его фотографии там, где у зала нет плана.
+  final Listing? listing;
+
   const BookingSection({
     super.key,
     required this.advertId,
     required this.advertTitle,
+    this.listing,
   });
 
   @override
@@ -227,6 +233,7 @@ class _BookingSectionState extends State<BookingSection> {
             ? HallPickScreen(
                 advertId: widget.advertId,
                 advertTitle: widget.advertTitle,
+                listing: widget.listing,
               )
             : HallBookingScreen(
                 advertId: widget.advertId,
@@ -234,6 +241,7 @@ class _BookingSectionState extends State<BookingSection> {
                 hall: halls.first,
                 halls: halls,
                 maxGuests: data.maxGuests,
+                listing: widget.listing,
               ),
       ),
     );

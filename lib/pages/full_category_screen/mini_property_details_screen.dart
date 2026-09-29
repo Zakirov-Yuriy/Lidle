@@ -717,6 +717,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               BookingSection(
                                 advertId: int.tryParse(_listing.id) ?? 0,
                                 advertTitle: _listing.title,
+                                listing: _listing,
                               ),
                               _buildLocationCard(),
                               const SizedBox(height: 10),
