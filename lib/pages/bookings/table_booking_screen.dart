@@ -59,7 +59,8 @@ class TableBookingScreen extends StatefulWidget {
     required this.advertId,
     required this.advertTitle,
     required this.hall,
-    required this.table,
+    this.table,
+    this.isTakeaway = false,
     required this.startsAt,
     required this.endsAt,
     required this.startsAtRaw,
@@ -71,7 +72,14 @@ class TableBookingScreen extends StatefulWidget {
   final int advertId;
   final String advertTitle;
   final BookingHall hall;
-  final BookingHallTable table;
+
+  /// Выбранный стол. Пусто у заказа навынос (29.09.2026): человек забирает
+  /// еду сам, и садиться ему некуда.
+  final BookingHallTable? table;
+
+  /// Заказ навынос: столик не бронируется, депозита нет, вместо «Важно!»
+  /// заведения стоит объяснение, что будет дальше.
+  final bool isTakeaway;
 
   /// Для показа — время по часам заведения, для отправки — строки сервера.
   final DateTime startsAt;
@@ -106,7 +114,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     await PreorderService.load(
       widget.advertId,
       hallId: widget.hall.id,
-      tableKey: widget.table.key,
+      tableKey: widget.table?.key,
     );
 
     if (!mounted) return;
@@ -137,11 +145,9 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                           _plan(),
                           const SizedBox(height: 14),
                           _tableCard(),
-                          if (widget.table.deposit > 0) ...[
-                            const SizedBox(height: 12),
-                            _deposit(),
-                          ],
-                          if (widget.table.note.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          _deposit(),
+                          if (_noteText.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             _note(),
                           ],
@@ -180,9 +186,9 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: _cancel,
-            child: const Text(
-              'Отмена брони',
-              style: TextStyle(color: activeIconColor, fontSize: 15),
+            child: Text(
+              widget.isTakeaway ? 'Отмена заказа' : 'Отмена брони',
+              style: const TextStyle(color: activeIconColor, fontSize: 15),
             ),
           ),
         ],
@@ -219,6 +225,8 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
   }
 
   Widget _tableCard() {
+    final table = widget.table;
+
     return _panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +237,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Столик № ${widget.table.number}',
+            table == null ? 'Столик не выбран' : 'Столик № ${table.number}',
             style: const TextStyle(
               color: textPrimary,
               fontSize: 18,
@@ -237,13 +245,17 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          _row('Количество мест', '${widget.table.seats}'),
+          // У самовывоза мест нет, но строку оставляем: так видно, что это не
+          // потерялось, а именно не нужно.
+          _row('Количество мест', table == null ? '-' : '${table.seats}'),
           _row('Дата бронирования', _date(widget.startsAt)),
           _row('Время бронирования', '${_time(widget.startsAt)}-${_time(widget.endsAt)}'),
         ],
       ),
     );
   }
+
+  int get _deposedAmount => widget.table?.deposit ?? 0;
 
   Widget _deposit() {
     return _panel(
@@ -270,7 +282,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '${widget.table.deposit} ₽',
+            _deposedAmount > 0 ? '$_deposedAmount ₽' : 'Нет',
             style: const TextStyle(
               color: textPrimary,
               fontSize: 18,
@@ -281,6 +293,12 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
       ),
     );
   }
+
+  /// «Важно!»: у столика это примечание заведения, у самовывоза — что будет
+  /// дальше с заказом.
+  String get _noteText => widget.isTakeaway
+      ? 'Вы выбрали самовывоз. По готовности вашего заказа с вами свяжется администратор.'
+      : (widget.table?.note ?? '');
 
   Widget _note() {
     return _panel(
@@ -293,7 +311,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            widget.table.note,
+            _noteText,
             style: const TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
           ),
         ],
@@ -408,9 +426,9 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
           onPressed: _loading ? null : _goToConfirm,
-          child: const Text(
-            'Забронировать',
-            style: TextStyle(color: Colors.white, fontSize: 16),
+          child: Text(
+            widget.isTakeaway ? 'Оформить заказ' : 'Забронировать',
+            style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
         ),
       ),
@@ -458,7 +476,8 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           kind: kind,
           blocks: _blocksOf(kind),
           hallId: widget.hall.id,
-          tableKey: widget.table.key,
+          tableKey: widget.table?.key,
+          isTakeaway: widget.isTakeaway,
         ),
       ),
     );
@@ -472,7 +491,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
       lineId: line.id,
       quantity: 0,
       hallId: widget.hall.id,
-      tableKey: widget.table.key,
+      tableKey: widget.table?.key,
     );
 
     if (!mounted) return;
@@ -485,6 +504,8 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
   void _cancel() => Navigator.of(context).pop();
 
   Future<void> _goToConfirm() async {
+    final table = widget.table;
+
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -496,14 +517,21 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           startsAtRaw: widget.startsAtRaw,
           endsAtRaw: widget.endsAtRaw,
           needsConfirmation: widget.needsConfirmation,
-          title: 'Подтверждение брони',
+          title: widget.isTakeaway ? 'Подтверждение заказа' : 'Подтверждение брони',
           hallId: widget.hall.id,
-          tableKey: widget.table.key,
-          place: '${widget.hall.name}, столик № ${widget.table.number}',
-          maxGuests: widget.table.seats > 0 ? widget.table.seats : widget.maxGuests,
-          tableNumber: widget.table.number,
-          tableSeats: widget.table.seats,
-          deposit: widget.table.deposit.toDouble(),
+          tableKey: widget.table?.key,
+          isTakeaway: widget.isTakeaway,
+          place: table == null
+              ? '${widget.hall.name}, самовывоз'
+              : '${widget.hall.name}, столик № ${table.number}',
+          // За столиком не больше, чем он вмещает. У самовывоза гостей не
+          // спрашивают вовсе: человек не садится.
+          maxGuests: table == null
+              ? null
+              : (table.seats > 0 ? table.seats : widget.maxGuests),
+          tableNumber: table?.number,
+          tableSeats: table?.seats,
+          deposit: (table?.deposit ?? 0).toDouble(),
         ),
       ),
     );

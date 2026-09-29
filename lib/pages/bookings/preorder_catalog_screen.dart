@@ -41,6 +41,7 @@ class PreorderCatalogScreen extends StatefulWidget {
     required this.blocks,
     this.hallId,
     this.tableKey,
+    this.isTakeaway = false,
   });
 
   final int advertId;
@@ -55,6 +56,9 @@ class PreorderCatalogScreen extends StatefulWidget {
   /// Нужны, чтобы в счёте считался депозит выбранного стола.
   final int? hallId;
   final String? tableKey;
+
+  /// Заказ навынос (29.09.2026): то же меню, другие слова на кнопке.
+  final bool isTakeaway;
 
   @override
   State<PreorderCatalogScreen> createState() => _PreorderCatalogScreenState();
@@ -81,7 +85,9 @@ class _PreorderCatalogScreenState extends State<PreorderCatalogScreen> {
   PreorderSort _sort = PreorderSort.oldest;
   bool _busy = false;
 
-  String get _title => widget.blocks.isEmpty ? 'Предзаказ' : widget.blocks.first.title;
+  String get _title => widget.isTakeaway
+      ? 'Самовывоз'
+      : (widget.blocks.isEmpty ? 'Предзаказ' : widget.blocks.first.title);
 
   @override
   Widget build(BuildContext context) {
@@ -292,9 +298,9 @@ class _PreorderCatalogScreenState extends State<PreorderCatalogScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text(
-            'Добавить к брони',
-            style: TextStyle(color: Colors.white, fontSize: 16),
+          child: Text(
+            widget.isTakeaway ? 'Добавить к самовывозу' : 'Добавить к брони',
+            style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
         ),
       ),

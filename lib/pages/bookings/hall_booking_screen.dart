@@ -498,6 +498,31 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 10),
+        // Заказ навынос (29.09.2026): столик не нужен, нужно только время, к
+        // которому заказ будет готов. Поэтому кнопка живёт, даже когда стол не
+        // выбран, и гаснет только без выбранного времени.
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              // Закрытый зал заказ навынос тоже не примет: готовить некому.
+              side: BorderSide(color: _canTakeaway ? activeIconColor : textMuted),
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: _canTakeaway ? _goToTakeaway : null,
+            child: Text(
+              'Сделать заказ на самовывоз',
+              style: TextStyle(
+                color: _canTakeaway ? activeIconColor : textMuted,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -648,6 +673,59 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
 
     // Время или стол заняли, пока человек заполнял форму: перечитываем день,
     // чтобы он выбирал из свежего.
+    if (result == false) {
+      await _loadDay();
+    }
+  }
+
+  /// Можно ли заказать навынос: нужно выбранное время в рабочие часы. Стол
+  /// при этом не нужен (29.09.2026).
+  bool get _canTakeaway => _slot != null && _isWorking;
+
+  /// Заказ навынос (29.09.2026): та же карточка заказа, только без стола.
+  Future<void> _goToTakeaway() async {
+    final slot = _slot;
+
+    if (slot == null) return;
+
+    final token = await TokenService.getCurrentToken();
+
+    if (!mounted) return;
+
+    if (token == null || token.isEmpty) {
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Войдите в профиль, чтобы сделать заказ',
+      );
+
+      return;
+    }
+
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TableBookingScreen(
+          advertId: widget.advertId,
+          advertTitle: widget.advertTitle,
+          hall: _hall,
+          isTakeaway: true,
+          startsAt: slot.startsAt,
+          endsAt: slot.endsAt,
+          startsAtRaw: slot.startsAtRaw,
+          endsAtRaw: slot.endsAtRaw,
+          needsConfirmation: _availability?.needsConfirmation ?? false,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (result == true) {
+      Navigator.of(context).pop(true);
+
+      return;
+    }
+
     if (result == false) {
       await _loadDay();
     }

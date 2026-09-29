@@ -173,6 +173,7 @@ class BookingsService {
     int? hallId,
     bool wholeHall = false,
     String? tableKey,
+    bool isTakeaway = false,
   }) async {
     final body = <String, dynamic>{
       'starts_at': startsAt,
@@ -183,6 +184,9 @@ class BookingsService {
       body['hall_id'] = hallId;
       body['whole_hall'] = wholeHall;
     }
+
+    // Заказ навынос (29.09.2026): столика нет, место не занимается.
+    if (isTakeaway) body['is_takeaway'] = true;
 
     // Стол, выбранный гостем на схеме (28.09.2026). Пусто — сервер подберёт
     // сам, как было раньше.

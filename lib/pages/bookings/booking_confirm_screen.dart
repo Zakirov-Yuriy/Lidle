@@ -72,6 +72,9 @@ class BookingConfirmScreen extends StatefulWidget {
   final int? tableSeats;
   final double deposit;
 
+  /// Заказ навынос (29.09.2026): столика нет, но предзаказ и счёт есть.
+  final bool isTakeaway;
+
   const BookingConfirmScreen({
     super.key,
     required this.advertId,
@@ -91,6 +94,7 @@ class BookingConfirmScreen extends StatefulWidget {
     this.tableNumber,
     this.tableSeats,
     this.deposit = 0,
+    this.isTakeaway = false,
   });
 
   @override
@@ -170,6 +174,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
       hallId: widget.hallId,
       wholeHall: widget.wholeHall,
       tableKey: widget.tableKey,
+      isTakeaway: widget.isTakeaway,
       comment: _commentController.text,
       contactName: _nameController.text,
       contactPhone: _phoneController.text,
@@ -251,7 +256,9 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                     behavior: HitTestBehavior.opaque,
                     onTap: _cancelBooking,
                     child: Text(
-                      widget.tableKey != null ? 'Отмена брони' : 'Отмена записи',
+                      widget.isTakeaway
+                          ? 'Отмена заказа'
+                          : (widget.tableKey != null ? 'Отмена брони' : 'Отмена записи'),
                       style: const TextStyle(color: activeIconColor, fontSize: 15),
                     ),
                   ),
@@ -279,7 +286,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                   // Только у брони стола: корзина общая на приложение, и на
                   // записи к мастеру остаток ресторанной корзины был бы здесь
                   // совершенно некстати.
-                  if (widget.tableKey != null)
+                  if (widget.tableKey != null || widget.isTakeaway)
                   ValueListenableBuilder<PreorderCart>(
                     valueListenable: PreorderService.cart,
                     builder: (_, cart, __) => Column(
