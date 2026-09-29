@@ -8,6 +8,7 @@ import 'package:lidle/pages/full_category_screen/mini_property_details_screen.da
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
+import 'package:lidle/widgets/bookings/booking_calendar_dialog.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 /// Бронь столика по схеме зала (29.09.2026).
@@ -575,27 +576,18 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
   Future<void> _pickDate() async {
     final now = DateTime.now();
 
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _date.isBefore(now) ? now : _date,
-      firstDate: DateTime(now.year, now.month, now.day),
+    // Свой календарь вместо системного (29.09.2026): тот показывал английские
+    // дни недели и светлую вёрстку, и выглядел чужим на тёмном экране.
+    final picked = await showBookingDatePicker(
+      context,
+      initial: _date.isBefore(now) ? now : _date,
+      first: DateTime(now.year, now.month, now.day),
       // Дальше горизонта объявления бронировать всё равно нельзя, а
       // календарь без края выглядит как обещание.
       // Столько же, сколько просит календарь в карточке: дальше сервер всё
       // равно обрежет по горизонту объявления.
-      lastDate: now.add(const Duration(days: 62)),
-      helpText: 'Дата бронирования',
-      cancelText: 'Отмена',
-      confirmText: 'Готово',
-      builder: (context, child) => Theme(
-        data: ThemeData.dark().copyWith(
-          colorScheme: const ColorScheme.dark(
-            primary: activeIconColor,
-            surface: formBackground,
-          ),
-        ),
-        child: child ?? const SizedBox.shrink(),
-      ),
+      last: now.add(const Duration(days: 62)),
+      title: 'Дата бронирования',
     );
 
     if (picked == null) return;
