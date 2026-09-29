@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/models/home_models.dart';
-import 'package:lidle/pages/bookings/booking_confirm_screen.dart';
+import 'package:lidle/pages/bookings/table_booking_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -623,21 +623,22 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
       return;
     }
 
+    // Сначала карточка стола (29.09.2026): там человек видит, что именно ему
+    // достанется, и собирает предзаказ. Подтверждение брони открывается уже
+    // оттуда.
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => BookingConfirmScreen(
+        builder: (_) => TableBookingScreen(
           advertId: widget.advertId,
           advertTitle: widget.advertTitle,
+          hall: _hall,
+          table: table,
           startsAt: slot.startsAt,
           endsAt: slot.endsAt,
           startsAtRaw: slot.startsAtRaw,
           endsAtRaw: slot.endsAtRaw,
           needsConfirmation: _availability?.needsConfirmation ?? false,
-          title: 'Подтверждение брони',
-          hallId: _hall.id,
-          tableKey: table.key,
-          place: '${_hall.name}, столик № ${table.number}',
           // За столиком не больше, чем он вмещает: число гостей человек
           // указывает на подтверждении.
           maxGuests: table.seats > 0 ? table.seats : widget.maxGuests,

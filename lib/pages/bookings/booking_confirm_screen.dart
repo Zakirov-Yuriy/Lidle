@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/models/bookings/preorder.dart';
+import 'package:lidle/services/preorder_service.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+
+/// Порядок блоков предзаказа на счёте, как на макете (29.09.2026).
+const List<String> _preorderOrder = ['menu', 'product', 'service', 'delivery'];
+
+/// Заголовок блока и ссылка возврата к витрине.
+const Map<String, List<String>> _preorderWords = {
+  'menu': ['Предзаказ меню', 'Перейти в меню'],
+  'product': ['Добавить товар', 'Перейти в товар'],
+  'service': ['Добавить услугу', 'Перейти в услугу'],
+  'delivery': ['Добавить доставку', 'Перейти в доставку'],
+};
+
+/// Цена без лишних нулей: 755, а не 755.00.
+String _money(double value) {
+  if (value == value.roundToDouble()) return value.toInt().toString();
+
+  return value.toStringAsFixed(2);
+}
 
 /// Экран подтверждения записи: показывает выбранное время, спрашивает имя,
 /// телефон и комментарий, отправляет бронь.
@@ -44,6 +64,12 @@ class BookingConfirmScreen extends StatefulWidget {
   /// подберёт столик сам.
   final String? tableKey;
 
+  /// Стол и его депозит (29.09.2026): нужны для счёта. Пусто у записи на
+  /// услугу и у банкета — там счёта нет вовсе.
+  final String? tableNumber;
+  final int? tableSeats;
+  final double deposit;
+
   const BookingConfirmScreen({
     super.key,
     required this.advertId,
@@ -60,6 +86,9 @@ class BookingConfirmScreen extends StatefulWidget {
     this.place,
     this.tableKey,
     this.maxGuests,
+    this.tableNumber,
+    this.tableSeats,
+    this.deposit = 0,
   });
 
   @override
@@ -72,6 +101,10 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
   final _commentController = TextEditingController();
 
   int _guests = 1;
+
+  /// Гостей выбрали руками: до этого в поле стоит «Выбрать» (29.09.2026).
+  bool _guestsPicked = false;
+
   bool _isSending = false;
 
   @override
@@ -115,6 +148,15 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
   Future<void> _submit() async {
     if (_isSending) return;
 
+    // Сколько человек придёт, заведению важно: стол на четверых и стол на
+    // двоих это разные столы. Молча отправлять одного гостя, когда в поле
+    // стоит «Выбрать», нечестно (29.09.2026).
+    if (widget.maxGuests != null && widget.fixedGuests == null && !_guestsPicked) {
+      SnackBarHelper.showWarning(context, 'Выберите количество гостей');
+
+      return;
+    }
+
     setState(() => _isSending = true);
 
     final result = await BookingsService.create(
@@ -137,6 +179,11 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
 
     switch (result.kind) {
       case BookingResultKind.created:
+        // Корзина уехала в бронь: сервер пометил её строки номером брони, и
+        // держать их в памяти дальше нельзя — иначе следующая бронь показала
+        // бы уже заказанное (29.09.2026).
+        PreorderService.forget();
+
         SnackBarHelper.showSuccess(
           context,
           result.needsOwnerAnswer
@@ -207,23 +254,51 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                   ),
                   const SizedBox(height: 16),
                   _buildSummaryCard(),
+                  // Предзаказ и счёт (29.09.2026). Показываем до полей: человек
+                  // сначала смотрит, за что платит, и только потом называется.
+                  //
+                  // Только у брони стола: корзина общая на приложение, и на
+                  // записи к мастеру остаток ресторанной корзины был бы здесь
+                  // совершенно некстати.
+                  if (widget.tableKey != null)
+                  ValueListenableBuilder<PreorderCart>(
+                    valueListenable: PreorderService.cart,
+                    builder: (_, cart, __) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final kind in _preorderOrder)
+                          if (cart.ofKind(kind).isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            _buildPreorderBlock(kind, cart.ofKind(kind)),
+                          ],
+                        if (widget.tableNumber != null) ...[
+                          const SizedBox(height: 12),
+                          _buildTableCard(),
+                        ],
+                        if (!cart.isEmpty || widget.deposit > 0) ...[
+                          const SizedBox(height: 12),
+                          _buildBasket(cart),
+                        ],
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   _buildField(
-                    label: 'Как к вам обращаться',
+                    label: 'Ваше имя',
                     controller: _nameController,
-                    hint: 'Имя',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildField(
-                    label: 'Телефон для связи',
-                    controller: _phoneController,
-                    hint: '+7',
-                    keyboardType: TextInputType.phone,
+                    hint: 'Введите',
                   ),
                   if (widget.maxGuests != null && widget.fixedGuests == null) ...[
                     const SizedBox(height: 12),
                     _buildGuestsPicker(),
                   ],
+                  const SizedBox(height: 12),
+                  _buildField(
+                    label: 'Номер телефона',
+                    controller: _phoneController,
+                    hint: 'Введите',
+                    keyboardType: TextInputType.phone,
+                  ),
                   const SizedBox(height: 12),
                   _buildField(
                     label: 'Комментарий, необязательно',
@@ -351,6 +426,220 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
     );
   }
 
+  /// Предзаказ одного рода: что человек набрал и куда вернуться, если передумал.
+  Widget _buildPreorderBlock(String kind, List<PreorderLine> lines) {
+    final words = _preorderWords[kind] ?? const ['Предзаказ', 'Перейти'];
+
+    return _panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            words[0],
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Ваш предзаказ:',
+            style: TextStyle(color: textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 6),
+          for (final line in lines)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${line.name}: ${line.quantity}шт',
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _dropLine(line),
+                    child: const Icon(Icons.close, color: textSecondary, size: 18),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 4),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            // Возврат на карточку стола: витрина открывается оттуда, и второй
+            // путь к тому же экрану только запутал бы.
+            onTap: () => Navigator.pop(context),
+            child: Text(
+              words[1],
+              style: const TextStyle(color: activeIconColor, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// «Бронирование столик № 5»: что именно забронировано.
+  Widget _buildTableCard() {
+    return _panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Бронирование столик № ${widget.tableNumber}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (widget.tableSeats != null && widget.tableSeats! > 0)
+            _line('Количество мест', '${widget.tableSeats}'),
+          _line('Дата бронирования', _humanDate(widget.startsAt)),
+          _line(
+            'Время бронирования',
+            '${_time(widget.startsAt)}-${_time(widget.endsAt)}',
+          ),
+          if (widget.deposit > 0)
+            _line('Депозит за столик', '${_money(widget.deposit)} ₽'),
+        ],
+      ),
+    );
+  }
+
+  /// «Ваша корзина»: строки предзаказа и всё, что войдёт в счёт.
+  Widget _buildBasket(PreorderCart cart) {
+    final totals = cart.totals;
+
+    // Депозит знаем и сами: сервер считает его только когда корзину просили
+    // вместе со столом.
+    final deposit = totals.depositAmount > 0 ? totals.depositAmount : widget.deposit;
+    final total = totals.itemsTotal + deposit + totals.feeAmount;
+
+    return _panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ваша корзина',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (final line in cart.items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      line.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 50,
+                    child: Text(
+                      '${line.quantity}шт',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(color: textSecondary, fontSize: 14),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      '${_money(line.sum)}₽',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (cart.items.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            const Divider(color: Color(0xFF2C3A48), height: 1),
+            const SizedBox(height: 8),
+          ],
+          if (deposit > 0) _line('Депозит за столик', '${_money(deposit)} ₽'),
+          if (totals.feeAmount > 0)
+            _line('Оплата за услугу бронирования', '${_money(totals.feeAmount)} ₽'),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Итог к оплате:',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                '${_money(total)} ₽',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _panel({required Widget child}) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: child,
+      );
+
+  Widget _line(String title, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(color: textSecondary, fontSize: 14),
+              ),
+            ),
+            Text(value, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          ],
+        ),
+      );
+
+  Future<void> _dropLine(PreorderLine line) async {
+    final error = await PreorderService.setQuantity(
+      widget.advertId,
+      lineId: line.id,
+      quantity: 0,
+      hallId: widget.hallId,
+      tableKey: widget.tableKey,
+    );
+
+    if (!mounted || error == null) return;
+
+    SnackBarHelper.showWarning(context, error);
+  }
+
   Widget _buildField({
     required String label,
     required TextEditingController controller,
@@ -385,38 +674,166 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
     );
   }
 
+  /// Количество гостей: окном со списком, как на макете заказчика. Больше,
+  /// чем помещается за стол, выбрать нельзя.
   Widget _buildGuestsPicker() {
-    final maxGuests = widget.maxGuests ?? 1;
-
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Гостей',
+          'Количество гостей',
           style: TextStyle(color: textSecondary, fontSize: 13),
         ),
-        const Spacer(),
-        IconButton(
-          onPressed: _guests > 1 ? () => setState(() => _guests--) : null,
-          icon: const Icon(Icons.remove_circle_outline, color: activeIconColor),
-        ),
-        Text(
-          '$_guests',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: _pickGuests,
+          child: Container(
+            height: 47,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: formBackground,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _guestsPicked ? _guestsWord(_guests) : 'Выбрать',
+                    style: TextStyle(
+                      color: _guestsPicked ? Colors.white : textMuted,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.keyboard_arrow_down, color: textSecondary),
+              ],
+            ),
           ),
-        ),
-        IconButton(
-          onPressed:
-              _guests < maxGuests ? () => setState(() => _guests++) : null,
-          icon: const Icon(Icons.add_circle_outline, color: activeIconColor),
         ),
       ],
     );
   }
 
+  Future<void> _pickGuests() async {
+    final maxGuests = widget.maxGuests ?? 1;
+    int chosen = _guests;
+
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setLocal) => Dialog(
+          backgroundColor: formBackground,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 10, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Количество гостей',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: textSecondary, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        for (var i = 1; i <= maxGuests; i++)
+                          InkWell(
+                            onTap: () => setLocal(() => chosen = i),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _guestsWord(i),
+                                      style: const TextStyle(color: Colors.white, fontSize: 15),
+                                    ),
+                                  ),
+                                  Icon(
+                                    i == chosen
+                                        ? Icons.radio_button_checked
+                                        : Icons.radio_button_unchecked,
+                                    color: i == chosen ? activeIconColor : textMuted,
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Отмена', style: TextStyle(color: textPrimary)),
+                    ),
+                    const SizedBox(width: 6),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: activeIconColor),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: () => Navigator.pop(context, chosen),
+                      child: const Text('Готово', style: TextStyle(color: activeIconColor)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      _guests = picked;
+      _guestsPicked = true;
+    });
+  }
+
+  String _guestsWord(int count) {
+    final last = count % 10;
+    final lastTwo = count % 100;
+
+    if (last == 1 && lastTwo != 11) return '$count гость';
+    if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return '$count гостя';
+
+    return '$count гостей';
+  }
+
   Widget _buildSubmitButton() {
+    // Слушаем корзину: убрали позицию крестиком — подпись кнопки должна
+    // поменяться вместе со счётом.
+    return ValueListenableBuilder<PreorderCart>(
+      valueListenable: PreorderService.cart,
+      builder: (_, __, ___) => _submitButton(),
+    );
+  }
+
+  Widget _submitButton() {
     return SizedBox(
       width: double.infinity,
       height: 47,
@@ -439,7 +856,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                 ),
               )
             : Text(
-                widget.needsConfirmation ? 'Отправить заявку' : 'Забронировать',
+                _buttonTitle,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -448,6 +865,20 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
               ),
       ),
     );
+  }
+
+  /// Что написано на кнопке.
+  ///
+  /// «Внести депозит» — когда за бронь действительно есть что платить. Сама
+  /// оплата ещё не подключена: кнопка создаёт бронь, а счёт человек видит
+  /// выше, чтобы знать, сколько с него возьмут.
+  String get _buttonTitle {
+    if (widget.needsConfirmation) return 'Отправить заявку';
+
+    final totals = PreorderService.cart.value.totals;
+    final hasBill = widget.deposit > 0 || totals.itemsTotal > 0 || totals.feeAmount > 0;
+
+    return hasBill ? 'Внести депозит' : 'Забронировать';
   }
 
   /// Уложилась ли бронь в один день. У записи на услугу да, у жилья нет.
