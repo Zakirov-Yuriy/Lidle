@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/models/bookings/booking_labels.dart';
 import 'package:lidle/models/bookings/preorder.dart';
 import 'package:lidle/services/preorder_service.dart';
 import 'package:lidle/services/bookings_service.dart';
@@ -75,6 +76,9 @@ class BookingConfirmScreen extends StatefulWidget {
   /// Заказ навынос (29.09.2026): столика нет, но предзаказ и счёт есть.
   final bool isTakeaway;
 
+  /// Слова по роду заведения (29.09.2026): столик, кресло или место.
+  final BookingLabels labels;
+
   const BookingConfirmScreen({
     super.key,
     required this.advertId,
@@ -95,6 +99,7 @@ class BookingConfirmScreen extends StatefulWidget {
     this.tableSeats,
     this.deposit = 0,
     this.isTakeaway = false,
+    this.labels = BookingLabels.standard,
   });
 
   @override
@@ -523,7 +528,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Бронирование столик № ${widget.tableNumber}',
+            'Бронирование: ${widget.labels.seat('${widget.tableNumber}')}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -539,7 +544,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
             '${_time(widget.startsAt)}-${_time(widget.endsAt)}',
           ),
           if (widget.deposit > 0)
-            _line('Депозит за столик', '${_money(widget.deposit)} ₽'),
+            _line(widget.labels.seatDeposit, '${_money(widget.deposit)} ₽'),
         ],
       ),
     );
@@ -604,7 +609,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
             const Divider(color: Color(0xFF2C3A48), height: 1),
             const SizedBox(height: 8),
           ],
-          if (deposit > 0) _line('Депозит за столик', '${_money(deposit)} ₽'),
+          if (deposit > 0) _line(widget.labels.seatDeposit, '${_money(deposit)} ₽'),
           if (totals.feeAmount > 0)
             _line('Оплата за услугу бронирования', '${_money(totals.feeAmount)} ₽'),
           const SizedBox(height: 8),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
+import 'package:lidle/models/bookings/booking_labels.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/pages/bookings/hall_booking_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
@@ -39,6 +40,10 @@ class HallPickScreen extends StatefulWidget {
 
 class _HallPickScreenState extends State<HallPickScreen> {
   List<BookingHall> _halls = const [];
+
+  /// Слова по роду заведения (29.09.2026): в ресторане зал со столиками, в
+  /// барбершопе зал с креслами.
+  BookingLabels _labels = BookingLabels.standard;
   int? _maxGuests;
   bool _isLoading = true;
 
@@ -77,6 +82,7 @@ class _HallPickScreenState extends State<HallPickScreen> {
     setState(() {
       _halls = halls;
       _maxGuests = data?.maxGuests;
+      _labels = data?.labels ?? BookingLabels.standard;
       _isLoading = false;
     });
   }
@@ -134,11 +140,11 @@ class _HallPickScreenState extends State<HallPickScreen> {
                       ],
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                     child: Text(
-                      'Выберите зал',
-                      style: TextStyle(
+                      _labels.unitPick,
+                      style: const TextStyle(
                         color: textPrimary,
                         fontSize: 20,
                         fontWeight: FontWeight.w600,

@@ -282,9 +282,9 @@ class _BookingSectionState extends State<BookingSection> {
                 ),
               ),
               onPressed: () => _openHallPlan(data, withPlan),
-              child: const Text(
-                'Выбрать столик на схеме',
-                style: TextStyle(color: activeIconColor, fontSize: 16),
+              child: Text(
+                data.labels.seatPick,
+                style: const TextStyle(color: activeIconColor, fontSize: 16),
               ),
             ),
           ),

@@ -19,6 +19,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
+import 'package:lidle/models/bookings/booking_labels.dart';
 import 'package:lidle/models/bookings/preorder.dart';
 import 'package:lidle/pages/bookings/booking_confirm_screen.dart';
 import 'package:lidle/pages/bookings/preorder_catalog_screen.dart';
@@ -30,17 +31,17 @@ import 'package:lidle/widgets/components/header.dart';
 const Map<String, List<String>> _blockWords = {
   'menu': [
     'Добавить меню',
-    'Вы можете заранее заказать блюда для вашего столика',
+    'Вы можете заранее заказать блюда к вашему визиту',
     'Перейти в меню',
   ],
   'product': [
     'Добавить товар',
-    'Вы можете заранее заказать товар для вашего столика',
+    'Вы можете заранее заказать товар к вашему визиту',
     'Перейти в товар',
   ],
   'service': [
     'Добавить услугу',
-    'Вы можете заранее заказать услугу для вашего столика',
+    'Вы можете заранее заказать услугу к вашему визиту',
     'Перейти в услугу',
   ],
   'delivery': [
@@ -61,6 +62,7 @@ class TableBookingScreen extends StatefulWidget {
     required this.hall,
     this.table,
     this.isTakeaway = false,
+    this.labels = BookingLabels.standard,
     required this.startsAt,
     required this.endsAt,
     required this.startsAtRaw,
@@ -80,6 +82,9 @@ class TableBookingScreen extends StatefulWidget {
   /// Заказ навынос: столик не бронируется, депозита нет, вместо «Важно!»
   /// заведения стоит объяснение, что будет дальше.
   final bool isTakeaway;
+
+  /// Слова по роду заведения (29.09.2026): столик, кресло или место.
+  final BookingLabels labels;
 
   /// Для показа — время по часам заведения, для отправки — строки сервера.
   final DateTime startsAt;
@@ -237,7 +242,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            table == null ? 'Столик не выбран' : 'Столик № ${table.number}',
+            table == null ? widget.labels.seatNone : widget.labels.seat(table.number),
             style: const TextStyle(
               color: textPrimary,
               fontSize: 18,
@@ -523,12 +528,13 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           isTakeaway: widget.isTakeaway,
           place: table == null
               ? '${widget.hall.name}, самовывоз'
-              : '${widget.hall.name}, столик № ${table.number}',
+              : '${widget.hall.name}, ${widget.labels.seat(table.number).toLowerCase()}',
           // За столиком не больше, чем он вмещает. У самовывоза гостей не
           // спрашивают вовсе: человек не садится.
           maxGuests: table == null
               ? null
               : (table.seats > 0 ? table.seats : widget.maxGuests),
+          labels: widget.labels,
           tableNumber: table?.number,
           tableSeats: table?.seats,
           deposit: (table?.deposit ?? 0).toDouble(),

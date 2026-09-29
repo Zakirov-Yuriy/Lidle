@@ -27,6 +27,39 @@ class BookingLabels {
   /// «Перерыв между записями».
   final String bufferTitle;
 
+  // ── Слова про единицу и место (29.09.2026) ──────────────────────
+  //
+  // Механика у ресторана и барбершопа одна, а слова разные: там столик,
+  // здесь кресло. Род меняет всё предложение, поэтому сервер присылает
+  // фразы целиком, а не одно слово для подстановки.
+
+  /// «Выберите зал» / «Выберите зону».
+  final String unitPick;
+
+  /// «Сменить зал».
+  final String unitChange;
+
+  /// Название единицы, когда своего у неё нет: «Зал», «Зона».
+  final String unitFallback;
+
+  /// «Выбрать столик на схеме» / «Выбрать кресло на схеме».
+  final String seatPick;
+
+  /// «Столик № :number» / «Кресло № :number».
+  final String seatTitle;
+
+  /// «Столик не выбран» / «Кресло не выбрано».
+  final String seatNone;
+
+  /// «Депозит за столик» / «Депозит за кресло».
+  final String seatDeposit;
+
+  /// «Этот столик уже занят» / «Это кресло уже занято».
+  final String seatBusy;
+
+  /// «Перейти к бронированию» / «Перейти к записи».
+  final String bookingGo;
+
   const BookingLabels({
     required this.bookTitle,
     required this.bookButton,
@@ -35,7 +68,19 @@ class BookingLabels {
     required this.slotsSubtitle,
     required this.durationTitle,
     required this.bufferTitle,
+    this.unitPick = 'Выберите зону',
+    this.unitChange = 'Сменить зону',
+    this.unitFallback = 'Зона',
+    this.seatPick = 'Выбрать место на схеме',
+    this.seatTitle = 'Место № :number',
+    this.seatNone = 'Место не выбрано',
+    this.seatDeposit = 'Депозит за место',
+    this.seatBusy = 'Это место уже занято',
+    this.bookingGo = 'Перейти к записи',
   });
+
+  /// Номер места в подпись: «Столик № 5».
+  String seat(String number) => seatTitle.replaceAll(':number', number);
 
   static const BookingLabels standard = BookingLabels(
     bookTitle: 'Записаться',
@@ -66,6 +111,15 @@ class BookingLabels {
       slotsSubtitle: text('slots_subtitle', standard.slotsSubtitle),
       durationTitle: text('duration_title', standard.durationTitle),
       bufferTitle: text('buffer_title', standard.bufferTitle),
+      unitPick: text('unit_pick', standard.unitPick),
+      unitChange: text('unit_change', standard.unitChange),
+      unitFallback: text('unit_fallback', standard.unitFallback),
+      seatPick: text('seat_pick', standard.seatPick),
+      seatTitle: text('seat_title', standard.seatTitle),
+      seatNone: text('seat_none', standard.seatNone),
+      seatDeposit: text('seat_deposit', standard.seatDeposit),
+      seatBusy: text('seat_busy', standard.seatBusy),
+      bookingGo: text('booking_go', standard.bookingGo),
     );
   }
 

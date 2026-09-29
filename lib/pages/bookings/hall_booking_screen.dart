@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
+import 'package:lidle/models/bookings/booking_labels.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/pages/bookings/preorder_catalog_screen.dart';
 import 'package:lidle/pages/bookings/table_booking_screen.dart';
@@ -378,7 +379,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
   Widget _plan() {
     if (!_hall.hasLayout) {
       return const Text(
-        'Схему зала здесь пока не расставили. Столик подберёт заведение.',
+        'Схему зала здесь пока не расставили. Место подберёт заведение.',
         style: TextStyle(color: textSecondary, fontSize: 14),
       );
     }
@@ -426,9 +427,9 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
         const SizedBox(height: 10),
         Text(
           _slot == null
-              ? 'Выберите время, и на схеме станет видно, какие столики свободны.'
+              ? 'Выберите время, и на схеме станет видно, какие места свободны.'
               : (_isWorking
-                  ? 'Красный столик занят, зелёный вы выбрали.'
+                  ? 'Красное место занято, зелёное вы выбрали.'
                   : 'В это время зал не работает.'),
           style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
         ),
@@ -452,9 +453,9 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
         ),
         const SizedBox(height: 10),
         if (table == null)
-          const Text(
-            'Столик пока не выбран.',
-            style: TextStyle(color: textSecondary, fontSize: 14),
+          Text(
+            _labels.seatNone,
+            style: const TextStyle(color: textSecondary, fontSize: 14),
           )
         else
           Row(
@@ -468,7 +469,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
                         style: const TextStyle(color: textSecondary, fontSize: 14),
                       ),
                       TextSpan(
-                        text: 'Столик № ${table.number}',
+                        text: _labels.seat(table.number),
                         style: const TextStyle(color: textPrimary, fontSize: 14),
                       ),
                     ],
@@ -496,7 +497,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
             ),
             onPressed: table == null ? null : () => _goToConfirm(table),
             child: Text(
-              'Перейти к бронированию',
+              _labels.bookingGo,
               style: TextStyle(
                 color: table == null ? textMuted : const Color(0xFF3ECF6E),
                 fontSize: 16,
@@ -556,7 +557,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
     }
 
     if (!table.isFree) {
-      SnackBarHelper.showWarning(context, 'Этот столик уже занят');
+      SnackBarHelper.showWarning(context, _labels.seatBusy);
 
       return;
     }
@@ -578,8 +579,8 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 14),
               child: Text(
-                'Выберите зал',
-                style: TextStyle(
+                _labels.unitPick,
+                style: const TextStyle(
                   color: textPrimary,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -649,7 +650,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
     if (token == null || token.isEmpty) {
       SnackBarHelper.showAuthRequired(
         context,
-        'Войдите в профиль, чтобы забронировать столик',
+        'Войдите в профиль, чтобы выбрать место',
       );
 
       return;
@@ -666,6 +667,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
           advertTitle: widget.advertTitle,
           hall: _hall,
           table: table,
+          labels: _labels,
           startsAt: slot.startsAt,
           endsAt: slot.endsAt,
           startsAtRaw: slot.startsAtRaw,
@@ -692,6 +694,9 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
       await _loadDay();
     }
   }
+
+  /// Слова по роду заведения (29.09.2026): столик, кресло или место.
+  BookingLabels get _labels => _availability?.labels ?? BookingLabels.standard;
 
   /// Можно ли заказать навынос: нужно выбранное время в рабочие часы. Стол
   /// при этом не нужен (29.09.2026).
@@ -768,6 +773,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
           advertTitle: widget.advertTitle,
           hall: _hall,
           isTakeaway: true,
+          labels: _labels,
           startsAt: slot.startsAt,
           endsAt: slot.endsAt,
           startsAtRaw: slot.startsAtRaw,
