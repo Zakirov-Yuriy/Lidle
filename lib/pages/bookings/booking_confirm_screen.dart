@@ -329,13 +329,19 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                   _buildSubmitButton(),
                   const SizedBox(height: 12),
                   _buildTermsNote(),
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.needsConfirmation
-                        ? 'Владелец подтвердит запись. Пока он не ответил, время держится за вами.'
-                        : 'Время закрепится за вами сразу после отправки.',
-                    style: const TextStyle(color: textSecondary, fontSize: 13),
-                  ),
+                  // Строка «Время закрепится за вами сразу после отправки»
+                  // убрана (29.09.2026): под кнопкой уже стоит согласие, и
+                  // два пояснения подряд читаются как оправдание.
+                  //
+                  // Про ожидание ответа владельца говорим по-прежнему: это не
+                  // пояснение, а условие, которое меняет дело.
+                  if (widget.needsConfirmation) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Владелец подтвердит запись. Пока он не ответил, время держится за вами.',
+                      style: TextStyle(color: textSecondary, fontSize: 13),
+                    ),
+                  ],
                   const SizedBox(height: 40),
                 ],
               ),
