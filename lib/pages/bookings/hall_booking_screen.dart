@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/models/home_models.dart';
+import 'package:lidle/pages/bookings/preorder_catalog_screen.dart';
 import 'package:lidle/pages/bookings/table_booking_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:lidle/services/bookings_service.dart';
+import 'package:lidle/services/preorder_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/bookings/booking_calendar_dialog.dart';
@@ -67,6 +69,10 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
 
   /// Зал закрыт в выбранное время: столы рисуем, но занять нельзя.
   bool _isWorking = true;
+
+  /// Грузим меню для заказа навынос (29.09.2026): между нажатием кнопки и
+  /// открытием витрины есть запрос, и второе нажатие открыло бы её дважды.
+  bool _takeawayLoading = false;
 
   @override
   void initState() {
@@ -514,13 +520,22 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
               ),
             ),
             onPressed: _canTakeaway ? _goToTakeaway : null,
-            child: Text(
-              'Сделать заказ на самовывоз',
-              style: TextStyle(
-                color: _canTakeaway ? activeIconColor : textMuted,
-                fontSize: 16,
-              ),
-            ),
+            child: _takeawayLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: activeIconColor,
+                    ),
+                  )
+                : Text(
+                    'Сделать заказ на самовывоз',
+                    style: TextStyle(
+                      color: _canTakeaway ? activeIconColor : textMuted,
+                      fontSize: 16,
+                    ),
+                  ),
           ),
         ),
       ],
@@ -682,11 +697,18 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
   /// при этом не нужен (29.09.2026).
   bool get _canTakeaway => _slot != null && _isWorking;
 
-  /// Заказ навынос (29.09.2026): та же карточка заказа, только без стола.
+  /// Заказ навынос (29.09.2026).
+  ///
+  /// Сначала меню, потом карточка заказа: человек нажал «на самовывоз», то
+  /// есть уже решил, что хочет еду. Показывать ему сперва пустую карточку с
+  /// «Столик не выбран» значит заставить сделать лишний шаг ради того, за чем
+  /// он и пришёл.
+  ///
+  /// Ушёл с витрины назад — возвращаемся к залу, карточку не открываем.
   Future<void> _goToTakeaway() async {
     final slot = _slot;
 
-    if (slot == null) return;
+    if (slot == null || _takeawayLoading) return;
 
     final token = await TokenService.getCurrentToken();
 
@@ -699,6 +721,43 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
       );
 
       return;
+    }
+
+    setState(() => _takeawayLoading = true);
+
+    // Корзина могла остаться от другого заведения: там своё меню.
+    if (PreorderService.isForeign(widget.advertId)) PreorderService.forget();
+
+    final blocks = await PreorderService.catalog(widget.advertId);
+
+    await PreorderService.load(widget.advertId, hallId: _hall.id);
+
+    if (!mounted) return;
+
+    setState(() => _takeawayLoading = false);
+
+    // Меню вперёд всего: за ним и пришли. Нет меню — открываем то, что у
+    // заведения вообще есть, а нет ничего — сразу карточку заказа.
+    final kind = blocks.any((b) => b.kind == 'menu')
+        ? 'menu'
+        : (blocks.isEmpty ? null : blocks.first.kind);
+
+    if (kind != null) {
+      final added = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PreorderCatalogScreen(
+            advertId: widget.advertId,
+            advertTitle: widget.advertTitle,
+            kind: kind,
+            blocks: blocks.where((b) => b.kind == kind).toList(),
+            hallId: _hall.id,
+            isTakeaway: true,
+          ),
+        ),
+      );
+
+      if (!mounted || added != true) return;
     }
 
     final result = await Navigator.push<bool>(
