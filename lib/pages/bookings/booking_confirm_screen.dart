@@ -40,6 +40,10 @@ class BookingConfirmScreen extends StatefulWidget {
   final int? fixedGuests;
   final String? place;
 
+  /// Стол, выбранный гостем на схеме зала (28.09.2026). Пусто — сервер
+  /// подберёт столик сам.
+  final String? tableKey;
+
   const BookingConfirmScreen({
     super.key,
     required this.advertId,
@@ -54,6 +58,7 @@ class BookingConfirmScreen extends StatefulWidget {
     this.wholeHall = false,
     this.fixedGuests,
     this.place,
+    this.tableKey,
     this.maxGuests,
   });
 
@@ -120,6 +125,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
           (widget.maxGuests == null ? null : _guests),
       hallId: widget.hallId,
       wholeHall: widget.wholeHall,
+      tableKey: widget.tableKey,
       comment: _commentController.text,
       contactName: _nameController.text,
       contactPhone: _phoneController.text,

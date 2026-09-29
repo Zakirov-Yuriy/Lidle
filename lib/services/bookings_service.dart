@@ -34,6 +34,19 @@ class BookingResult {
   bool get needsOwnerAnswer => status == 'pending';
 }
 
+/// Схема зала на выбранное время: сам зал, его столы и работает ли он.
+class HallTablesState {
+  final BookingHall? hall;
+  final List<BookingHallTable> tables;
+  final bool isWorking;
+
+  const HallTablesState({
+    required this.hall,
+    required this.tables,
+    required this.isWorking,
+  });
+}
+
 /// Результат сохранения настроек брони.
 class BookingSettingsResult {
   final BookingSettings? settings;
@@ -105,6 +118,41 @@ class BookingsService {
     }
   }
 
+  /// Столы зала на выбранное время (28.09.2026).
+  ///
+  /// Занятость считается не «на день», а на конкретный слот: в семь вечера
+  /// стол занят, а в девять свободен. Поэтому время отправляем той же
+  /// строкой, что прислал сервер в слоте, ничего не пересчитывая.
+  ///
+  /// null значит «не дозвонились»: схему в этом случае рисовать нельзя,
+  /// иначе человек выберет занятый стол и получит отказ.
+  static Future<HallTablesState?> hallTables({
+    required int advertId,
+    required int hallId,
+    required String startsAt,
+  }) async {
+    final endpoint = '/adverts/$advertId/halls/$hallId/tables'
+        '?starts_at=${Uri.encodeQueryComponent(startsAt)}';
+
+    try {
+      final response = await ApiService.get(endpoint);
+
+      final data = response['data'];
+
+      if (data is! Map) return null;
+
+      return HallTablesState(
+        hall: BookingHall.tryParse(data['hall']),
+        tables: BookingHallTable.listOf(data['tables']),
+        isWorking: data['is_working'] != false,
+      );
+    } catch (e) {
+      log.d('Схема зала $hallId недоступна: $e');
+
+      return null;
+    }
+  }
+
   /// Создать бронь.
   ///
   /// Границы отправляем целиком, началом и концом, а не «начало плюс
@@ -124,6 +172,7 @@ class BookingsService {
     String? contactPhone,
     int? hallId,
     bool wholeHall = false,
+    String? tableKey,
   }) async {
     final body = <String, dynamic>{
       'starts_at': startsAt,
@@ -133,6 +182,12 @@ class BookingsService {
     if (hallId != null) {
       body['hall_id'] = hallId;
       body['whole_hall'] = wholeHall;
+    }
+
+    // Стол, выбранный гостем на схеме (28.09.2026). Пусто — сервер подберёт
+    // сам, как было раньше.
+    if (tableKey != null && tableKey.trim().isNotEmpty) {
+      body['table_key'] = tableKey.trim();
     }
 
     if (guestsCount != null) body['guests_count'] = guestsCount;

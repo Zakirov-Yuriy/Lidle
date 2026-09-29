@@ -174,6 +174,86 @@ class BookingTableGroup {
 /// Приходит в свободном времени объявления полем `halls`, если ресторан
 /// описал столики хотя бы в одном зале или разрешил банкет. Тогда гость
 /// сначала выбирает зал, а свободное время считается по его столикам.
+/// Стол на плане зала (28.09.2026).
+///
+/// Ключ постоянный: номер продавец меняет, а бронь должна указывать на тот же
+/// стол и после переименования. Координаты в тех же единицах, в которых их
+/// расставлял продавец, поэтому схема рисуется той же сеткой.
+class BookingHallTable {
+  final String key;
+  final String number;
+  final int seats;
+  final double x;
+  final double y;
+
+  /// Свободен ли стол на выбранное время. В списке залов приходит без этого
+  /// признака: занятость считается на конкретный слот.
+  final bool isFree;
+
+  const BookingHallTable({
+    required this.key,
+    required this.number,
+    required this.seats,
+    required this.x,
+    required this.y,
+    this.isFree = true,
+  });
+
+  static List<BookingHallTable> listOf(dynamic raw) {
+    final tables = <BookingHallTable>[];
+
+    if (raw is! List) return tables;
+
+    for (final item in raw) {
+      if (item is! Map) continue;
+
+      final key = '${item['key'] ?? ''}'.trim();
+
+      if (key.isEmpty) continue;
+
+      tables.add(BookingHallTable(
+        key: key,
+        number: '${item['number'] ?? ''}'.trim(),
+        seats: (item['seats'] is num) ? (item['seats'] as num).toInt() : 0,
+        x: (item['x'] is num) ? (item['x'] as num).toDouble() : 0,
+        y: (item['y'] is num) ? (item['y'] as num).toDouble() : 0,
+        // Ключа нет — считаем стол свободным: список залов занятость не
+        // считает, её отдаёт отдельный запрос на выбранное время.
+        isFree: item['is_free'] == null || item['is_free'] == true,
+      ));
+    }
+
+    return tables;
+  }
+}
+
+/// Строка под названием зала: «Этаж зала: 1».
+class BookingHallLine {
+  final String title;
+  final String value;
+
+  const BookingHallLine({required this.title, required this.value});
+
+  static List<BookingHallLine> listOf(dynamic raw) {
+    final lines = <BookingHallLine>[];
+
+    if (raw is! List) return lines;
+
+    for (final item in raw) {
+      if (item is! Map) continue;
+
+      final title = '${item['title'] ?? ''}'.trim();
+      final value = '${item['value'] ?? ''}'.trim();
+
+      if (title.isEmpty || value.isEmpty) continue;
+
+      lines.add(BookingHallLine(title: title, value: value));
+    }
+
+    return lines;
+  }
+}
+
 class BookingHall {
   final int id;
   final String name;
@@ -195,6 +275,19 @@ class BookingHall {
   /// ограничения нет, действует общий предел объявления.
   final int capacity;
 
+  /// План зала, который загрузил продавец: по нему рисуется схема со
+  /// столиками, он же показывается на карточке выбора зала (28.09.2026).
+  /// `fileKind` бывает `image` и `pdf`: PDF картинкой не нарисовать.
+  final String? fileUrl;
+  final String? fileKind;
+
+  /// Столы, расставленные на плане: место, номер и вместимость.
+  final List<BookingHallTable> layout;
+
+  /// Поля экрана зала как их заполнил продавец: «Этаж зала: 1»,
+  /// «Время работы зала: 9:00 - 18:00». Какие это поля, решает админка.
+  final List<BookingHallLine> lines;
+
   const BookingHall({
     required this.id,
     required this.name,
@@ -205,9 +298,20 @@ class BookingHall {
     required this.banquetMinGuests,
     required this.banquetHours,
     this.capacity = 0,
+    this.fileUrl,
+    this.fileKind,
+    this.layout = const [],
+    this.lines = const [],
   });
 
   bool get hasTables => tables.isNotEmpty;
+
+  /// Есть ли схема со столиками: без неё гостю нечего выбирать пальцем.
+  bool get hasLayout => layout.isNotEmpty;
+
+  /// Картинка плана, которую можно показать. У PDF её нет.
+  String? get planImageUrl =>
+      (fileKind == 'image' && (fileUrl ?? '').isNotEmpty) ? fileUrl : null;
 
   static BookingHall? tryParse(dynamic raw) {
     if (raw is! Map) return null;
@@ -238,6 +342,10 @@ class BookingHall {
       banquetMinGuests: _int(banquet['min_guests']) ?? 1,
       banquetHours: _int(banquet['hours']) ?? 0,
       capacity: _int(raw['capacity']) ?? 0,
+      fileUrl: '${raw['file_url'] ?? ''}'.isEmpty ? null : '${raw['file_url']}',
+      fileKind: '${raw['file_kind'] ?? ''}'.isEmpty ? null : '${raw['file_kind']}',
+      layout: BookingHallTable.listOf(raw['layout']),
+      lines: BookingHallLine.listOf(raw['lines']),
     );
   }
 

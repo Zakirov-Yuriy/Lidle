@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/pages/bookings/booking_confirm_screen.dart';
+import 'package:lidle/pages/bookings/hall_booking_screen.dart';
+import 'package:lidle/pages/bookings/hall_pick_screen.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/bookings/booking_nights_picker.dart';
@@ -210,6 +212,40 @@ class _BookingSectionState extends State<BookingSection> {
     );
   }
 
+  /// Открыть схему зала. Несколько залов — сначала выбор зала, один —
+  /// сразу схема: выбор из одного пункта это лишнее нажатие.
+  Future<void> _openHallPlan(
+    BookingAvailability data,
+    List<BookingHall> halls,
+  ) async {
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => halls.length > 1
+            ? HallPickScreen(
+                advertId: widget.advertId,
+                advertTitle: widget.advertTitle,
+                halls: halls,
+                maxGuests: data.maxGuests,
+              )
+            : HallBookingScreen(
+                advertId: widget.advertId,
+                advertTitle: widget.advertTitle,
+                hall: halls.first,
+                halls: halls,
+                maxGuests: data.maxGuests,
+              ),
+      ),
+    );
+
+    if (created != true || !mounted) return;
+
+    // Забронировали со схемы: календарь в карточке уже про другое время.
+    setState(() => _isReloading = true);
+
+    await _load();
+  }
+
   /// Ресторан с залами (22.09.2026): зал, гости, столик или банкет, потом
   /// день и время.
   Widget _buildHalls(BookingAvailability data) {
@@ -225,9 +261,35 @@ class _BookingSectionState extends State<BookingSection> {
         : (hall.maxTable > 0 ? hall.maxTable : 500);
     final minGuests = _wholeHall ? hall.banquetMinGuests : 1;
 
+    // Схему зала показываем отдельным экраном (29.09.2026): на карточке
+    // объявления плану тесно, а выбирать стол пальцем по картинке в четверть
+    // экрана невозможно. Кнопка появляется, только если ресторан расставил
+    // столы на плане хотя бы в одном зале.
+    final withPlan = data.halls.where((h) => h.hasLayout).toList();
+
     return _shell(
       title: data.labels.bookTitle,
       children: [
+        if (withPlan.isNotEmpty) ...[
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: activeIconColor),
+                minimumSize: const Size.fromHeight(46),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => _openHallPlan(data, withPlan),
+              child: const Text(
+                'Выбрать столик на схеме',
+                style: TextStyle(color: activeIconColor, fontSize: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         _label('Зал'),
         const SizedBox(height: 8),
         Wrap(
