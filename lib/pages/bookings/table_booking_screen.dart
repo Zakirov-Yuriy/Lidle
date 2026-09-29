@@ -383,12 +383,19 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
   Widget _block(String kind, List<PreorderLine> lines) {
     final words = _blockWords[kind] ?? const ['Добавить', '', 'Перейти'];
 
+    // Заголовок из админки (29.09.2026): как администратор назвал блок, так
+    // он и называется на всех экранах. Своё слово оставляем запасным, если
+    // названия нет.
+    final title = _blocksOf(kind)
+        .map((b) => b.title)
+        .firstWhere((t) => t.isNotEmpty, orElse: () => words[0]);
+
     return _panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            words[0],
+            title,
             style: const TextStyle(
               color: textPrimary,
               fontSize: 16,
@@ -590,6 +597,10 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
               ? null
               : (table.seats > 0 ? table.seats : widget.maxGuests),
           labels: widget.labels,
+          blockTitles: {
+            for (final block in _blocks)
+              if (block.title.isNotEmpty) block.kind: block.title,
+          },
           tableNumber: table?.number,
           tableSeats: table?.seats,
           deposit: (table?.deposit ?? 0).toDouble(),

@@ -79,6 +79,10 @@ class BookingConfirmScreen extends StatefulWidget {
   /// Слова по роду заведения (29.09.2026): столик, кресло или место.
   final BookingLabels labels;
 
+  /// Названия блоков из админки по роду (29.09.2026): «Предзаказ меню»,
+  /// «Добавить товар». Пусто — берём своё слово.
+  final Map<String, String> blockTitles;
+
   const BookingConfirmScreen({
     super.key,
     required this.advertId,
@@ -100,6 +104,7 @@ class BookingConfirmScreen extends StatefulWidget {
     this.deposit = 0,
     this.isTakeaway = false,
     this.labels = BookingLabels.standard,
+    this.blockTitles = const {},
   });
 
   @override
@@ -469,12 +474,18 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
   Widget _buildPreorderBlock(String kind, List<PreorderLine> lines) {
     final words = _preorderWords[kind] ?? const ['Предзаказ', 'Перейти'];
 
+    // Название из админки, если оно есть: на всех экранах блок называется
+    // одинаково (29.09.2026).
+    final title = (widget.blockTitles[kind] ?? '').isNotEmpty
+        ? widget.blockTitles[kind]!
+        : words[0];
+
     return _panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            words[0],
+            title,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
