@@ -222,11 +222,11 @@ class _BookingSectionState extends State<BookingSection> {
       context,
       MaterialPageRoute(
         builder: (_) => halls.length > 1
+            // Экран выбора зала сам догружает залы: он же открывается прямо
+            // из выдачи, где данных о залах ещё нет (29.09.2026).
             ? HallPickScreen(
                 advertId: widget.advertId,
                 advertTitle: widget.advertTitle,
-                halls: halls,
-                maxGuests: data.maxGuests,
               )
             : HallBookingScreen(
                 advertId: widget.advertId,
