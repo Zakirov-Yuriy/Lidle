@@ -576,8 +576,8 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
               child: Text(
                 _labels.unitPick,
                 style: const TextStyle(
