@@ -1,118 +1,221 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
+import 'package:lidle/models/home_models.dart';
 import 'package:lidle/pages/bookings/hall_booking_screen.dart';
+import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
+import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 
-/// Выбор зала перед бронью столика (29.09.2026).
+/// Выбор зала (29.09.2026).
 ///
-/// Показывается, когда у заведения НЕСКОЛЬКО залов: основной, VIP, летняя
-/// терраса. Если зал один, экран пропускается и сразу открывается схема:
-/// выбор из одного пункта это лишнее нажатие.
+/// У заведения с залами карточка в выдаче ведёт сюда, а не в объявление:
+/// человек пришёл забронировать стол, а не читать описание. Само объявление
+/// открывается отсюда по названию сверху.
 ///
-/// Карточка зала показывает план, который загрузил продавец. У залов с PDF
-/// вместо плана рисуется заглушка: PDF картинкой не показать, а пустая рамка
-/// выглядит как поломка.
-class HallPickScreen extends StatelessWidget {
+/// Один зал — экран не показывается вовсе, сразу открывается схема: выбор из
+/// одного пункта это лишнее нажатие. Залов не оказалось (продавец убрал их,
+/// пока человек листал выдачу) — открываем объявление, как раньше.
+class HallPickScreen extends StatefulWidget {
   static const String routeName = '/booking-halls';
 
   const HallPickScreen({
     super.key,
     required this.advertId,
     required this.advertTitle,
-    required this.halls,
-    this.maxGuests,
+    this.listing,
   });
 
   final int advertId;
   final String advertTitle;
-  final List<BookingHall> halls;
 
-  /// Общий предел гостей объявления: нужен экрану зала.
-  final int? maxGuests;
+  /// Объявление, из карточки которого пришли: по нему открывается экран
+  /// объявления по названию сверху.
+  final Listing? listing;
+
+  @override
+  State<HallPickScreen> createState() => _HallPickScreenState();
+}
+
+class _HallPickScreenState extends State<HallPickScreen> {
+  List<BookingHall> _halls = const [];
+  int? _maxGuests;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final now = DateTime.now();
+
+    final data = await BookingsService.availability(
+      widget.advertId,
+      from: now,
+      to: now,
+    );
+
+    if (!mounted) return;
+
+    final halls = data?.halls ?? const <BookingHall>[];
+
+    // Залов нет (или бронь выключили): человеку нужно объявление.
+    if (halls.isEmpty) {
+      _openAdvert(replace: true);
+
+      return;
+    }
+
+    if (halls.length == 1) {
+      _openHall(halls.first, halls, data?.maxGuests, replace: true);
+
+      return;
+    }
+
+    setState(() {
+      _halls = halls;
+      _maxGuests = data?.maxGuests;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryBackground,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Header(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-              child: Row(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: activeIconColor))
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
+                  const Header(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _openAdvert(),
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    widget.advertTitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: textPrimary,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.arrow_forward_ios,
+                                  color: textSecondary,
+                                  size: 14,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text(
+                            'Назад',
+                            style: TextStyle(color: activeIconColor, fontSize: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
                     child: Text(
-                      advertTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      'Выберите зал',
+                      style: TextStyle(
                         color: textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text(
-                      'Назад',
-                      style: TextStyle(color: activeIconColor, fontSize: 16),
+                  Expanded(
+                    child: GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 18,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.78,
+                      ),
+                      itemCount: _halls.length,
+                      itemBuilder: (_, index) => _HallCard(
+                        hall: _halls[index],
+                        onTap: () => _openHall(_halls[index], _halls, _maxGuests),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Text(
-                'Выберите зал',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 18,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.78,
-                ),
-                itemCount: halls.length,
-                itemBuilder: (_, index) => _HallCard(
-                  hall: halls[index],
-                  onTap: () => _open(context, halls[index]),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  void _open(BuildContext context, BookingHall hall) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => HallBookingScreen(
-          advertId: advertId,
-          advertTitle: advertTitle,
-          hall: hall,
-          halls: halls,
-          maxGuests: maxGuests,
-        ),
+  void _openHall(
+    BookingHall hall,
+    List<BookingHall> halls,
+    int? maxGuests, {
+    bool replace = false,
+  }) {
+    final route = MaterialPageRoute<bool>(
+      builder: (_) => HallBookingScreen(
+        advertId: widget.advertId,
+        advertTitle: widget.advertTitle,
+        hall: hall,
+        halls: halls,
+        maxGuests: maxGuests,
+        listing: widget.listing,
       ),
     );
+
+    if (replace) {
+      Navigator.pushReplacement(context, route);
+
+      return;
+    }
+
+    Navigator.push(context, route);
+  }
+
+  /// Открыть само объявление. Без данных карточки открыть нечего: тогда
+  /// просто уходим назад, в выдачу, откуда человек и пришёл.
+  void _openAdvert({bool replace = false}) {
+    final listing = widget.listing;
+
+    if (listing == null) {
+      if (replace) Navigator.of(context).pop();
+
+      return;
+    }
+
+    final route = MaterialPageRoute(
+      builder: (_) => MiniPropertyDetailsScreen(listing: listing),
+    );
+
+    if (replace) {
+      Navigator.pushReplacement(context, route);
+
+      return;
+    }
+
+    Navigator.push(context, route);
   }
 }
 
@@ -130,16 +233,19 @@ class _HallCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: plan != null
-                ? Image.network(
-                    plan,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const _NoPlan(),
-                  )
-                : const _NoPlan(),
+          child: GestureDetector(
+            onTap: onTap,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: plan != null
+                  ? Image.network(
+                      plan,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const _NoPlan(),
+                    )
+                  : const _NoPlan(),
+            ),
           ),
         ),
         const SizedBox(height: 8),

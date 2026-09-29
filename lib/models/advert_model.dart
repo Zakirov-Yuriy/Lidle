@@ -35,6 +35,10 @@ class Advert {
   final int reviewsCount;
   final bool showsRating;
 
+  /// Сколько у заведения залов (29.09.2026): по ним карточка списка решает,
+  /// вести человека к выбору зала или в объявление.
+  final int hallsCount;
+
   Advert({
     required this.id,
     this.slug,
@@ -59,6 +63,7 @@ class Advert {
     this.rating,
     this.reviewsCount = 0,
     this.showsRating = false,
+    this.hallsCount = 0,
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -297,6 +302,7 @@ class Advert {
       rating: (json['rating'] as num?)?.toDouble(),
       reviewsCount: (json['reviews_count'] as num?)?.toInt() ?? 0,
       showsRating: json.containsKey('rating'),
+      hallsCount: (json['halls_count'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -484,6 +490,7 @@ extension AdvertToListingExtension on Advert {
       rating: rating,
       reviewsCount: reviewsCount,
       showsRating: showsRating,
+      hallsCount: hallsCount,
       sellerName: sellerName,
       sellerAvatar: sellerAvatar,
       sellerRegistrationDate: sellerRegistrationDate,

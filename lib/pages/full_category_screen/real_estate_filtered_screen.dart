@@ -233,6 +233,7 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         rating: advert.rating,
         reviewsCount: advert.reviewsCount,
         showsRating: advert.showsRating,
+        hallsCount: advert.hallsCount,
       );
       
       log.d('   ✅ Listing created: ${listing.title} - ${listing.price}');

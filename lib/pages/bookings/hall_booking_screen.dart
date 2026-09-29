@@ -2,7 +2,9 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
+import 'package:lidle/models/home_models.dart';
 import 'package:lidle/pages/bookings/booking_confirm_screen.dart';
+import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
@@ -27,6 +29,7 @@ class HallBookingScreen extends StatefulWidget {
     required this.hall,
     required this.halls,
     this.maxGuests,
+    this.listing,
   });
 
   final int advertId;
@@ -37,6 +40,10 @@ class HallBookingScreen extends StatefulWidget {
   final List<BookingHall> halls;
 
   final int? maxGuests;
+
+  /// Объявление, из карточки которого пришли: по названию сверху человек
+  /// открывает его и смотрит фотографии, описание и отзывы (29.09.2026).
+  final Listing? listing;
 
   @override
   State<HallBookingScreen> createState() => _HallBookingScreenState();
@@ -183,18 +190,47 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
     );
   }
 
+  /// Название заведения ведёт в само объявление: фотографии, описание,
+  /// контакты и отзывы живут там (29.09.2026).
   Widget _titleRow() {
     return Padding(
       padding: const EdgeInsets.only(top: 6),
-      child: Text(
-        widget.advertTitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: textPrimary,
-          fontSize: 17,
-          fontWeight: FontWeight.w700,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _openAdvert,
+        child: Row(
+          children: [
+            Flexible(
+              child: Text(
+                widget.advertTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (widget.listing != null) ...[
+              const SizedBox(width: 4),
+              const Icon(Icons.arrow_forward_ios, color: textSecondary, size: 14),
+            ],
+          ],
         ),
+      ),
+    );
+  }
+
+  void _openAdvert() {
+    final listing = widget.listing;
+
+    if (listing == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MiniPropertyDetailsScreen(listing: listing),
       ),
     );
   }

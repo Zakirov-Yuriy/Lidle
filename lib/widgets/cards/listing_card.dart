@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/pages/bookings/hall_pick_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
@@ -208,7 +209,25 @@ class _ListingCardState extends State<ListingCard> {
           onTap: () {
             // 💾 Вызываем callback для сохранения позиции скролла
             widget.onBeforeNavigate?.call();
-            
+
+            // Заведение с залами ведёт к выбору зала, а не в объявление
+            // (29.09.2026): человек пришёл забронировать стол, а описание и
+            // фотографии открываются оттуда по названию сверху.
+            if (widget.listing.hallsCount > 0) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => HallPickScreen(
+                    advertId: int.tryParse(widget.listing.id) ?? 0,
+                    advertTitle: widget.listing.title,
+                    listing: widget.listing,
+                  ),
+                ),
+              );
+
+              return;
+            }
+
             // 🔓 Переходим к деталям объявления (доступно для всех, включая неавторизованных)
             Navigator.push(
               context,

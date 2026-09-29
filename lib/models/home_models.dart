@@ -141,6 +141,13 @@ class Listing {
   /// Сколько оценок. Ноль означает то же самое, что пустая оценка.
   final int reviewsCount;
 
+  /// Сколько у заведения залов (29.09.2026).
+  ///
+  /// Больше нуля — карточка в выдаче ведёт не в объявление, а к выбору зала:
+  /// человек пришёл забронировать стол, а не читать описание. Само объявление
+  /// открывается оттуда по названию сверху.
+  final int hallsCount;
+
   /// Показывать ли в карточке звёзды (28.09.2026).
   ///
   /// Решает сервер: оценку в списке он отдаёт только объявлениям каталога
@@ -184,6 +191,7 @@ class Listing {
     this.rating,
     this.reviewsCount = 0,
     this.showsRating = false,
+    this.hallsCount = 0,
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -424,6 +432,7 @@ class Listing {
       rating: (json['rating'] as num?)?.toDouble(),
       reviewsCount: (json['reviews_count'] as num?)?.toInt() ?? 0,
       showsRating: json.containsKey('rating'),
+      hallsCount: (json['halls_count'] as num?)?.toInt() ?? 0,
     );
   }
 
