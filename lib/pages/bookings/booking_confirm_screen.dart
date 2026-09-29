@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/preorder.dart';
@@ -7,6 +8,7 @@ import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Порядок блоков предзаказа на счёте, как на макете (29.09.2026).
 const List<String> _preorderOrder = ['menu', 'product', 'service', 'delivery'];
@@ -221,22 +223,39 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
             const Header(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: const Row(
-                  children: [
-                    Icon(Icons.arrow_back_ios, color: activeIconColor, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      'Назад',
-                      style: TextStyle(
-                        color: activeIconColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => Navigator.pop(context),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.arrow_back_ios, color: activeIconColor, size: 16),
+                        SizedBox(width: 4),
+                        Text(
+                          'Назад',
+                          style: TextStyle(
+                            color: activeIconColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const Spacer(),
+                  // Отказаться от брони целиком, а не вернуться на шаг назад
+                  // (29.09.2026): «Назад» ведёт к столу, эта кнопка уводит с
+                  // всего пути к схеме зала.
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _cancelBooking,
+                    child: Text(
+                      widget.tableKey != null ? 'Отмена брони' : 'Отмена записи',
+                      style: const TextStyle(color: activeIconColor, fontSize: 15),
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -308,6 +327,8 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                   ),
                   const SizedBox(height: 20),
                   _buildSubmitButton(),
+                  const SizedBox(height: 12),
+                  _buildTermsNote(),
                   const SizedBox(height: 12),
                   Text(
                     widget.needsConfirmation
@@ -823,6 +844,69 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
 
     return '$count гостей';
   }
+
+  /// Согласие под кнопкой (29.09.2026).
+  ///
+  /// Ссылки те же, что при регистрации: документы лежат на lidle.ru, и второй
+  /// набор адресов однажды разошёлся бы с первым.
+  Widget _buildTermsNote() {
+    return ValueListenableBuilder<PreorderCart>(
+      valueListenable: PreorderService.cart,
+      builder: (_, __, ___) => RichText(
+        text: TextSpan(
+          text: 'Нажимая на кнопку «$_buttonTitle», вы соглашаетесь с ',
+          style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.35),
+          children: [
+            TextSpan(
+              text: 'политикой конфиденциальности',
+              style: const TextStyle(
+                color: Color(0xFF38BDF8),
+                fontSize: 13,
+                decoration: TextDecoration.underline,
+                decorationColor: Color(0xFF38BDF8),
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () => _openURL('https://lidle.ru/documents/privacy-policy.pdf'),
+            ),
+            const TextSpan(text: ' и '),
+            TextSpan(
+              text: 'нашими правилами',
+              style: const TextStyle(
+                color: Color(0xFF38BDF8),
+                fontSize: 13,
+                decoration: TextDecoration.underline,
+                decorationColor: Color(0xFF38BDF8),
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () => _openURL('https://lidle.ru/documents/user-agreement.pdf'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Открыть правовой документ во внешнем браузере, как на регистрации.
+  Future<void> _openURL(String urlString) async {
+    try {
+      final url = Uri.parse(urlString);
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.platformDefault);
+
+        return;
+      }
+
+      if (mounted) SnackBarHelper.showWarning(context, 'Не удалось открыть ссылку');
+    } catch (_) {
+      if (mounted) SnackBarHelper.showWarning(context, 'Не удалось открыть ссылку');
+    }
+  }
+
+  /// «Отмена брони»: уходим со всего пути выбора стола к схеме зала. Бронь
+  /// ещё не создана, отменять на сервере нечего, а набранное остаётся в
+  /// корзине — человек мог передумать про время, а не про заказ.
+  void _cancelBooking() => Navigator.pop(context, false);
 
   Widget _buildSubmitButton() {
     // Слушаем корзину: убрали позицию крестиком — подпись кнопки должна
