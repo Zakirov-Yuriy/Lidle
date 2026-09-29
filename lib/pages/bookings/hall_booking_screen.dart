@@ -505,10 +505,14 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 10),
         // Заказ навынос (29.09.2026): столик не нужен, нужно только время, к
         // которому заказ будет готов. Поэтому кнопка живёт, даже когда стол не
         // выбран, и гаснет только без выбранного времени.
+        //
+        // Показываем не везде: из барбершопа еду не забирают, а товары человек
+        // и так заберёт, когда придёт стричься.
+        if (_labels.hasTakeaway) ...[
+        const SizedBox(height: 10),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
@@ -539,6 +543,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
                   ),
           ),
         ),
+        ],
       ],
     );
   }
@@ -700,7 +705,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
 
   /// Можно ли заказать навынос: нужно выбранное время в рабочие часы. Стол
   /// при этом не нужен (29.09.2026).
-  bool get _canTakeaway => _slot != null && _isWorking;
+  bool get _canTakeaway => _slot != null && _isWorking && _labels.hasTakeaway;
 
   /// Заказ навынос (29.09.2026).
   ///

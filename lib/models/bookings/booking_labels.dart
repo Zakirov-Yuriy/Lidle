@@ -60,6 +60,16 @@ class BookingLabels {
   /// «Перейти к бронированию» / «Перейти к записи».
   final String bookingGo;
 
+  /// Предлагать ли заказ навынос (29.09.2026).
+  ///
+  /// Это ресторанная вещь: из барбершопа еду не забирают, а товары человек и
+  /// так заберёт, когда придёт стричься.
+  final bool hasTakeaway;
+
+  /// Спрашивать ли число гостей. В барбершоп приходят по одному, и поле
+  /// «Количество гостей» там выглядит ошибкой.
+  final bool hasGuests;
+
   const BookingLabels({
     required this.bookTitle,
     required this.bookButton,
@@ -77,6 +87,8 @@ class BookingLabels {
     this.seatDeposit = 'Депозит за место',
     this.seatBusy = 'Это место уже занято',
     this.bookingGo = 'Перейти к записи',
+    this.hasTakeaway = false,
+    this.hasGuests = false,
   });
 
   /// Номер места в подпись: «Столик № 5».
@@ -103,6 +115,16 @@ class BookingLabels {
       return v.isEmpty ? orElse : v;
     }
 
+    bool flag(String key, bool orElse) {
+      final v = json[key];
+
+      if (v is bool) return v;
+      if (v is num) return v != 0;
+      if (v is String) return v == '1' || v.toLowerCase() == 'true';
+
+      return orElse;
+    }
+
     return BookingLabels(
       bookTitle: text('book_title', standard.bookTitle),
       bookButton: text('book_button', standard.bookButton),
@@ -120,6 +142,8 @@ class BookingLabels {
       seatDeposit: text('seat_deposit', standard.seatDeposit),
       seatBusy: text('seat_busy', standard.seatBusy),
       bookingGo: text('booking_go', standard.bookingGo),
+      hasTakeaway: flag('has_takeaway', standard.hasTakeaway),
+      hasGuests: flag('has_guests', standard.hasGuests),
     );
   }
 

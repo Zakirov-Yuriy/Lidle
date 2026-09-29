@@ -162,7 +162,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
     // Сколько человек придёт, заведению важно: стол на четверых и стол на
     // двоих это разные столы. Молча отправлять одного гостя, когда в поле
     // стоит «Выбрать», нечестно (29.09.2026).
-    if (widget.maxGuests != null && widget.fixedGuests == null && !_guestsPicked) {
+    if (_asksGuests && !_guestsPicked) {
       SnackBarHelper.showWarning(context, 'Выберите количество гостей');
 
       return;
@@ -319,7 +319,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                     controller: _nameController,
                     hint: 'Введите',
                   ),
-                  if (widget.maxGuests != null && widget.fixedGuests == null) ...[
+                  if (_asksGuests) ...[
                     const SizedBox(height: 12),
                     _buildGuestsPicker(),
                   ],
@@ -968,6 +968,14 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
       ),
     );
   }
+
+  /// Спрашиваем ли число гостей (29.09.2026).
+  ///
+  /// Только там, где приходят компанией: в ресторане за столиком, но не в
+  /// барбершопе, куда человек идёт один. Признак приходит с сервера вместе со
+  /// словами по роду заведения.
+  bool get _asksGuests =>
+      widget.labels.hasGuests && widget.maxGuests != null && widget.fixedGuests == null;
 
   /// Что написано на кнопке.
   ///
