@@ -205,7 +205,11 @@ class _HallTablesScreenState extends State<HallTablesScreen> {
 
       table
         ..number = result.table.number
-        ..seats = result.table.seats;
+        ..seats = result.table.seats
+        // Депозит и «Важно!» тоже общие для всех сценариев: это свойства
+        // самого стола, а не смены (29.09.2026).
+        ..deposit = result.table.deposit
+        ..note = result.table.note;
 
       if (result.staff.isEmpty) {
         _staff.remove(table.key);
@@ -443,9 +447,18 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
   late int _seats = widget.table.seats;
   late final TableStaff _staff = widget.current.copy();
 
+  /// Депозит за стол и примечание к нему (29.09.2026). Ноль в поле не
+  /// показываем: пустое поле честнее говорит «депозита нет».
+  late final TextEditingController _deposit =
+      TextEditingController(text: widget.table.deposit > 0 ? '${widget.table.deposit}' : '');
+
+  late final TextEditingController _note = TextEditingController(text: widget.table.note);
+
   @override
   void dispose() {
     _number.dispose();
+    _deposit.dispose();
+    _note.dispose();
     super.dispose();
   }
 
@@ -491,7 +504,9 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
       _TableResult(
         table: widget.table
           ..number = number
-          ..seats = _seats,
+          ..seats = _seats
+          ..deposit = int.tryParse(_deposit.text.trim()) ?? 0
+          ..note = _note.text.trim(),
         staff: _staff,
       ),
     );
@@ -576,6 +591,49 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
                       ),
                       _step(Icons.add, _seats < 30 ? () => setState(() => _seats++) : null),
                     ],
+                  ),
+                  const SizedBox(height: 18),
+                  const Text('Депозит за стол, ₽', style: TextStyle(color: textPrimary, fontSize: 15)),
+                  const SizedBox(height: 9),
+                  Container(
+                    height: 45,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: formBackground, borderRadius: BorderRadius.circular(6)),
+                    child: TextField(
+                      controller: _deposit,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: textPrimary, fontSize: 14),
+                      decoration: const InputDecoration(
+                        hintText: 'Без депозита',
+                        hintStyle: TextStyle(color: textSecondary, fontSize: 14),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Депозит входит в счёт гостя. Свой у каждого стола: у окна '
+                    'можно поставить больше, чем у прохода.',
+                    style: TextStyle(color: textSecondary, fontSize: 12, height: 1.35),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text('Важно знать о столе', style: TextStyle(color: textPrimary, fontSize: 15)),
+                  const SizedBox(height: 9),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(color: formBackground, borderRadius: BorderRadius.circular(6)),
+                    child: TextField(
+                      controller: _note,
+                      maxLines: 3,
+                      maxLength: 300,
+                      style: const TextStyle(color: textPrimary, fontSize: 14),
+                      decoration: const InputDecoration(
+                        hintText: 'Например: объединяется только со столом № 5',
+                        hintStyle: TextStyle(color: textSecondary, fontSize: 14),
+                        border: InputBorder.none,
+                        counterText: '',
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 18),
                   _select('Официант столика', _staff.waiter, () => _pick(roleWaiter)),

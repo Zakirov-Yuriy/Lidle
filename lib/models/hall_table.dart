@@ -16,12 +16,21 @@ class HallTable {
   int seats;
   String number;
 
+  /// Депозит за этот стол, рубли (29.09.2026). Свой у каждого стола: у окна
+  /// дороже, чем у прохода. Ноль значит «без депозита».
+  int deposit;
+
+  /// «Важно!» в карточке стола у гостя: с чем объединяется, чем отличается.
+  String note;
+
   HallTable({
     required this.key,
     required this.x,
     required this.y,
     this.seats = 2,
     this.number = '',
+    this.deposit = 0,
+    this.note = '',
   });
 
   static final Random _random = Random();
@@ -31,7 +40,15 @@ class HallTable {
   static String newKey() =>
       't${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${_random.nextInt(1 << 20).toRadixString(36)}';
 
-  HallTable copy() => HallTable(key: key, x: x, y: y, seats: seats, number: number);
+  HallTable copy() => HallTable(
+        key: key,
+        x: x,
+        y: y,
+        seats: seats,
+        number: number,
+        deposit: deposit,
+        note: note,
+      );
 
   Map<String, dynamic> toJson() => {
         'key': key,
@@ -39,6 +56,8 @@ class HallTable {
         'y': y,
         'seats': seats,
         'number': number,
+        'deposit': deposit,
+        'note': note,
       };
 
   static HallTable? tryParse(dynamic raw) {
@@ -54,6 +73,12 @@ class HallTable {
       y: d(raw['y']).clamp(0.0, 1.0),
       seats: raw['seats'] is num ? (raw['seats'] as num).toInt() : int.tryParse('${raw['seats']}') ?? 2,
       number: '${raw['number'] ?? ''}',
+      // Столы, расставленные до 29.09.2026, депозита не имеют: ноль и пустое
+      // примечание, а не «поле пропало».
+      deposit: raw['deposit'] is num
+          ? (raw['deposit'] as num).toInt()
+          : int.tryParse('${raw['deposit'] ?? ''}') ?? 0,
+      note: '${raw['note'] ?? ''}',
     );
   }
 }

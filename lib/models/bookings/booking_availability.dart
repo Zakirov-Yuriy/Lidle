@@ -190,6 +190,13 @@ class BookingHallTable {
   /// признака: занятость считается на конкретный слот.
   final bool isFree;
 
+  /// Депозит за этот стол, рубли (29.09.2026). Ноль значит «без депозита»:
+  /// строку в счёте тогда не показываем.
+  final int deposit;
+
+  /// «Важно!» от заведения: с чем объединяется стол, чем отличается.
+  final String note;
+
   const BookingHallTable({
     required this.key,
     required this.number,
@@ -197,6 +204,8 @@ class BookingHallTable {
     required this.x,
     required this.y,
     this.isFree = true,
+    this.deposit = 0,
+    this.note = '',
   });
 
   static List<BookingHallTable> listOf(dynamic raw) {
@@ -220,6 +229,8 @@ class BookingHallTable {
         // Ключа нет — считаем стол свободным: список залов занятость не
         // считает, её отдаёт отдельный запрос на выбранное время.
         isFree: item['is_free'] == null || item['is_free'] == true,
+        deposit: (item['deposit'] is num) ? (item['deposit'] as num).toInt() : 0,
+        note: '${item['note'] ?? ''}'.trim(),
       ));
     }
 
