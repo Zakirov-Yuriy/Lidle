@@ -39,7 +39,6 @@ import 'package:lidle/widgets/bookings/hall_table_mark.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 const Color _divider = Color(0xFF474747);
-const Color _green = Color(0xFF2BD13F);
 const Color _yellow = Color(0xFFE8E337);
 
 /// Должности из поля «Должность» карточки сотрудника.
@@ -221,7 +220,11 @@ class _HallTablesScreenState extends State<HallTablesScreen> {
         ..note = result.table.note
         ..w = result.table.w
         ..h = result.table.h
-        ..angle = result.table.angle;
+        ..angle = result.table.angle
+        // Положение тоже общее свойство стола: его двигают ползунками в
+        // настройке (30.09.2026).
+        ..x = result.table.x
+        ..y = result.table.y;
 
       if (result.staff.isEmpty) {
         _staff.remove(table.key);
@@ -444,7 +447,13 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
   /// разные: длинный на восемь человек и круглый на двоих, да ещё под углом.
   late double _w = widget.table.w.clamp(kTableMarkMin, kTableMarkMax);
   late double _h = widget.table.h.clamp(kTableMarkMin, kTableMarkMax);
-  late double _angle = (widget.table.angle % 360).clamp(0, 355);
+  late double _angle = (widget.table.angle % 360).clamp(0.0, 355.0);
+
+  /// Где стол стоит на плане, долями сторон (30.09.2026). Раньше положение
+  /// задавалось один раз, нажатием на план, и подвинуть стол было нельзя:
+  /// поставил чуть мимо — удаляй и ставь заново.
+  late double _x = widget.table.x.clamp(0.0, 1.0);
+  late double _y = widget.table.y.clamp(0.0, 1.0);
 
   /// Насколько приблизить план в превью. Считается ОДИН раз, при открытии
   /// стола: если пересчитывать от текущего размера, приближение будет его
@@ -512,7 +521,9 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
           ..note = _note.text.trim()
           ..w = _w
           ..h = _h
-          ..angle = _angle,
+          ..angle = _angle
+          ..x = _x
+          ..y = _y,
         staff: _staff,
       ),
     );
@@ -614,8 +625,15 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
                       (v) => setState(() => _w = v)),
                   _slider('Высота', _h, kTableMarkMin, kTableMarkMax,
                       (v) => setState(() => _h = v)),
-                  _slider('Поворот', _angle, 0, 355, (v) => setState(() => _angle = v),
+                  _slider('Поворот', _angle, 0.0, 355.0, (v) => setState(() => _angle = v),
                       divisions: 71, suffix: '°'),
+
+                  // Положение без делений: стол двигают до точного совпадения
+                  // с картинкой, и шаг в полпроцента тут мешал бы.
+                  _slider('Влево-вправо', _x, 0.0, 1.0, (v) => setState(() => _x = v),
+                      divisions: null),
+                  _slider('Вверх-вниз', _y, 0.0, 1.0, (v) => setState(() => _y = v),
+                      divisions: null),
                   const SizedBox(height: 18),
                   const Text('Депозит за стол, ₽', style: TextStyle(color: textPrimary, fontSize: 15)),
                   const SizedBox(height: 9),
@@ -717,11 +735,11 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
                   final side = box.maxWidth;
                   final plan = side * _zoom;
 
-                  // Середина стола должна оказаться в середине окна. У стола
-                  // с краю плана окно упирается в край схемы, а не уезжает в
-                  // пустоту.
-                  final left = (side / 2 - widget.table.x * plan).clamp(side - plan, 0.0);
-                  final top = (side / 2 - widget.table.y * plan).clamp(side - plan, 0.0);
+                  // Рамка стоит в середине окна, а план едет под ней, как
+                  // прицел: так видно, на какой стол она наводится. У края
+                  // плана окно упирается в его край, а не уезжает в пустоту.
+                  final left = (side / 2 - _x * plan).clamp(side - plan, 0.0);
+                  final top = (side / 2 - _y * plan).clamp(side - plan, 0.0);
 
                   // Номер меняется прямо во время набора: иначе кажется, что
                   // поле не сработало.
@@ -757,8 +775,8 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
                                     key: widget.table.key,
                                     number: _number.text.trim(),
                                     seats: _seats,
-                                    x: widget.table.x,
-                                    y: widget.table.y,
+                                    x: _x,
+                                    y: _y,
                                     width: _w,
                                     height: _h,
                                     angle: _angle,
@@ -794,7 +812,7 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
     double min,
     double max,
     ValueChanged<double> onChanged, {
-    int divisions = 56,
+    int? divisions = 56,
     String suffix = '%',
   }) {
     final shown = suffix == '%' ? (value * 100).round() : value.round();
@@ -808,9 +826,9 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
         Expanded(
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              activeTrackColor: _green,
+              activeTrackColor: activeIconColor,
               inactiveTrackColor: _divider,
-              thumbColor: _green,
+              thumbColor: activeIconColor,
               overlayShape: SliderComponentShape.noOverlay,
               trackHeight: 3,
             ),

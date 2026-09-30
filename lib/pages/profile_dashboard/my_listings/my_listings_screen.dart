@@ -490,21 +490,29 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       if (mounted) setState(() => _crmLoading = true);
 
-      // Без фильтра по категории (28.09.2026): вкладка «CRM», как и «Все»,
-      // кросс-категорийная. Раньше список просили по выбранной категории, а
-      // число в подписи приходило общее (_loadTabCounts грузит CRM без
-      // фильтра). Получалось «CRM 810», а листалось до конца объявлений одной
-      // категории — шестьдесят штук, и список замолкал.
+      // По выбранной категории, как и остальные вкладки (30.09.2026).
+      // Фильтр здесь однажды убрали из-за рассинхрона: список приходил по
+      // категории, а число в подписи общее, и получалось «CRM 810» при
+      // шестидесяти объявлениях. Лечится не отключением фильтра, а тем, что
+      // счётчик считается по тому же запросу, что и список.
       final response = await MyAdvertsService.getCrmPublishedList(
         token: token,
         page: 1,
         limit: _pageSize,
+        categoryId: _selectedCategoryId,
+        catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
       );
+
+      // Пока шёл запрос, мог прийти каталог с категорией и загрузить свои,
+      // уже отфильтрованные списки. Тогда ответ без фильтра не нужен: он
+      // вернул бы в список чужие объявления (30.09.2026).
+      if (_selectedCatalogId != null || _selectedCategoryId != null) return;
 
       if (mounted) {
         setState(() {
           _crmListings = response.data;
           _crmListingsPage = 1;
+          _crmTotal = response.meta?.total ?? response.data.length;
           _crmIsLastPage = _noMorePages(response, response.data.length);
           _crmLoading = false;
         });
@@ -517,8 +525,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
   /// Загрузить активные объявления, созданные ВРУЧНУЮ (вкладка «Все»).
   /// Фидовые объявления сюда не попадают — их бэк исключает по manual_only=1.
-  /// ВАЖНО: вкладка «Все» показывает объявления по ВСЕМ категориям и не
-  /// фильтруется чипсом категории (как на сайте), поэтому categoryId не шлём.
+  /// Фильтруется выбранным каталогом и категорией, как остальные вкладки
+  /// (30.09.2026).
   Future<void> _loadManualListings() async {
     try {
       final token = HiveService.getUserData('token') as String?;
@@ -530,14 +538,20 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         token: token,
         statusId: 1, // active
         manualOnly: true,
+        categoryId: _selectedCategoryId,
+        catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
         page: 1,
         limit: _pageSize,
       );
+
+      // То же, что и в CRM: не затираем уже отфильтрованный список.
+      if (_selectedCatalogId != null || _selectedCategoryId != null) return;
 
       if (mounted) {
         setState(() {
           _manualListings = response.data;
           _manualListingsPage = 1;
+          _manualTotal = response.meta?.total ?? response.data.length;
           _manualIsLastPage = _noMorePages(response, response.data.length);
           _manualLoading = false;
         });
@@ -548,9 +562,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
-  /// Загружает ОБЩИЕ счётчики для вкладок «Все» и «CRM» — они не зависят от
-  /// выбранной категории (показывают объявления по всем категориям), поэтому
-  /// цифры видны всегда и совпадают со списками.
+  /// Первые счётчики вкладок «Все» и «CRM», до того как выбраны каталог и
+  /// категория. Дальше цифры перезаписываются из тех же запросов, которыми
+  /// грузятся списки, поэтому подпись всегда совпадает со списком.
   /// Счётчики «Активные»/«Неактивные»/«Архив»/«На модерации» считаются по
   /// выбранным каталогу/категории в _loadListingsByCategory/_loadListingsByCatalog.
   Future<void> _loadTabCounts() async {
@@ -560,9 +574,21 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       final results = await Future.wait([
         // CRM.
-        MyAdvertsService.getCrmPublishedList(token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getCrmPublishedList(
+            token: token,
+            page: 1,
+            limit: _pageSize,
+            categoryId: _selectedCategoryId,
+            catalogId: _selectedCategoryId == null ? _selectedCatalogId : null),
         // «Все» — созданные вручную активные (statusId 1 + manual_only).
-        MyAdvertsService.getMyAdverts(statusId: 1, manualOnly: true, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getMyAdverts(
+            statusId: 1,
+            manualOnly: true,
+            categoryId: _selectedCategoryId,
+            catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
+            token: token,
+            page: 1,
+            limit: _pageSize),
       ]);
 
       if (!mounted) return;
@@ -680,12 +706,13 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             statusId: 3, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
             statusId: 8, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
-        // «CRM» — по ВСЕМ категориям, как и «Все» (28.09.2026).
+        // «CRM» и «Все» — по выбранному каталогу, как остальные вкладки
+        // (30.09.2026).
         MyAdvertsService.getCrmPublishedList(
-            token: token, page: 1, limit: _pageSize),
-        // «Все» — ручные активные по ВСЕМ категориям (без фильтра каталога).
+            token: token, catalogId: catalogId, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
-            statusId: 1, manualOnly: true, token: token, page: 1, limit: _pageSize),
+            statusId: 1, manualOnly: true, catalogId: catalogId,
+            token: token, page: 1, limit: _pageSize),
       ]);
 
       if (mounted) {
@@ -704,9 +731,11 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _crmListingsPage = 1;
           _manualListingsPage = 1;
 
-          // Все/CRM — общие счётчики (см. _loadTabCounts). Активные/Неактивные/
-          // Модерация/Архив — по выбранному каталогу/категории, чтобы цифра
-          // совпадала с отфильтрованным списком.
+          // Счётчики берём из тех же ответов, что и списки (30.09.2026):
+          // иначе подпись «CRM 810» висит над списком из шестидесяти, а
+          // ленивая подгрузка ждёт страниц, которых нет.
+          _crmTotal = results[4].meta?.total ?? results[4].data.length;
+          _manualTotal = results[5].meta?.total ?? results[5].data.length;
           _activeTotal = results[0].meta?.total ?? results[0].data.length;
           _inactiveTotal = results[1].meta?.total ?? results[1].data.length;
           _moderationTotal = results[2].meta?.total ?? results[2].data.length;
@@ -775,8 +804,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       // Грузим ТОЛЬКО первую страницу каждого статуса (по _pageSize штук).
       // Остальное подтянется лениво при прокрутке вниз (_loadMoreListings).
-      // «Активные» (results[0]) и «Все» (results[5]) — по ВСЕМ категориям.
-      // «Неактивные/Модерация/Архив» и «CRM» — по выбранной категории.
+      // Все шесть — по выбранной категории (30.09.2026).
       final results = await Future.wait([
         // «Активные» — по выбранной категории (как и остальные статусные вкладки).
         MyAdvertsService.getMyAdverts(
@@ -787,12 +815,11 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             statusId: 3, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
             statusId: 8, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
-        // «CRM» — по ВСЕМ категориям, как и «Все» (28.09.2026).
         MyAdvertsService.getCrmPublishedList(
-            token: token, page: 1, limit: _pageSize),
-        // «Все» — ручные активные по ВСЕМ категориям (без фильтра категории).
+            token: token, categoryId: categoryId, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
-            statusId: 1, manualOnly: true, token: token, page: 1, limit: _pageSize),
+            statusId: 1, manualOnly: true, categoryId: categoryId,
+            token: token, page: 1, limit: _pageSize),
       ]);
 
       if (mounted) {
@@ -813,9 +840,11 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _crmListingsPage = 1;
           _manualListingsPage = 1;
 
-          // Все/CRM — общие счётчики (см. _loadTabCounts). Активные/Неактивные/
-          // Модерация/Архив — по выбранной категории, чтобы цифра совпадала со
-          // списком.
+          // Все шесть счётчиков берём из тех же ответов, что и списки: иначе
+          // подпись «Все 34» не совпадёт с отфильтрованным списком, а ленивая
+          // подгрузка будет ждать страницы, которых нет (30.09.2026).
+          _crmTotal = results[4].meta?.total ?? results[4].data.length;
+          _manualTotal = results[5].meta?.total ?? results[5].data.length;
           _activeTotal = results[0].meta?.total ?? results[0].data.length;
           _inactiveTotal = results[1].meta?.total ?? results[1].data.length;
           _moderationTotal = results[2].meta?.total ?? results[2].data.length;
@@ -957,20 +986,22 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       final MyAdvertsResponse response;
 
       if (tab == 4) {
-        // CRM — отдельный эндпоинт, по ВСЕМ категориям (28.09.2026).
-        // Фильтр категории здесь обрывал список: он сужал выдачу, а счётчик
-        // вкладки оставался общим.
+        // CRM — отдельный эндпоинт, тот же фильтр, что и у списка первой
+        // страницы: иначе вторая страница придёт из другой выборки.
         response = await MyAdvertsService.getCrmPublishedList(
           token: token,
           page: nextPage,
           limit: _pageSize,
+          categoryId: _selectedCategoryId,
+          catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
         );
       } else if (tab == 5) {
-        // «Все» — ручные активные по ВСЕМ категориям (без фильтра категории).
         response = await MyAdvertsService.getMyAdverts(
           token: token,
           statusId: 1,
           manualOnly: true,
+          categoryId: _selectedCategoryId,
+          catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
           page: nextPage,
           limit: _pageSize,
         );
@@ -979,6 +1010,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         response = await MyAdvertsService.getMyAdverts(
           statusId: _statusIdForTab(tab),
           categoryId: _selectedCategoryId,
+          // Первая страница могла прийти по каталогу (категория не выбрана).
+          // Без этого вторая приходила без фильтра, и в список подмешивались
+          // чужие каталоги (30.09.2026).
+          catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
           token: token,
           page: nextPage,
           limit: _pageSize,
@@ -1041,6 +1076,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
               _crmListingsPage = loadedPage;
               _crmIsLastPage =
                   _noMorePages(response, _crmListings.length, added: added);
+              if (total > 0) _crmTotal = total;
               break;
             }
           case 5:
@@ -1049,6 +1085,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
               _manualListingsPage = loadedPage;
               _manualIsLastPage =
                   _noMorePages(response, _manualListings.length, added: added);
+              if (total > 0) _manualTotal = total;
               break;
             }
         }
