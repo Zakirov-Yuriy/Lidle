@@ -3,10 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lidle/constants.dart';
+import 'package:collection/collection.dart';
 import 'package:lidle/models/bookings/booking_item.dart';
+import 'package:lidle/models/bookings/preorder.dart';
 import 'package:lidle/models/home_models.dart';
+import 'package:lidle/pages/bookings/preorder_catalog_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:lidle/services/bookings_service.dart';
+import 'package:lidle/services/preorder_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -818,6 +822,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       ));
     }
 
+    // «Дополнить заказ» (30.09.2026): человек забронировал стол, а потом
+    // решил добавить цветы к приходу. Раньше для этого пришлось бы отменить
+    // бронь и сделать заново, потеряв стол.
+    if (item.canAddItems) {
+      buttons.add(_actionButton(
+        'Дополнить заказ',
+        activeIconColor,
+        () => _addItems(item),
+      ));
+    }
+
     if (item.canCancel) {
       buttons.add(_actionButton(
         'Отменить',
@@ -851,6 +866,115 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Wrap(spacing: 8, runSpacing: 8, children: buttons),
+    );
+  }
+
+  /// Идёт ли открытие витрины: два касания подряд иначе откроют два экрана.
+  bool _opening = false;
+
+  /// Открыть витрину заведения, чтобы дописать позиции в эту бронь.
+  Future<void> _addItems(BookingItem item) async {
+    if (_opening) return;
+
+    setState(() => _opening = true);
+
+    try {
+      final advertId = item.advertId;
+
+      final blocks = await PreorderService.catalog(advertId);
+
+      if (!mounted) return;
+
+      if (blocks.isEmpty) {
+        SnackBarHelper.showInfo(
+          context,
+          'Заведение пока ничего не предлагает к заказу',
+        );
+
+        return;
+      }
+
+      // Что именно дописываем: меню, товар, услугу или доставку. Спрашиваем,
+      // как и при первой брони: цветы лежат в товарах, а не в меню, и
+      // подставить первый попавшийся вид значило бы закрыть дорогу к ним.
+      final kind = await _pickKind(blocks);
+
+      if (kind == null || !mounted) return;
+
+      // Корзина этого заведения могла остаться с прошлого раза: перечитываем,
+      // чтобы человек видел ровно то, что добавляет сейчас.
+      await PreorderService.load(advertId);
+
+      if (!mounted) return;
+
+      final added = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PreorderCatalogScreen(
+            advertId: advertId,
+            advertTitle: item.advert?.name ?? 'Заведение',
+            kind: kind,
+            blocks: blocks.where((b) => b.kind == kind).toList(),
+            appendToBookingId: item.id,
+          ),
+        ),
+      );
+
+      if (added == true && mounted) {
+        BookingsService.notifyChanged();
+
+        await _load();
+      }
+    } finally {
+      if (mounted) setState(() => _opening = false);
+    }
+  }
+
+  /// Выбор вида: показываем только те, что у заведения есть. Вид один —
+  /// не спрашиваем.
+  Future<String?> _pickKind(List<PreorderBlock> blocks) async {
+    final kinds = <String, String>{};
+
+    for (final block in blocks) {
+      kinds.putIfAbsent(block.kind, () => block.title);
+    }
+
+    if (kinds.length <= 1) return kinds.keys.firstOrNull;
+
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: formBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text(
+                'Что добавить к брони',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            for (final entry in kinds.entries)
+              ListTile(
+                title: Text(
+                  entry.value,
+                  style: const TextStyle(color: textPrimary, fontSize: 15),
+                ),
+                trailing: const Icon(Icons.chevron_right, color: textSecondary),
+                onTap: () => Navigator.of(sheet).pop(entry.key),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 

@@ -456,6 +456,11 @@ class BookingsService {
   static Future<BookingResult> cancel(int bookingId, {String? reason}) =>
       _act('/me/bookings/$bookingId/cancel', 'Бронь отменена', reason: reason);
 
+  /// Дополнить заказ к уже созданной броне (30.09.2026): корзина заведения
+  /// переносится в бронь, счёт пересчитывается.
+  static Future<BookingResult> appendPreorder(int bookingId) =>
+      _act('/me/bookings/$bookingId/preorder', 'Заказ дополнен');
+
   static Future<BookingResult> _act(
     String endpoint,
     String fallbackMessage, {

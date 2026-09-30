@@ -15,10 +15,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/models/bookings/preorder.dart';
+import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/pages/bookings/preorder_cart_screen.dart';
 import 'package:lidle/pages/bookings/preorder_item_screen.dart';
+import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/preorder_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -43,6 +44,7 @@ class PreorderCatalogScreen extends StatefulWidget {
     this.hallId,
     this.tableKey,
     this.isTakeaway = false,
+    this.appendToBookingId,
   });
 
   final int advertId;
@@ -57,6 +59,11 @@ class PreorderCatalogScreen extends StatefulWidget {
   /// Нужны, чтобы в счёте считался депозит выбранного стола.
   final int? hallId;
   final String? tableKey;
+
+  /// Номер брони, к которой дополняем заказ (30.09.2026). Задан — витрина
+  /// открыта из «Моих броней», и кнопка внизу дописывает набранное в эту
+  /// бронь, а не собирает новую.
+  final int? appendToBookingId;
 
   /// Заказ навынос (29.09.2026): то же меню, другие слова на кнопке.
   final bool isTakeaway;
@@ -287,6 +294,46 @@ class _PreorderCatalogScreenState extends State<PreorderCatalogScreen> {
     );
   }
 
+  /// Идёт ли дозапись в бронь: пока идёт, кнопку не жмут второй раз.
+  bool _sending = false;
+
+  /// «Добавить к брони». Обычный путь просто возвращает набранное на
+  /// предыдущий экран, а из «Моих броней» дописываем в уже созданную бронь.
+  Future<void> _finish() async {
+    final bookingId = widget.appendToBookingId;
+
+    if (bookingId == null) {
+      Navigator.of(context).pop(true);
+
+      return;
+    }
+
+    final cart = PreorderService.cart.value;
+
+    if (cart.isEmpty) {
+      SnackBarHelper.showWarning(context, 'Сначала выберите, что добавить');
+
+      return;
+    }
+
+    setState(() => _sending = true);
+
+    final result = await BookingsService.appendPreorder(bookingId);
+
+    if (!mounted) return;
+
+    setState(() => _sending = false);
+
+    if (result.isCreated) {
+      SnackBarHelper.showSuccess(context, result.message);
+      Navigator.of(context).pop(true);
+
+      return;
+    }
+
+    SnackBarHelper.showError(context, result.message);
+  }
+
   Widget _bottomButton() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
@@ -298,11 +345,24 @@ class _PreorderCatalogScreenState extends State<PreorderCatalogScreen> {
             backgroundColor: activeIconColor,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(
-            widget.isTakeaway ? 'Добавить к самовывозу' : 'Добавить к брони',
-            style: const TextStyle(color: Colors.white, fontSize: 16),
-          ),
+          onPressed: _sending ? null : _finish,
+          child: _sending
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(
+                  widget.appendToBookingId != null
+                      ? 'Добавить к брони'
+                      : (widget.isTakeaway
+                          ? 'Добавить к самовывозу'
+                          : 'Добавить к брони'),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
         ),
       ),
     );
