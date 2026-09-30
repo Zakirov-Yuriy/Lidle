@@ -24,10 +24,15 @@ class BookingResult {
   /// `pending`, если у объявления включено подтверждение владельцем.
   final String? status;
 
+  /// Номер созданной брони (30.09.2026). По нему список «Мои брони»
+  /// открывается сразу на ней, а не заставляет искать её глазами.
+  final int? id;
+
   const BookingResult({
     required this.kind,
     required this.message,
     this.status,
+    this.id,
   });
 
   bool get isCreated => kind == BookingResultKind.created;
@@ -214,6 +219,11 @@ class BookingsService {
           kind: BookingResultKind.created,
           message: '${response['message'] ?? 'Время забронировано'}',
           status: data is Map ? data['status']?.toString() : null,
+          id: data is Map
+              ? (data['id'] is num
+                  ? (data['id'] as num).toInt()
+                  : int.tryParse('${data['id'] ?? ''}'))
+              : null,
         );
       }
 

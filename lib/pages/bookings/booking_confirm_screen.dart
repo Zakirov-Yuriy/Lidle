@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_labels.dart';
 import 'package:lidle/models/bookings/preorder.dart';
+import 'package:lidle/pages/bookings/my_bookings_screen.dart';
 import 'package:lidle/services/preorder_service.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -32,11 +33,15 @@ String _money(double value) {
 /// Экран подтверждения записи: показывает выбранное время, спрашивает имя,
 /// телефон и комментарий, отправляет бронь.
 ///
-/// Возвращает через Navigator.pop:
-///   true  — бронь создана, календарь в карточке надо перечитать;
-///   false — время заняли, пока человек заполнял форму (409), календарь тоже
-///           надо перечитать, но экран мы закрываем, чтобы человек выбрал
-///           другое время из свежих данных;
+/// Бронь создана — экран сам открывает «Мои брони» на ней и убирает из
+/// стопки экраны выбора зала, времени и стола (30.09.2026): возвращаться к
+/// ним незачем, а в списке человек видит состав заказа, сумму и реквизиты
+/// заведения.
+///
+/// В остальных случаях возвращает через Navigator.pop:
+///   false — время заняли, пока человек заполнял форму (409), календарь надо
+///           перечитать, а экран мы закрываем, чтобы человек выбрал другое
+///           время из свежих данных;
 ///   null  — просто ушли назад, ничего не изменилось.
 class BookingConfirmScreen extends StatefulWidget {
   final int advertId;
@@ -207,7 +212,19 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
               ? 'Заявка отправлена, ждём ответа владельца'
               : 'Время забронировано',
         );
-        Navigator.pop(context, true);
+
+        // Сразу открываем «Мои брони» на только что созданной броне
+        // (30.09.2026). Там человек видит состав заказа, сумму и реквизиты
+        // заведения: после «Забронировать» это и есть его следующий шаг.
+        // Экраны выбора зала, времени и стола из стопки убираем — возвращаться
+        // к ним незачем, бронь уже сделана.
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MyBookingsScreen(highlightId: result.id),
+          ),
+          (route) => route.isFirst,
+        );
         break;
 
       case BookingResultKind.conflict:

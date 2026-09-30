@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lidle/constants.dart';
@@ -25,7 +27,12 @@ class MyBookingsScreen extends StatefulWidget {
   /// 0 — мои брони, 1 — заявки ко мне.
   final int initialTab;
 
-  const MyBookingsScreen({super.key, this.initialTab = 0});
+  /// Номер брони, к которой надо прокрутить список и подсветить её
+  /// (30.09.2026). Человек только что забронировал: он должен увидеть свою
+  /// бронь и реквизиты оплаты, а не искать её среди прочих.
+  final int? highlightId;
+
+  const MyBookingsScreen({super.key, this.initialTab = 0, this.highlightId});
 
   @override
   State<MyBookingsScreen> createState() => _MyBookingsScreenState();
@@ -43,6 +50,15 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   bool _isLoading = true;
   String? _error;
 
+  /// Подсветка только что созданной брони и место, к которому прокрутить.
+  int? _highlightId;
+  final GlobalKey _highlightKey = GlobalKey();
+  Timer? _highlightTimer;
+
+  /// Подсветку заводим один раз. Иначе потягивание списка вниз в первые
+  /// секунды заново дёргало бы прокрутку и продлевало подсветку.
+  bool _highlightShown = false;
+
   @override
   void initState() {
     super.initState();
@@ -54,13 +70,41 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) setState(() {});
     });
+    _highlightId = widget.highlightId;
     _load();
   }
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  /// Прокрутить к только что созданной брони и снять подсветку через
+  /// несколько секунд: она нужна, чтобы взгляд нашёл карточку, а дальше
+  /// только мешает.
+  void _showHighlighted() {
+    if (_highlightId == null || _highlightShown) return;
+
+    _highlightShown = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = _highlightKey.currentContext;
+
+      if (target != null) {
+        Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 350),
+          alignment: 0.1,
+        );
+      }
+    });
+
+    _highlightTimer?.cancel();
+    _highlightTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _highlightId = null);
+    });
   }
 
   Future<void> _load() async {
@@ -84,6 +128,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         _incoming = results[1];
         _isLoading = false;
       });
+
+      _showHighlighted();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -205,7 +251,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     );
   }
 
-  Widget _buildList(List<BookingItem> items, {required bool isIncoming}) {
+  Widget _buildList(List<BookingItem> rows, {required bool isIncoming}) {
+    // Только что созданную бронь поднимаем наверх (30.09.2026). Сервер
+    // сортирует брони по времени, и новая встаёт на своё место в середине
+    // списка: прокрутка к ней не сработает, пока карточка не построена, а
+    // список строит их лениво. Наверху человек видит её сразу.
+    final items = _highlightId == null
+        ? rows
+        : [
+            ...rows.where((b) => b.id == _highlightId),
+            ...rows.where((b) => b.id != _highlightId),
+          ];
+
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: activeIconColor),
@@ -258,11 +315,15 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   Widget _buildCard(BookingItem item) {
+    final picked = _highlightId != null && item.id == _highlightId;
+
     return Container(
+      key: picked ? _highlightKey : null,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: formBackground,
         borderRadius: BorderRadius.circular(8),
+        border: picked ? Border.all(color: activeIconColor, width: 1.5) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
