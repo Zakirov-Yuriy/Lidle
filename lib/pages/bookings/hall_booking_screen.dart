@@ -676,6 +676,12 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
       // равно обрежет по горизонту объявления.
       last: now.add(const Duration(days: 62)),
       title: 'Дата бронирования',
+
+      // Нерабочие дни гасим прямо в календаре (30.09.2026). Раньше человек
+      // выбирал дату и только после этого получал «в этот день зал не
+      // работает»: выглядело поломкой, хотя данные верные.
+      isOpen: _hall.worksOn,
+      closedNote: _hall.scheduleNote,
     );
 
     if (picked == null) return;

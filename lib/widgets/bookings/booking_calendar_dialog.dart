@@ -33,6 +33,8 @@ Future<DateTime?> showBookingDatePicker(
   required DateTime first,
   required DateTime last,
   String title = 'Выберите дату',
+  bool Function(DateTime day)? isOpen,
+  String? closedNote,
 }) {
   return showDialog<DateTime>(
     context: context,
@@ -41,6 +43,8 @@ Future<DateTime?> showBookingDatePicker(
       first: first,
       last: last,
       title: title,
+      isOpen: isOpen,
+      closedNote: closedNote,
     ),
   );
 }
@@ -51,12 +55,22 @@ class _BookingCalendarDialog extends StatefulWidget {
     required this.first,
     required this.last,
     required this.title,
+    this.isOpen,
+    this.closedNote,
   });
 
   final DateTime initial;
   final DateTime first;
   final DateTime last;
   final String title;
+
+  /// Работает ли заведение в этот день (30.09.2026). Нерабочие дни гасим
+  /// прямо в календаре: раньше человек выбирал дату и только потом получал
+  /// отказ, и это выглядело поломкой, хотя данные верные.
+  final bool Function(DateTime day)? isOpen;
+
+  /// Строка под сеткой: почему часть дней погашена.
+  final String? closedNote;
 
   @override
   State<_BookingCalendarDialog> createState() => _BookingCalendarDialogState();
@@ -84,6 +98,16 @@ class _BookingCalendarDialogState extends State<_BookingCalendarDialog> {
             _weekdays(),
             const SizedBox(height: 6),
             _grid(),
+
+            // Объяснение под сеткой: почему часть дней бледная.
+            if ((widget.closedNote ?? '').isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                widget.closedNote!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: textMuted, fontSize: 12, height: 1.35),
+              ),
+            ],
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -95,10 +119,15 @@ class _BookingCalendarDialogState extends State<_BookingCalendarDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed: () => Navigator.of(context).pop(_picked),
-                child: const Text(
+                onPressed: _pickedIsOpen
+                    ? () => Navigator.of(context).pop(_picked)
+                    : null,
+                child: Text(
                   'Подтвердить',
-                  style: TextStyle(color: activeIconColor, fontSize: 16),
+                  style: TextStyle(
+                    color: _pickedIsOpen ? activeIconColor : textMuted,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
@@ -261,7 +290,10 @@ class _BookingCalendarDialogState extends State<_BookingCalendarDialog> {
   }
 
   Widget _cell(DateTime date) {
-    final available = !date.isBefore(_day(widget.first)) && !date.isAfter(_day(widget.last));
+    final inRange =
+        !date.isBefore(_day(widget.first)) && !date.isAfter(_day(widget.last));
+
+    final available = inRange && (widget.isOpen?.call(date) ?? true);
     final isPicked = date == _picked;
     final isToday = date == _day(DateTime.now());
     final isWeekend = date.weekday >= 6;
@@ -300,6 +332,10 @@ class _BookingCalendarDialogState extends State<_BookingCalendarDialog> {
       ),
     );
   }
+
+  /// Открыто ли заведение в выбранный день. Если человек пришёл в календарь
+  /// с датой, которая уже нерабочая, подтверждать нечего.
+  bool get _pickedIsOpen => widget.isOpen?.call(_picked) ?? true;
 
   static DateTime _day(DateTime value) => DateTime(value.year, value.month, value.day);
 

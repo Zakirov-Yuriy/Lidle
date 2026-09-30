@@ -321,6 +321,16 @@ class BookingHall {
   /// «Время работы зала: 9:00 - 18:00». Какие это поля, решает админка.
   final List<BookingHallLine> lines;
 
+  /// Расписание единицы (30.09.2026), чтобы календарь гасил нерабочие дни.
+  ///
+  /// `days` — номера дней недели с понедельника, пусто значит всю неделю.
+  /// `dateFrom`/`dateTo` — диапазон дат работы, null значит без ограничения.
+  /// `seasons` — номера месяцев, пусто значит круглый год.
+  final List<int> days;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
+  final List<int> seasons;
+
   const BookingHall({
     required this.id,
     required this.name,
@@ -335,7 +345,39 @@ class BookingHall {
     this.fileKind,
     this.layout = const [],
     this.lines = const [],
+    this.days = const [],
+    this.dateFrom,
+    this.dateTo,
+    this.seasons = const [],
   });
+
+  /// Работает ли единица в этот день. Считается ровно так же, как на
+  /// сервере: сначала день недели, потом диапазон дат, потом время года.
+  bool worksOn(DateTime day) {
+    final date = DateTime(day.year, day.month, day.day);
+
+    if (days.isNotEmpty && !days.contains(date.weekday)) return false;
+
+    if (dateFrom != null && date.isBefore(dateFrom!)) return false;
+    if (dateTo != null && date.isAfter(dateTo!)) return false;
+
+    if (seasons.isNotEmpty && !seasons.contains(date.month)) return false;
+
+    return true;
+  }
+
+  /// Чем ограничено расписание: строка под календарём.
+  String? get scheduleNote {
+    final parts = <String>[];
+
+    if (days.isNotEmpty && days.length < 7) parts.add('не во все дни недели');
+    if (dateFrom != null || dateTo != null) parts.add('не во все даты');
+    if (seasons.isNotEmpty) parts.add('не круглый год');
+
+    if (parts.isEmpty) return null;
+
+    return 'Бледные дни заведение не работает: ${parts.join(', ')}.';
+  }
 
   bool get hasTables => tables.isNotEmpty;
 
@@ -345,6 +387,35 @@ class BookingHall {
   /// Картинка плана, которую можно показать. У PDF её нет.
   String? get planImageUrl =>
       (fileKind == 'image' && (fileUrl ?? '').isNotEmpty) ? fileUrl : null;
+
+  /// Список целых из ответа: дни недели и месяцы.
+  static List<int> _ints(dynamic raw) {
+    if (raw is! List) return const [];
+
+    final out = <int>[];
+
+    for (final item in raw) {
+      final value = _int(item);
+
+      if (value != null) out.add(value);
+    }
+
+    return out;
+  }
+
+  /// Дата вида `2026-09-22`. Мусор и пустая строка дают null: ограничения
+  /// просто нет.
+  static DateTime? _dateOrNull(dynamic raw) {
+    final text = '${raw ?? ''}'.trim();
+
+    if (text.isEmpty) return null;
+
+    final parsed = DateTime.tryParse(text);
+
+    return parsed == null
+        ? null
+        : DateTime(parsed.year, parsed.month, parsed.day);
+  }
 
   static BookingHall? tryParse(dynamic raw) {
     if (raw is! Map) return null;
@@ -379,6 +450,10 @@ class BookingHall {
       fileKind: '${raw['file_kind'] ?? ''}'.isEmpty ? null : '${raw['file_kind']}',
       layout: BookingHallTable.listOf(raw['layout']),
       lines: BookingHallLine.listOf(raw['lines']),
+      days: _ints(raw['days']),
+      dateFrom: _dateOrNull(raw['dates'] is Map ? (raw['dates'] as Map)['from'] : null),
+      dateTo: _dateOrNull(raw['dates'] is Map ? (raw['dates'] as Map)['to'] : null),
+      seasons: _ints(raw['seasons']),
     );
   }
 
