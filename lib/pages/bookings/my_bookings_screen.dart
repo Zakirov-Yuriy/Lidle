@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_item.dart';
-import 'package:lidle/pages/full_category_screen/property_details_screen.dart';
+import 'package:lidle/models/home_models.dart';
+import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -52,7 +53,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
 
   /// Подсветка только что созданной брони и место, к которому прокрутить.
   int? _highlightId;
-  final GlobalKey _highlightKey = GlobalKey();
+  final GlobalKey _mineHighlightKey = GlobalKey();
+  final GlobalKey _incomingHighlightKey = GlobalKey();
   Timer? _highlightTimer;
 
   /// Подсветку заводим один раз. Иначе потягивание списка вниз в первые
@@ -90,7 +92,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     _highlightShown = true;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final target = _highlightKey.currentContext;
+      final target = _mineHighlightKey.currentContext ??
+          _incomingHighlightKey.currentContext;
 
       if (target != null) {
         Scrollable.ensureVisible(
@@ -309,16 +312,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         padding: const EdgeInsets.fromLTRB(25, 12, 25, 40),
         itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) => _buildCard(items[index]),
+        itemBuilder: (context, index) =>
+            _buildCard(items[index], isIncoming: isIncoming),
       ),
     );
   }
 
-  Widget _buildCard(BookingItem item) {
+  Widget _buildCard(BookingItem item, {bool isIncoming = false}) {
     final picked = _highlightId != null && item.id == _highlightId;
 
     return Container(
-      key: picked ? _highlightKey : null,
+      key: picked
+          ? (isIncoming ? _incomingHighlightKey : _mineHighlightKey)
+          : null,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: formBackground,
@@ -616,11 +622,27 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     final advert = item.advert;
 
     return GestureDetector(
+      // Тот же экран объявления, что и везде в приложении (30.09.2026).
+      // Раньше отсюда открывался PropertyDetailsScreen — старый макет,
+      // который ничего не загружает, показывает захардкоженную квартиру и
+      // ссылается на удалённые картинки. Он же вешал приложение: слушатель
+      // его карусели дёргал `page!` до того, как список получил размеры, и
+      // раскладка падала каждый кадр.
+      //
+      // Полного объявления у брони нет, поэтому отдаём заглушку с тем, что
+      // знаем: экран догрузит остальное сам по номеру.
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => PropertyDetailsScreen(
-            advertisementId: '${item.advertId}',
+          builder: (_) => MiniPropertyDetailsScreen(
+            listing: Listing(
+              id: '${item.advertId}',
+              imagePath: advert?.thumbnail ?? '',
+              title: advert?.name ?? 'Объявление',
+              price: advert?.price ?? '',
+              location: '',
+              date: '',
+            ),
           ),
         ),
       ),
@@ -636,6 +658,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                   ? Image.network(
                       advert!.thumbnail!,
                       fit: BoxFit.cover,
+                      // Плашка 56 точек: держать в памяти оригинал фотографии
+                      // ради неё незачем (30.09.2026).
+                      cacheWidth: 168,
                       errorBuilder: (_, __, ___) => _thumbStub(),
                     )
                   : _thumbStub(),
@@ -805,7 +830,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       ));
     }
 
-    if (buttons.isEmpty) return const SizedBox.shrink();
+    if (buttons.isEmpty) {
+      // Отмена закрыта сроком — объясняем словами (30.09.2026). Иначе
+      // человек ищет кнопку, которой нет, и думает, что приложение сломано.
+      final hint = item.cancelHint;
+
+      if (hint != null && hint.isNotEmpty) {
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Text(
+            hint,
+            style: const TextStyle(color: textMuted, fontSize: 12, height: 1.35),
+          ),
+        );
+      }
+
+      return const SizedBox.shrink();
+    }
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),

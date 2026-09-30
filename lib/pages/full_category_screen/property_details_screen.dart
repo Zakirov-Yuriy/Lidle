@@ -115,6 +115,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     }
     
     _pageController.addListener(() {
+      // До того как список получит размеры, `page` равен null (30.09.2026).
+      // Слушатель зовут из раскладки, и падение здесь обрывало её каждый
+      // кадр: экран замирал, и Android предлагал закрыть приложение.
+      if (!_pageController.hasClients || _pageController.page == null) return;
+
       int next = _pageController.page!.round();
       if (_currentPage != next) {
         setState(() {

@@ -38,6 +38,10 @@ class BookingItem {
   final bool canReject;
   final bool canCancel;
 
+  /// Почему отменить уже нельзя: срок отмены прошёл (30.09.2026). Пусто,
+  /// когда отмена доступна или причина видна по статусу.
+  final String? cancelHint;
+
   /// Заказ навынос (30.09.2026): столика нет, человек заберёт сам.
   final bool isTakeaway;
 
@@ -76,6 +80,7 @@ class BookingItem {
     required this.canConfirm,
     required this.canReject,
     required this.canCancel,
+    this.cancelHint,
     this.isTakeaway = false,
     this.items = const [],
     this.totals = const PreorderTotals(),
@@ -117,6 +122,7 @@ class BookingItem {
       canConfirm: raw['can_confirm'] == true,
       canReject: raw['can_reject'] == true,
       canCancel: raw['can_cancel'] == true,
+      cancelHint: _asString(raw['cancel_hint']),
       isTakeaway: raw['is_takeaway'] == true,
       items: PreorderCart.fromJson({'items': raw['items']}).items,
       totals: PreorderTotals.fromJson(raw['totals']),
