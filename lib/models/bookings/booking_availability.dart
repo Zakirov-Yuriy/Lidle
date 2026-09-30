@@ -10,6 +10,7 @@
 library;
 
 import 'package:lidle/models/bookings/booking_labels.dart';
+import 'package:lidle/models/hall_table.dart';
 
 /// Режим бронирования: запись на услуги или посуточное жильё.
 enum BookingMode { slots, daily }
@@ -169,11 +170,6 @@ class BookingTableGroup {
   const BookingTableGroup({required this.seats, required this.count});
 }
 
-/// Зал ресторана, где можно бронировать (22.09.2026).
-///
-/// Приходит в свободном времени объявления полем `halls`, если ресторан
-/// описал столики хотя бы в одном зале или разрешил банкет. Тогда гость
-/// сначала выбирает зал, а свободное время считается по его столикам.
 /// Стол на плане зала (28.09.2026).
 ///
 /// Ключ постоянный: номер продавец меняет, а бронь должна указывать на тот же
@@ -197,6 +193,15 @@ class BookingHallTable {
   /// «Важно!» от заведения: с чем объединяется стол, чем отличается.
   final String note;
 
+  /// Размер стола долями плана и поворот в градусах (30.09.2026).
+  ///
+  /// Схемы залов у всех разные: длинный стол на восемь человек и круглый на
+  /// двоих, да ещё под углом. Метка одного размера ложилась мимо, поэтому
+  /// размер и поворот задаёт заведение, а схема рисует стол как он есть.
+  final double width;
+  final double height;
+  final double angle;
+
   const BookingHallTable({
     required this.key,
     required this.number,
@@ -206,6 +211,9 @@ class BookingHallTable {
     this.isFree = true,
     this.deposit = 0,
     this.note = '',
+    this.width = kTableMarkWidth,
+    this.height = kTableMarkHeight,
+    this.angle = 0,
   });
 
   static List<BookingHallTable> listOf(dynamic raw) {
@@ -231,6 +239,15 @@ class BookingHallTable {
         isFree: item['is_free'] == null || item['is_free'] == true,
         deposit: (item['deposit'] is num) ? (item['deposit'] as num).toInt() : 0,
         note: '${item['note'] ?? ''}'.trim(),
+        // Столы, расставленные до 30.09.2026, размера не имеют: берём
+        // прежний, чтобы схема не переехала.
+        width: (item['w'] is num)
+            ? (item['w'] as num).toDouble().clamp(kTableMarkMin, kTableMarkMax)
+            : kTableMarkWidth,
+        height: (item['h'] is num)
+            ? (item['h'] as num).toDouble().clamp(kTableMarkMin, kTableMarkMax)
+            : kTableMarkHeight,
+        angle: (item['angle'] is num) ? (item['angle'] as num).toDouble() % 360 : 0,
       ));
     }
 
@@ -265,6 +282,11 @@ class BookingHallLine {
   }
 }
 
+/// Зал ресторана, где можно бронировать (22.09.2026).
+///
+/// Приходит в свободном времени объявления полем `halls`, если ресторан
+/// описал столики хотя бы в одном зале или разрешил банкет. Тогда гость
+/// сначала выбирает зал, а свободное время считается по его столикам.
 class BookingHall {
   final int id;
   final String name;

@@ -57,6 +57,11 @@ class BookingLabels {
   /// «Этот столик уже занят» / «Это кресло уже занято».
   final String seatBusy;
 
+  /// Подсказка под схемой зала (30.09.2026). Фразы целиком, а не одно
+  /// слово: «Свободный столик» и «Занят», «Свободное кресло» и «Занято».
+  final String seatFree;
+  final String seatTaken;
+
   /// «Перейти к бронированию» / «Перейти к записи».
   final String bookingGo;
 
@@ -86,6 +91,8 @@ class BookingLabels {
     this.seatNone = 'Место не выбрано',
     this.seatDeposit = 'Депозит за место',
     this.seatBusy = 'Это место уже занято',
+    this.seatFree = 'Свободное место',
+    this.seatTaken = 'Занято',
     this.bookingGo = 'Перейти к записи',
     this.hasTakeaway = false,
     this.hasGuests = false,
@@ -141,6 +148,8 @@ class BookingLabels {
       seatNone: text('seat_none', standard.seatNone),
       seatDeposit: text('seat_deposit', standard.seatDeposit),
       seatBusy: text('seat_busy', standard.seatBusy),
+      seatFree: text('legend_free', standard.seatFree),
+      seatTaken: text('legend_busy', standard.seatTaken),
       bookingGo: text('booking_go', standard.bookingGo),
       hasTakeaway: flag('has_takeaway', standard.hasTakeaway),
       hasGuests: flag('has_guests', standard.hasGuests),

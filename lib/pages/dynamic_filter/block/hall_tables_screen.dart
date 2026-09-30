@@ -34,6 +34,7 @@ import 'package:lidle/models/block_item.dart';
 import 'package:lidle/models/hall_table.dart';
 import 'package:lidle/models/scenario.dart';
 import 'package:lidle/pages/dynamic_filter/block/block_item_screen.dart';
+import 'package:lidle/widgets/bookings/hall_table_mark.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 const Color _divider = Color(0xFF474747);
@@ -209,7 +210,10 @@ class _HallTablesScreenState extends State<HallTablesScreen> {
         // Депозит и «Важно!» тоже общие для всех сценариев: это свойства
         // самого стола, а не смены (29.09.2026).
         ..deposit = result.table.deposit
-        ..note = result.table.note;
+        ..note = result.table.note
+        ..w = result.table.w
+        ..h = result.table.h
+        ..angle = result.table.angle;
 
       if (result.staff.isEmpty) {
         _staff.remove(table.key);
@@ -269,19 +273,35 @@ class _HallTablesScreenState extends State<HallTablesScreen> {
                           child: Stack(
                             children: [
                               Positioned.fill(child: _PlanBackground(hall: hall)),
-                              for (final t in _tables)
-                                Positioned(
-                                  left: t.x * size.width - _TableMark.width / 2,
-                                  top: t.y * size.height - _TableMark.height / 2,
-                                  child: GestureDetector(
-                                    onTap: () => _open(t),
-                                    child: _TableMark(
-                                      table: t,
-                                      selected: t.key == _selectedKey,
+
+                              // Метки те же, что увидит гость (30.09.2026):
+                              // продавец подгоняет рамку под свой стол и
+                              // сразу видит результат, а не догадывается.
+                              ...tableMarkLayers(
+                                plan: size,
+                                spots: [
+                                  for (final t in _tables)
+                                    TableSpot(
+                                      key: t.key,
+                                      number: t.number,
+                                      seats: t.seats,
+                                      x: t.x,
+                                      y: t.y,
+                                      width: t.w,
+                                      height: t.h,
+                                      angle: t.angle,
+                                      state: t.key == _selectedKey
+                                          ? TableMarkState.selected
+                                          : TableMarkState.free,
                                       hasStaff: !(_staff[t.key]?.isEmpty ?? true),
                                     ),
-                                  ),
-                                ),
+                                ],
+                                onTap: (spot) {
+                                  final table = _tables.firstWhere((t) => t.key == spot.key);
+
+                                  _open(table);
+                                },
+                              ),
                             ],
                           ),
                         );
@@ -293,9 +313,9 @@ class _HallTablesScreenState extends State<HallTablesScreen> {
                     _tables.isEmpty
                         ? 'Нажмите на свободное место плана, чтобы поставить стол. '
                             'Нажмите на стол, чтобы указать номер, места и официанта.'
-                        : 'Столов: ${_tables.length}, мест: $seats. Вы добавили план зала в своем '
-                            'ресторане. Теперь пользователи смогут бронировать места и выбирать '
-                            'время своего визита к вам.',
+                        : 'Столов: ${_tables.length}, мест: $seats. Нажмите на стол, чтобы задать '
+                            'номер, места, а также размер и поворот рамки: она должна лечь ровно '
+                            'на ваш стол на плане. Так же схему увидит гость.',
                     style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
                   ),
                   const SizedBox(height: 28),
@@ -361,57 +381,6 @@ class _PlanBackground extends StatelessWidget {
   }
 }
 
-/// Стол на плане: номер и число мест. Выбранный — с зелёными полосами.
-class _TableMark extends StatelessWidget {
-  const _TableMark({required this.table, required this.selected, required this.hasStaff});
-
-  static const double width = 44;
-  static const double height = 34;
-
-  final HallTable table;
-  final bool selected;
-  final bool hasStaff;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFB9B9B9),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.symmetric(
-          vertical: BorderSide(color: selected ? _green : Colors.black, width: selected ? 4 : 2),
-          horizontal: const BorderSide(color: Colors.black, width: 1),
-        ),
-        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 3)],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            table.number.isEmpty ? '?' : table.number,
-            style: const TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.w700, height: 1),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.person, size: 9, color: Colors.black87),
-              Text('${table.seats}',
-                  style: const TextStyle(color: Colors.black87, fontSize: 9, height: 1.2)),
-              if (hasStaff) ...[
-                const SizedBox(width: 2),
-                const Icon(Icons.check_circle, size: 8, color: Color(0xFF1E8E2F)),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ------------------------------------------------------------
 //  «Настройка стола»
 // ------------------------------------------------------------
@@ -453,6 +422,12 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
       TextEditingController(text: widget.table.deposit > 0 ? '${widget.table.deposit}' : '');
 
   late final TextEditingController _note = TextEditingController(text: widget.table.note);
+
+  /// Размер рамки долями плана и её поворот (30.09.2026). Столы на схемах
+  /// разные: длинный на восемь человек и круглый на двоих, да ещё под углом.
+  late double _w = widget.table.w.clamp(kTableMarkMin, kTableMarkMax);
+  late double _h = widget.table.h.clamp(kTableMarkMin, kTableMarkMax);
+  late double _angle = (widget.table.angle % 360).clamp(0, 355);
 
   @override
   void dispose() {
@@ -506,7 +481,10 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
           ..number = number
           ..seats = _seats
           ..deposit = int.tryParse(_deposit.text.trim()) ?? 0
-          ..note = _note.text.trim(),
+          ..note = _note.text.trim()
+          ..w = _w
+          ..h = _h
+          ..angle = _angle,
         staff: _staff,
       ),
     );
@@ -592,6 +570,24 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
                       _step(Icons.add, _seats < 30 ? () => setState(() => _seats++) : null),
                     ],
                   ),
+                  const SizedBox(height: 22),
+                  const Text('Рамка стола на плане', style: TextStyle(color: textPrimary, fontSize: 15)),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Подгоните рамку под ваш стол на схеме: ширину, высоту и поворот. '
+                    'Ровно так стол увидит гость, а цветом рамки ему будет видно, '
+                    'свободен он или занят.',
+                    style: TextStyle(color: textSecondary, fontSize: 12, height: 1.35),
+                  ),
+                  const SizedBox(height: 12),
+                  _preview(),
+                  const SizedBox(height: 12),
+                  _slider('Ширина', _w, kTableMarkMin, kTableMarkMax,
+                      (v) => setState(() => _w = v)),
+                  _slider('Высота', _h, kTableMarkMin, kTableMarkMax,
+                      (v) => setState(() => _h = v)),
+                  _slider('Поворот', _angle, 0, 355, (v) => setState(() => _angle = v),
+                      divisions: 71, suffix: '°'),
                   const SizedBox(height: 18),
                   const Text('Депозит за стол, ₽', style: TextStyle(color: textPrimary, fontSize: 15)),
                   const SizedBox(height: 9),
@@ -663,6 +659,102 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Как рамка ляжет на план. Квадрат, как настоящая схема: размер задаётся
+  /// долями сторон, и на вытянутом превью рамка легла бы не так, как в зале.
+  Widget _preview() {
+    return Center(
+      child: SizedBox(
+        width: 220,
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: Container(
+            decoration: BoxDecoration(
+              color: formBackground,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: _divider),
+            ),
+            child: LayoutBuilder(
+              builder: (context, box) {
+                final plan = Size(box.maxWidth, box.maxHeight);
+
+                // Номер меняется прямо во время набора: иначе кажется, что
+                // поле не сработало.
+                return AnimatedBuilder(
+                  animation: _number,
+                  builder: (context, _) => Stack(
+                    children: tableMarkLayers(
+                      plan: plan,
+                      spots: [
+                        TableSpot(
+                          key: widget.table.key,
+                          number: _number.text.trim(),
+                          seats: _seats,
+                          x: 0.5,
+                          y: 0.5,
+                          width: _w,
+                          height: _h,
+                          angle: _angle,
+                          state: TableMarkState.free,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _slider(
+    String label,
+    double value,
+    double min,
+    double max,
+    ValueChanged<double> onChanged, {
+    int divisions = 56,
+    String suffix = '%',
+  }) {
+    final shown = suffix == '%' ? (value * 100).round() : value.round();
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 74,
+          child: Text(label, style: const TextStyle(color: textSecondary, fontSize: 13)),
+        ),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: _green,
+              inactiveTrackColor: _divider,
+              thumbColor: _green,
+              overlayShape: SliderComponentShape.noOverlay,
+              trackHeight: 3,
+            ),
+            child: Slider(
+              value: value.clamp(min, max),
+              min: min,
+              max: max,
+              divisions: divisions,
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 46,
+          child: Text(
+            '$shown$suffix',
+            textAlign: TextAlign.right,
+            style: const TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
     );
   }
 

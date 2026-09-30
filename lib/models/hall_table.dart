@@ -1,5 +1,16 @@
 import 'dart:math';
 
+/// Размер рамки стола по умолчанию, долями плана (30.09.2026). Столы,
+/// расставленные раньше, своего размера не имеют, и так они остаются на
+/// схеме там же, где были.
+const double kTableMarkWidth = 0.12;
+const double kTableMarkHeight = 0.10;
+
+/// Границы размера. Снизу — чтобы в рамку можно было попасть пальцем,
+/// сверху — чтобы один стол не закрыл весь зал.
+const double kTableMarkMin = 0.06;
+const double kTableMarkMax = 0.6;
+
 /// Стол на плане зала (22.09.2026).
 ///
 /// Ресторан сам ставит столы на свой план зала: нажимает на свободное место,
@@ -23,6 +34,15 @@ class HallTable {
   /// «Важно!» в карточке стола у гостя: с чем объединяется, чем отличается.
   String note;
 
+  /// Размер стола долями плана и поворот в градусах (30.09.2026).
+  ///
+  /// Метка одного размера ложилась мимо настоящего стола: у одного зала
+  /// длинный стол на восемь человек, у другого круглый на двоих, и стоят они
+  /// под углом. Теперь рамку подгоняет под свой стол сам продавец.
+  double w;
+  double h;
+  double angle;
+
   HallTable({
     required this.key,
     required this.x,
@@ -31,6 +51,9 @@ class HallTable {
     this.number = '',
     this.deposit = 0,
     this.note = '',
+    this.w = kTableMarkWidth,
+    this.h = kTableMarkHeight,
+    this.angle = 0,
   });
 
   static final Random _random = Random();
@@ -48,6 +71,9 @@ class HallTable {
         number: number,
         deposit: deposit,
         note: note,
+        w: w,
+        h: h,
+        angle: angle,
       );
 
   Map<String, dynamic> toJson() => {
@@ -58,6 +84,9 @@ class HallTable {
         'number': number,
         'deposit': deposit,
         'note': note,
+        'w': w,
+        'h': h,
+        'angle': angle,
       };
 
   static HallTable? tryParse(dynamic raw) {
@@ -79,6 +108,15 @@ class HallTable {
           ? (raw['deposit'] as num).toInt()
           : int.tryParse('${raw['deposit'] ?? ''}') ?? 0,
       note: '${raw['note'] ?? ''}',
+      // Столы, расставленные до 30.09.2026, размера не имеют: берём прежний,
+      // чтобы схема у продавца не переехала.
+      w: raw['w'] is num
+          ? (raw['w'] as num).toDouble().clamp(kTableMarkMin, kTableMarkMax)
+          : kTableMarkWidth,
+      h: raw['h'] is num
+          ? (raw['h'] as num).toDouble().clamp(kTableMarkMin, kTableMarkMax)
+          : kTableMarkHeight,
+      angle: raw['angle'] is num ? (raw['angle'] as num).toDouble() % 360 : 0,
     );
   }
 }

@@ -12,6 +12,7 @@ import 'package:lidle/services/preorder_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/bookings/booking_calendar_dialog.dart';
+import 'package:lidle/widgets/bookings/hall_table_mark.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 /// Бронь столика по схеме зала (29.09.2026).
@@ -396,20 +397,42 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
               return Stack(
                 children: [
                   Positioned.fill(child: _PlanImage(hall: _hall)),
-                  for (final table in _tables)
-                    Positioned(
-                      left: table.x * size.width - 22,
-                      top: table.y * size.height - 22,
-                      child: _TableMark(
-                        table: table,
-                        // До выбора времени занятость неизвестна: столы
-                        // показываем спокойным цветом и не даём нажать.
-                        pickable: _slot != null && _isWorking && table.isFree,
-                        selected: table.key == _tableKey,
-                        unknown: _slot == null,
-                        onTap: () => _pickTable(table),
-                      ),
-                    ),
+
+                  // Метка места рисуется по размеру настоящего стола на
+                  // схеме, а подпись с номером ставится поверх отдельной
+                  // тёмной таблеткой: раньше цветной текст внутри рамки на
+                  // пёстрой картинке не читался (30.09.2026).
+                  ...tableMarkLayers(
+                    plan: size,
+                    spots: [
+                      for (final table in _tables)
+                        TableSpot(
+                          key: table.key,
+                          number: table.number,
+                          seats: table.seats,
+                          x: table.x,
+                          y: table.y,
+                          width: table.width,
+                          height: table.height,
+                          angle: table.angle,
+                          // До выбора времени занятость неизвестна: столы
+                          // показываем спокойным цветом.
+                          state: _slot == null
+                              ? TableMarkState.unknown
+                              : (table.key == _tableKey
+                                  ? TableMarkState.selected
+                                  : (_isWorking && table.isFree
+                                      ? TableMarkState.free
+                                      : TableMarkState.busy)),
+                        ),
+                    ],
+                    onTap: (spot) {
+                      final table = _tables
+                          .firstWhereOrNull((t) => t.key == spot.key);
+
+                      if (table != null) _pickTable(table);
+                    },
+                  ),
                   if (_isLoadingTables)
                     const Positioned.fill(
                       child: ColoredBox(
@@ -425,14 +448,22 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        Text(
-          _slot == null
-              ? 'Выберите время, и на схеме станет видно, какие места свободны.'
-              : (_isWorking
-                  ? 'Красное место занято, зелёное вы выбрали.'
-                  : 'В это время зал не работает.'),
-          style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
-        ),
+
+        // Цвета объясняем образцами, а не словами: описание «красное занято»
+        // человек сверяет с картинкой сам, а образец видно сразу
+        // (30.09.2026).
+        if (_slot != null && _isWorking)
+          TableMarkLegend(
+            freeText: _labels.seatFree,
+            busyText: _labels.seatTaken,
+          )
+        else
+          Text(
+            _slot == null
+                ? 'Выберите время, и на схеме станет видно, какие места свободны.'
+                : 'В это время зал не работает.',
+            style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+          ),
       ],
     );
   }
@@ -876,71 +907,6 @@ class _PlanImage extends StatelessWidget {
         url,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => empty,
-      ),
-    );
-  }
-}
-
-/// Столик на схеме: номер и места, цвет по состоянию.
-class _TableMark extends StatelessWidget {
-  const _TableMark({
-    required this.table,
-    required this.pickable,
-    required this.selected,
-    required this.unknown,
-    required this.onTap,
-  });
-
-  final BookingHallTable table;
-  final bool pickable;
-  final bool selected;
-
-  /// Время ещё не выбрано: занятость неизвестна.
-  final bool unknown;
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected
-        ? const Color(0xFF3ECF6E)
-        : (unknown
-            ? textSecondary
-            : (table.isFree ? textPrimary : const Color(0xFFE05A6B)));
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected
-              ? const Color(0x333ECF6E)
-              : (!unknown && !table.isFree
-                  ? const Color(0x33E05A6B)
-                  : Colors.transparent),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: color, width: 2),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              table.number,
-              style: TextStyle(
-                color: color,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (table.seats > 0)
-              Text(
-                '${table.seats}',
-                style: TextStyle(color: color, fontSize: 10),
-              ),
-          ],
-        ),
       ),
     );
   }
