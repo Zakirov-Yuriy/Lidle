@@ -426,6 +426,11 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
                                       : TableMarkState.busy)),
                         ),
                     ],
+                    // Подпись показываем только у выбранного стола: у гостя
+                    // таблички с номерами закрывали сам план, и зал было не
+                    // разглядеть (30.09.2026). Номер выбранного стола он
+                    // видит ещё и в «Вашей брони» под схемой.
+                    badgesOnlyPicked: true,
                     onTap: (spot) {
                       final table = _tables
                           .firstWhereOrNull((t) => t.key == spot.key);
@@ -580,14 +585,20 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
   }
 
   void _pickTable(BookingHallTable table) {
-    if (_slot == null) {
-      SnackBarHelper.showWarning(context, 'Сначала выберите время');
+    // Сначала про нерабочий день, потом про время (30.09.2026). В выходной
+    // зала выбирать нечего, и совет «выберите время» уводил человека искать
+    // несуществующие часы вместо того, чтобы сменить дату.
+    if (!_isWorking) {
+      SnackBarHelper.showWarning(
+        context,
+        'В этот день зал не работает. Выберите другую дату.',
+      );
 
       return;
     }
 
-    if (!_isWorking) {
-      SnackBarHelper.showWarning(context, 'В это время зал не работает');
+    if (_slot == null) {
+      SnackBarHelper.showWarning(context, 'Сначала выберите время');
 
       return;
     }
