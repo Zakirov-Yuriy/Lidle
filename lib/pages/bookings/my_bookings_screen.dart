@@ -274,6 +274,38 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             const SizedBox(height: 8),
             _buildPartyRow(item),
           ],
+          // Заказ навынос: столика нет, и это первое, что надо знать
+          // заведению (30.09.2026).
+          if (item.isTakeaway) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.shopping_bag_outlined, color: activeIconColor, size: 16),
+                const SizedBox(width: 6),
+                const Text(
+                  'Самовывоз',
+                  style: TextStyle(
+                    color: activeIconColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          // Предзаказ и счёт (30.09.2026). Владельцу это нужнее, чем гостю:
+          // по этому списку он готовит.
+          if (item.hasBill) ...[
+            const SizedBox(height: 10),
+            _buildBill(item),
+          ],
+          if (item.seat?.note.isNotEmpty == true) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Важно: ${item.seat!.note}',
+              style: const TextStyle(color: textSecondary, fontSize: 13),
+            ),
+          ],
           if (item.comment != null) ...[
             const SizedBox(height: 8),
             Text(
@@ -292,6 +324,124 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         ],
       ),
     );
+  }
+
+  /// Состав заказа и счёт.
+  ///
+  /// Показываем и гостю, и владельцу: гость вспоминает, что заказал, а
+  /// владелец по этому списку готовит. Суммы записаны в момент брони, поэтому
+  /// пересчитывать их здесь нечего.
+  Widget _buildBill(BookingItem item) {
+    final totals = item.totals;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: primaryBackground,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (item.items.isNotEmpty) ...[
+            const Text(
+              'Заказ',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            for (final line in item.items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        line.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${line.quantity}шт',
+                      style: const TextStyle(color: textSecondary, fontSize: 13),
+                    ),
+                    SizedBox(
+                      width: 72,
+                      child: Text(
+                        '${_money(line.sum)}₽',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 4),
+          ],
+          if (totals.depositAmount > 0)
+            _billRow('Депозит', totals.depositAmount),
+          if (totals.feeAmount > 0)
+            _billRow('Услуга бронирования', totals.feeAmount),
+          if (totals.total > 0) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Итого',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${_money(totals.total)}₽',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _billRow(String title, double value) => Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(color: textSecondary, fontSize: 13),
+              ),
+            ),
+            Text(
+              '${_money(value)}₽',
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+
+  /// Цена без лишних нулей: 755, а не 755.00.
+  String _money(double value) {
+    if (value == value.roundToDouble()) return value.toInt().toString();
+
+    return value.toStringAsFixed(2);
   }
 
   Widget _buildAdvertRow(BookingItem item) {

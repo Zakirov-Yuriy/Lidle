@@ -1,4 +1,5 @@
 import 'package:lidle/models/bookings/booking_availability.dart';
+import 'package:lidle/models/bookings/preorder.dart';
 
 /// Одна бронь в списке.
 ///
@@ -37,6 +38,22 @@ class BookingItem {
   final bool canReject;
   final bool canCancel;
 
+  /// Заказ навынос (30.09.2026): столика нет, человек заберёт сам.
+  final bool isTakeaway;
+
+  /// Что человек заказал к брони: блюда, товары, услуги, доставка.
+  ///
+  /// Владельцу это нужнее, чем гостю: по этому списку он готовит. Раньше
+  /// сервер его отдавал, а приложение не читало, и в заявке был только
+  /// столик.
+  final List<PreorderLine> items;
+
+  /// Счёт: предзаказ, депозит, услуга бронирования и итог.
+  final PreorderTotals totals;
+
+  /// Выбранное место: номер, вместимость, депозит, примечание заведения.
+  final BookingSeat? seat;
+
   const BookingItem({
     required this.id,
     required this.advertId,
@@ -54,7 +71,14 @@ class BookingItem {
     required this.canConfirm,
     required this.canReject,
     required this.canCancel,
+    this.isTakeaway = false,
+    this.items = const [],
+    this.totals = const PreorderTotals(),
+    this.seat,
   });
+
+  /// Есть ли что показывать в счёте: предзаказ или депозит.
+  bool get hasBill => items.isNotEmpty || totals.total > 0;
 
   bool get isOwnerView => role == 'owner';
   bool get isPending => status == 'pending';
@@ -87,6 +111,10 @@ class BookingItem {
       canConfirm: raw['can_confirm'] == true,
       canReject: raw['can_reject'] == true,
       canCancel: raw['can_cancel'] == true,
+      isTakeaway: raw['is_takeaway'] == true,
+      items: PreorderCart.fromJson({'items': raw['items']}).items,
+      totals: PreorderTotals.fromJson(raw['totals']),
+      seat: BookingSeat.tryParse(raw['table']),
     );
   }
 
@@ -101,6 +129,45 @@ class BookingItem {
     if (value == null) return null;
     final text = '$value'.trim();
     return text.isEmpty ? null : text;
+  }
+}
+
+/// Выбранное место брони: столик, кресло или кровать (30.09.2026).
+class BookingSeat {
+  final String key;
+  final String number;
+  final int seats;
+  final double deposit;
+  final String note;
+
+  const BookingSeat({
+    required this.key,
+    required this.number,
+    required this.seats,
+    required this.deposit,
+    required this.note,
+  });
+
+  static BookingSeat? tryParse(dynamic raw) {
+    if (raw is! Map) return null;
+
+    final key = '${raw['key'] ?? ''}'.trim();
+
+    if (key.isEmpty) return null;
+
+    double money(dynamic v) {
+      if (v is num) return v.toDouble();
+
+      return double.tryParse('${v ?? ''}') ?? 0;
+    }
+
+    return BookingSeat(
+      key: key,
+      number: '${raw['number'] ?? ''}'.trim(),
+      seats: BookingItem._asInt(raw['seats']) ?? 0,
+      deposit: money(raw['deposit']),
+      note: '${raw['note'] ?? ''}'.trim(),
+    );
   }
 }
 
