@@ -111,11 +111,12 @@ List<Widget> tableMarkLayers({
   required List<TableSpot> spots,
   void Function(TableSpot spot)? onTap,
 
-  /// Показывать подпись только у выбранного места (30.09.2026).
+  /// Показывать подпись только у выбранного и у занятых мест (30.09.2026).
   ///
   /// У гостя таблички с номерами всех столов закрывали план, и зал было не
-  /// разглядеть. Ему номер нужен ровно у того стола, который он выбрал.
-  /// Продавцу наоборот: он расставляет столы и должен видеть все номера.
+  /// разглядеть. Ему номер нужен у того стола, который он выбрал, и у
+  /// занятых: иначе непонятно, какой именно стол заняли. Продавцу наоборот:
+  /// он расставляет столы и должен видеть все номера.
   bool badgesOnlyPicked = false,
 }) {
   final areas = <Widget>[];
@@ -148,7 +149,9 @@ List<Widget> tableMarkLayers({
       ),
     ));
 
-    if (badgesOnlyPicked && spot.state != TableMarkState.selected) {
+    if (badgesOnlyPicked &&
+        spot.state != TableMarkState.selected &&
+        spot.state != TableMarkState.busy) {
       continue;
     }
 
