@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/models/bookings/booking_labels.dart';
 import 'package:lidle/models/home_models.dart';
@@ -239,6 +240,8 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
+        // Карточка, открытая из пути брони, тоже его шаг (30.09.2026).
+        settings: const RouteSettings(name: kBookingStepRoute),
         builder: (_) => MiniPropertyDetailsScreen(listing: listing),
       ),
     );
@@ -715,6 +718,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: kBookingStepRoute),
         builder: (_) => TableBookingScreen(
           advertId: widget.advertId,
           advertTitle: widget.advertTitle,
@@ -805,6 +809,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
       final added = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
+          settings: const RouteSettings(name: kBookingStepRoute),
           builder: (_) => PreorderCatalogScreen(
             advertId: widget.advertId,
             advertTitle: widget.advertTitle,
@@ -822,6 +827,7 @@ class _HallBookingScreenState extends State<HallBookingScreen> {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: kBookingStepRoute),
         builder: (_) => TableBookingScreen(
           advertId: widget.advertId,
           advertTitle: widget.advertTitle,

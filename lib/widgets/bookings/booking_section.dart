@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/pages/bookings/booking_confirm_screen.dart';
@@ -78,7 +79,19 @@ class _BookingSectionState extends State<BookingSection> {
   @override
   void initState() {
     super.initState();
+    BookingsService.changed.addListener(_onBookingsChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    BookingsService.changed.removeListener(_onBookingsChanged);
+    super.dispose();
+  }
+
+  /// Где-то создали или отменили бронь: занятость изменилась, перечитываем.
+  void _onBookingsChanged() {
+    if (mounted) _load();
   }
 
   Future<void> _load() async {
@@ -227,6 +240,7 @@ class _BookingSectionState extends State<BookingSection> {
     final created = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: kBookingStepRoute),
         builder: (_) => halls.length > 1
             // Экран выбора зала сам догружает залы: он же открывается прямо
             // из выдачи, где данных о залах ещё нет (29.09.2026).
@@ -939,6 +953,7 @@ class _BookingSectionState extends State<BookingSection> {
     final created = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: kBookingStepRoute),
         builder: (_) => BookingConfirmScreen(
           advertId: widget.advertId,
           advertTitle: widget.advertTitle,

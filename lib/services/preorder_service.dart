@@ -20,6 +20,32 @@ class PreorderService {
   /// Чья это корзина: у другого заведения свой набор.
   static int? _advertId;
 
+
+  /// Владелец заведения по объявлению (30.09.2026). Нужен карточке позиции:
+  /// с неё звонят так же, как с карточки обычного товара.
+  ///
+  /// Держим отдельным методом с памятью на сессию: витрина и карточка
+  /// позиции живут в разных экранах, и протаскивать номер через все из них
+  /// значило бы менять четыре сигнатуры ради одной кнопки.
+  static final Map<int, int?> _sellers = {};
+
+  static Future<int?> sellerOf(int advertId) async {
+    if (_sellers.containsKey(advertId)) return _sellers[advertId];
+
+    try {
+      final response = await ApiService.get('/adverts/$advertId/preorder');
+      final raw = response['data']?['seller_id'];
+
+      final id = raw is num ? raw.toInt() : int.tryParse('${raw ?? ''}');
+
+      return _sellers[advertId] = id;
+    } catch (e) {
+      log.d('Владелец заведения $advertId не пришёл: $e');
+
+      return _sellers[advertId] = null;
+    }
+  }
+
   /// Витрина заведения: меню, товары, услуги, доставка.
   static Future<List<PreorderBlock>> catalog(int advertId) async {
     try {

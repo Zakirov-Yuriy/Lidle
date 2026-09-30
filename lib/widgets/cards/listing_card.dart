@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/models/home_models.dart';
+import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/bookings/hall_pick_screen.dart';
@@ -217,6 +218,7 @@ class _ListingCardState extends State<ListingCard> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
+                  settings: const RouteSettings(name: kBookingStepRoute),
                   builder: (_) => HallPickScreen(
                     advertId: int.tryParse(widget.listing.id) ?? 0,
                     advertTitle: widget.listing.title,

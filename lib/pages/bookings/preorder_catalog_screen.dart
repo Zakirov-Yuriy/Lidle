@@ -15,6 +15,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/models/bookings/preorder.dart';
 import 'package:lidle/pages/bookings/preorder_cart_screen.dart';
 import 'package:lidle/pages/bookings/preorder_item_screen.dart';
@@ -447,6 +448,7 @@ class _PreorderCatalogScreenState extends State<PreorderCatalogScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: kBookingStepRoute),
         builder: (_) => PreorderItemScreen(
           advertId: widget.advertId,
           advertTitle: widget.advertTitle,
@@ -465,6 +467,7 @@ class _PreorderCatalogScreenState extends State<PreorderCatalogScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: kBookingStepRoute),
         builder: (_) => PreorderCartScreen(
           advertId: widget.advertId,
           hallId: widget.hallId,

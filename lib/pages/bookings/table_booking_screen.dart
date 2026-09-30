@@ -18,6 +18,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/models/bookings/booking_labels.dart';
 import 'package:lidle/models/bookings/preorder.dart';
@@ -537,6 +538,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: kBookingStepRoute),
         builder: (_) => PreorderCatalogScreen(
           advertId: widget.advertId,
           advertTitle: widget.advertTitle,
@@ -576,6 +578,7 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: kBookingStepRoute),
         builder: (_) => BookingConfirmScreen(
           advertId: widget.advertId,
           advertTitle: widget.advertTitle,

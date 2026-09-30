@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/models/bookings/booking_item.dart';
@@ -86,6 +87,18 @@ class BookingCounts {
 
 /// Работа с бронированием: календарь занятости и создание брони.
 class BookingsService {
+  /// Счётчик изменений броней (30.09.2026).
+  ///
+  /// После создания или отмены брони занятость меняется, и календарь в
+  /// карточке объявления должен её перечитать. Раньше карточку вместе с
+  /// экранами брони выбрасывали из стопки, и вопрос не стоял; теперь она
+  /// остаётся, а её экран об изменении сам не узнает: он всё это время был
+  /// под другими экранами. Подписка на счётчик и есть это извещение.
+  static final ValueNotifier<int> changed = ValueNotifier<int>(0);
+
+  /// Сказать подписчикам, что брони изменились.
+  static void notifyChanged() => changed.value++;
+
   /// Свободное время объявления за промежуток.
   ///
   /// Возвращает null, если бронь у объявления не подключена: сервер отвечает

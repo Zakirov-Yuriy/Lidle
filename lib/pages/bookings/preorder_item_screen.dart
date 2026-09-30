@@ -12,9 +12,13 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/preorder.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/preorder_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
+import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 
 class PreorderItemScreen extends StatefulWidget {
   const PreorderItemScreen({
@@ -85,6 +89,8 @@ class _PreorderItemScreenState extends State<PreorderItemScreen> {
                     const SizedBox(height: 12),
                     _description(),
                   ],
+                  const SizedBox(height: 14),
+                  _contactRow(),
                   if (similar.isNotEmpty) ...[
                     const SizedBox(height: 18),
                     const Text(
@@ -278,6 +284,92 @@ class _PreorderItemScreenState extends State<PreorderItemScreen> {
         );
       },
     );
+  }
+
+  /// «Позвонить» и «Пожаловаться» (30.09.2026). Те же две возможности, что
+  /// у обычного товара: позиция витрины это такой же товар заведения, и
+  /// человек вправе спросить о нём голосом или сообщить о нарушении.
+  Widget _contactRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: _call,
+            child: Container(
+              height: 43,
+              decoration: BoxDecoration(
+                color: const Color(0xFF19D849),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Text(
+                  'Позвонить',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: _complain,
+            child: Container(
+              height: 43,
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFFF4D4D)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Text(
+                  'Пожаловаться',
+                  style: TextStyle(color: Color(0xFFFF4D4D), fontSize: 16),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _call() async {
+    final sellerId = await PreorderService.sellerOf(widget.advertId);
+
+    if (!mounted) return;
+
+    if (sellerId == null) {
+      SnackBarHelper.showWarning(context, 'Телефон заведения недоступен');
+
+      return;
+    }
+
+    final phones = await ApiService.getUserPhones(userId: sellerId);
+
+    if (!mounted) return;
+
+    if (phones.isEmpty) {
+      SnackBarHelper.showInfo(context, 'Заведение не оставило телефон');
+
+      return;
+    }
+
+    final token = await TokenService.getCurrentToken();
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      builder: (_) => PhoneDialog(
+        phoneNumbers: phones,
+        advertId: widget.advertId,
+        authToken: token,
+      ),
+    );
+  }
+
+  void _complain() {
+    showDialog(context: context, builder: (_) => const ComplaintDialog());
   }
 
   Widget _orderButton() {

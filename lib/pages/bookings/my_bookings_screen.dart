@@ -930,6 +930,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       SnackBarHelper.showError(context, result.message);
     }
 
+    // Отмена или подтверждение меняют занятость: календарь в карточке
+    // объявления должен её перечитать (30.09.2026).
+    BookingsService.notifyChanged();
+
     // Перечитываем в любом случае: если действие не прошло из-за того, что
     // состояние успело измениться, свежий список это и покажет.
     await _load();

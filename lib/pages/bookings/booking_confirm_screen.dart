@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/models/bookings/booking_labels.dart';
 import 'package:lidle/models/bookings/preorder.dart';
 import 'package:lidle/pages/bookings/my_bookings_screen.dart';
@@ -206,6 +207,10 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
         // бы уже заказанное (29.09.2026).
         PreorderService.forget();
 
+        // Календарь в карточке объявления остаётся в стопке под нами, и сам
+        // об этой брони не узнает (30.09.2026).
+        BookingsService.notifyChanged();
+
         SnackBarHelper.showSuccess(
           context,
           result.needsOwnerAnswer
@@ -216,14 +221,17 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
         // Сразу открываем «Мои брони» на только что созданной броне
         // (30.09.2026). Там человек видит состав заказа, сумму и реквизиты
         // заведения: после «Забронировать» это и есть его следующий шаг.
-        // Экраны выбора зала, времени и стола из стопки убираем — возвращаться
-        // к ним незачем, бронь уже сделана.
+        //
+        // Из стопки убираем только шаги самой брони: выбор зала, времени,
+        // стола, витрину и корзину. Карточка объявления и лента, из которой
+        // человек пришёл, остаются, и «Назад» возвращает туда, а не на
+        // главный экран.
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
             builder: (_) => MyBookingsScreen(highlightId: result.id),
           ),
-          (route) => route.isFirst,
+          (route) => route.settings.name != kBookingStepRoute,
         );
         break;
 

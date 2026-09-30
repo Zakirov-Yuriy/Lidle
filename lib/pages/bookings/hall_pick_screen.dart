@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/models/bookings/booking_labels.dart';
 import 'package:lidle/models/home_models.dart';
@@ -181,6 +182,7 @@ class _HallPickScreenState extends State<HallPickScreen> {
     bool replace = false,
   }) {
     final route = MaterialPageRoute<bool>(
+      settings: const RouteSettings(name: kBookingStepRoute),
       builder: (_) => HallBookingScreen(
         advertId: widget.advertId,
         advertTitle: widget.advertTitle,
@@ -211,7 +213,10 @@ class _HallPickScreenState extends State<HallPickScreen> {
       return;
     }
 
+    // Карточка, открытая ИЗ пути брони, тоже его шаг (30.09.2026): иначе
+    // после брони под ней остались бы экраны выбора зала с устаревшей схемой.
     final route = MaterialPageRoute(
+      settings: const RouteSettings(name: kBookingStepRoute),
       builder: (_) => MiniPropertyDetailsScreen(listing: listing),
     );
 
