@@ -219,16 +219,21 @@ class _DailyBookingScreenState extends State<DailyBookingScreen> {
   Widget _backRow() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 16, 0),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => Navigator.of(context).pop(),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.arrow_back_ios_new, color: activeIconColor, size: 16),
-            SizedBox(width: 4),
-            Text('Назад', style: TextStyle(color: activeIconColor, fontSize: 16)),
-          ],
+      child: Align(
+        // Прижимаем влево: в колонке Row с mainAxisSize.min встаёт по
+        // середине экрана, и «Назад» оказывалось посреди шапки (30.09.2026).
+        alignment: Alignment.centerLeft,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).pop(),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.arrow_back_ios_new, color: activeIconColor, size: 16),
+              SizedBox(width: 4),
+              Text('Назад', style: TextStyle(color: activeIconColor, fontSize: 16)),
+            ],
+          ),
         ),
       ),
     );
