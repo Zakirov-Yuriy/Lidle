@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/bookings/booking_flow.dart';
+import 'package:lidle/pages/bookings/daily_booking_screen.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/models/bookings/booking_labels.dart';
 import 'package:lidle/models/home_models.dart';
@@ -54,6 +55,9 @@ class _HallPickScreenState extends State<HallPickScreen> {
     _load();
   }
 
+  /// Посуточный режим: единицу выбирают вместе с датами, а не с часом.
+  bool _daily = false;
+
   Future<void> _load() async {
     final now = DateTime.now();
 
@@ -67,22 +71,16 @@ class _HallPickScreenState extends State<HallPickScreen> {
 
     final halls = data?.halls ?? const <BookingHall>[];
 
-    // Посуточная бронь: домик берут на ночь, и выбирают его вместе с
-    // диапазоном дат прямо в объявлении, где живёт календарь ночей
-    // (30.09.2026). Экран выбора зала умеет только часы и схему мест, и
-    // человек с дачи попадал бы на выбор часа вместо выбора дат.
-    if (data?.mode == BookingMode.daily) {
-      _openAdvert(replace: true);
-
-      return;
-    }
-
     // Залов нет (или бронь выключили): человеку нужно объявление.
     if (halls.isEmpty) {
       _openAdvert(replace: true);
 
       return;
     }
+
+    // Посуточная бронь идёт своим экраном: там календарь ночей вместо часов
+    // и единица берётся целиком (30.09.2026).
+    _daily = data?.mode == BookingMode.daily;
 
     if (halls.length == 1) {
       _openHall(halls.first, halls, data?.maxGuests, replace: true);
@@ -193,14 +191,23 @@ class _HallPickScreenState extends State<HallPickScreen> {
   }) {
     final route = MaterialPageRoute<bool>(
       settings: const RouteSettings(name: kBookingStepRoute),
-      builder: (_) => HallBookingScreen(
-        advertId: widget.advertId,
-        advertTitle: widget.advertTitle,
-        hall: hall,
-        halls: halls,
-        maxGuests: maxGuests,
-        listing: widget.listing,
-      ),
+      builder: (_) => _daily
+          ? DailyBookingScreen(
+              advertId: widget.advertId,
+              advertTitle: widget.advertTitle,
+              hall: hall,
+              halls: halls,
+              maxGuests: maxGuests,
+              listing: widget.listing,
+            )
+          : HallBookingScreen(
+              advertId: widget.advertId,
+              advertTitle: widget.advertTitle,
+              hall: hall,
+              halls: halls,
+              maxGuests: maxGuests,
+              listing: widget.listing,
+            ),
     );
 
     if (replace) {

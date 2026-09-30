@@ -63,6 +63,7 @@ class TableBookingScreen extends StatefulWidget {
     required this.hall,
     this.table,
     this.isTakeaway = false,
+    this.wholeUnit = false,
     this.labels = BookingLabels.standard,
     this.photos = const [],
     required this.startsAt,
@@ -71,6 +72,10 @@ class TableBookingScreen extends StatefulWidget {
     required this.endsAtRaw,
     required this.needsConfirmation,
     this.maxGuests,
+    this.guests,
+    this.nights = 0,
+    this.checkInTime,
+    this.checkOutTime,
   });
 
   final int advertId;
@@ -84,6 +89,11 @@ class TableBookingScreen extends StatefulWidget {
   /// Заказ навынос: столик не бронируется, депозита нет, вместо «Важно!»
   /// заведения стоит объяснение, что будет дальше.
   final bool isTakeaway;
+
+  /// Единица берётся целиком: домик, коттедж, комната (30.09.2026). Места
+  /// внутри не выбираются, гостей человек указал заранее, а вместо часа
+  /// брони показываются даты заезда и выезда.
+  final bool wholeUnit;
 
   /// Слова по роду заведения (29.09.2026): столик, кресло или место.
   final BookingLabels labels;
@@ -101,6 +111,14 @@ class TableBookingScreen extends StatefulWidget {
 
   final bool needsConfirmation;
   final int? maxGuests;
+
+  /// Посуточная бронь (30.09.2026): сколько гостей человек выбрал, сколько
+  /// ночей и когда заезд и выезд. Нужны, чтобы карточка говорила про ночи, а
+  /// не про часы.
+  final int? guests;
+  final int nights;
+  final String? checkInTime;
+  final String? checkOutTime;
 
   @override
   State<TableBookingScreen> createState() => _TableBookingScreenState();
@@ -167,8 +185,12 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
                           _plan(),
                           const SizedBox(height: 14),
                           _tableCard(),
-                          const SizedBox(height: 12),
-                          _deposit(),
+                          // Депозит только у выбранного места: единицу берут
+                          // целиком, и депозита за неё в модели нет.
+                          if (!widget.wholeUnit) ...[
+                            const SizedBox(height: 12),
+                            _deposit(),
+                          ],
                           if (_noteText.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             _note(),
@@ -288,6 +310,47 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
   Widget _tableCard() {
     final table = widget.table;
 
+    // Единицу берут целиком: домик, коттедж, комната (30.09.2026). Места
+    // внутри не выбирают, и часы брони человеку не говорят ничего: ему нужны
+    // даты заезда и выезда и число ночей.
+    if (widget.wholeUnit) {
+      return _panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.advertTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              widget.hall.name,
+              style: const TextStyle(
+                color: textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _row(
+              'Заезд',
+              '${_date(widget.startsAt)}'
+              '${widget.checkInTime == null ? '' : ', с ${widget.checkInTime}'}',
+            ),
+            _row(
+              'Выезд',
+              '${_date(widget.endsAt)}'
+              '${widget.checkOutTime == null ? '' : ', до ${widget.checkOutTime}'}',
+            ),
+            if (widget.nights > 0) _row('Ночей', '${widget.nights}'),
+            if (widget.guests != null) _row('Гостей', '${widget.guests}'),
+          ],
+        ),
+      );
+    }
+
     return _panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,6 +379,9 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
     );
   }
 
+  /// Депозит есть только у выбранного места: у единицы, взятой целиком,
+  /// его в модели нет вовсе, и панель «Депозит: Нет» выглядела бы как
+  /// потерянные данные (30.09.2026).
   int get _deposedAmount => widget.table?.deposit ?? 0;
 
   Widget _deposit() {
@@ -587,18 +653,31 @@ class _TableBookingScreenState extends State<TableBookingScreen> {
           startsAtRaw: widget.startsAtRaw,
           endsAtRaw: widget.endsAtRaw,
           needsConfirmation: widget.needsConfirmation,
-          title: widget.isTakeaway ? 'Подтверждение заказа' : 'Подтверждение брони',
+          title: widget.isTakeaway
+              ? 'Подтверждение заказа'
+              : (widget.labels.confirmTitle.isEmpty
+                  ? 'Подтверждение брони'
+                  : widget.labels.confirmTitle),
           hallId: widget.hall.id,
           tableKey: widget.table?.key,
           isTakeaway: widget.isTakeaway,
-          place: table == null
-              ? '${widget.hall.name}, самовывоз'
-              : '${widget.hall.name}, ${widget.labels.seat(table.number).toLowerCase()}',
+          // Единицу берут целиком: сервер должен знать это, иначе он станет
+          // подбирать внутри неё место (30.09.2026).
+          wholeHall: widget.wholeUnit,
+          fixedGuests: widget.wholeUnit ? widget.guests : null,
+          place: widget.wholeUnit
+              ? widget.hall.name
+              : (table == null
+                  ? '${widget.hall.name}, самовывоз'
+                  : '${widget.hall.name}, ${widget.labels.seat(table.number).toLowerCase()}'),
           // За столиком не больше, чем он вмещает. У самовывоза гостей не
-          // спрашивают вовсе: человек не садится.
-          maxGuests: table == null
-              ? null
-              : (table.seats > 0 ? table.seats : widget.maxGuests),
+          // спрашивают вовсе: человек не садится. У единицы целиком число
+          // гостей человек выбрал раньше.
+          maxGuests: widget.wholeUnit
+              ? widget.maxGuests
+              : (table == null
+                  ? null
+                  : (table.seats > 0 ? table.seats : widget.maxGuests)),
           labels: widget.labels,
           blockTitles: {
             for (final block in _blocks)

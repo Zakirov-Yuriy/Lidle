@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/pages/bookings/booking_confirm_screen.dart';
-import 'package:lidle/pages/bookings/hall_booking_screen.dart';
+import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/pages/bookings/hall_pick_screen.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -66,7 +65,6 @@ class _BookingSectionState extends State<BookingSection> {
 
   /// Перечитываем время после смены зала, гостей или банкета. Блок при этом
   /// не прячем, только показываем полоску загрузки.
-  bool _isReloading = false;
 
   BookingDay? _selectedDay;
   BookingSlot? _selectedSlot;
@@ -119,7 +117,6 @@ class _BookingSectionState extends State<BookingSection> {
     setState(() {
       _availability = data;
       _isLoading = false;
-      _isReloading = false;
 
       final selection = data?.selection;
       if (selection != null) {
@@ -161,29 +158,15 @@ class _BookingSectionState extends State<BookingSection> {
     return null;
   }
 
-  /// Сменить зал, гостей или банкет и перечитать свободное время.
-  void _choose({int? hallId, int? guests, bool? wholeHall}) {
-    setState(() {
-      if (hallId != null && hallId != _hallId) {
-        _hallId = hallId;
-        // В новом зале банкет может быть запрещён: сервер сам поправит.
-        _wholeHall = false;
-      }
-      if (guests != null) _guests = guests;
-      if (wholeHall != null) _wholeHall = wholeHall;
-      _selectedSlot = null;
-      _isReloading = true;
-    });
-
-    _load();
-  }
-
+  /// Первый день с свободным временем: на него встаёт полоса дней, когда
+  /// прежний выбор уже не подходит.
   BookingDay? _firstDayWithFreeSlots(BookingAvailability? data) {
     if (data == null) return null;
 
     for (final day in data.days) {
       if (day.isWorking && day.hasFreeSlots) return day;
     }
+
     return null;
   }
 
@@ -196,15 +179,16 @@ class _BookingSectionState extends State<BookingSection> {
     final data = _availability;
     if (data == null) return const SizedBox.shrink();
 
-    // Объявление с единицами (залы, домики, кабинеты): блок виден всегда,
-    // даже если в выбранной единице нет свободного времени, иначе вместе с
-    // ним пропал бы и сам выбор.
+    // Объявление с единицами (залы, домики, кабинеты): бронь идёт своим
+    // экраном, а здесь только вход в него (30.09.2026).
+    //
+    // Раньше карточка повторяла весь экран брони: выбор зала, календарь,
+    // схему мест. По макету бронь везде идёт одной дорогой, и два места, где
+    // делают одно и то же, расходились в поведении. Сюда человек попадает,
+    // открыв объявление по названию сверху, и ему нужна кнопка обратно к
+    // броне, а не второй её экземпляр.
     if (data.hasHalls) {
-      // Посуточно единицу берут целиком, мест внутри нет: выбор единицы плюс
-      // календарь ночей (25.09.2026).
-      return data.mode == BookingMode.daily
-          ? _buildDailyUnits(data)
-          : _buildHalls(data);
+      return _buildUnitsShortcut(data);
     }
 
     if (!data.hasAnythingFree) return const SizedBox.shrink();
@@ -212,6 +196,41 @@ class _BookingSectionState extends State<BookingSection> {
     return data.mode == BookingMode.daily
         ? _buildDaily(data)
         : _buildSlots(data);
+  }
+
+  /// Вход в бронь у объявления с единицами: одна кнопка на свой экран.
+  Widget _buildUnitsShortcut(BookingAvailability data) {
+    final daily = data.mode == BookingMode.daily;
+
+    return _shell(
+      title: data.labels.bookTitle,
+      children: [
+        Text(
+          daily
+              ? 'Выберите домик, даты заезда и выезда.'
+              : 'Выберите зал, время и место на схеме.',
+          style: const TextStyle(color: textSecondary, fontSize: 14, height: 1.4),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: activeIconColor),
+              minimumSize: const Size.fromHeight(46),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: _openBooking,
+            child: Text(
+              data.labels.bookingGo,
+              style: const TextStyle(color: activeIconColor, fontSize: 16),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   /// Запись на услугу: полоса дней и плитки со временем.
@@ -231,352 +250,41 @@ class _BookingSectionState extends State<BookingSection> {
     );
   }
 
-  /// Открыть схему зала. Несколько залов — сначала выбор зала, один —
-  /// сразу схема: выбор из одного пункта это лишнее нажатие.
-  Future<void> _openHallPlan(
-    BookingAvailability data,
-    List<BookingHall> halls,
-  ) async {
+  /// Открыть бронь (30.09.2026).
+  ///
+  /// Всегда через экран выбора: он сам догружает единицы, сам различает
+  /// почасовой и посуточный режим и при одной единице сразу заменяет себя
+  /// нужным экраном. Решать это здесь значило бы держать вторую копию тех же
+  /// правил, которая однажды разойдётся с первой.
+  ///
+  /// Если сама карточка открыта ИЗНУТРИ пути брони (человек нажал на
+  /// название сверху, чтобы посмотреть фотографии), экран брони уже лежит под
+  /// ней: возвращаемся к нему, а не кладём сверху ещё один.
+  Future<void> _openBooking() async {
+    if (ModalRoute.of(context)?.settings.name == kBookingStepRoute) {
+      Navigator.of(context).pop();
+
+      return;
+    }
+
     final created = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         settings: const RouteSettings(name: kBookingStepRoute),
-        builder: (_) => halls.length > 1
-            // Экран выбора зала сам догружает залы: он же открывается прямо
-            // из выдачи, где данных о залах ещё нет (29.09.2026).
-            ? HallPickScreen(
-                advertId: widget.advertId,
-                advertTitle: widget.advertTitle,
-                listing: widget.listing,
-              )
-            : HallBookingScreen(
-                advertId: widget.advertId,
-                advertTitle: widget.advertTitle,
-                hall: halls.first,
-                halls: halls,
-                maxGuests: data.maxGuests,
-                listing: widget.listing,
-              ),
+        builder: (_) => HallPickScreen(
+          advertId: widget.advertId,
+          advertTitle: widget.advertTitle,
+          listing: widget.listing,
+        ),
       ),
     );
 
     if (created != true || !mounted) return;
 
     // Забронировали со схемы: календарь в карточке уже про другое время.
-    setState(() => _isReloading = true);
-
     await _load();
   }
 
-  /// Ресторан с залами (22.09.2026): зал, гости, столик или банкет, потом
-  /// день и время.
-  Widget _buildHalls(BookingAvailability data) {
-    final hall = data.selectedHall!;
-    final guests = _guests ?? 2;
-    final days = data.days.where((d) => d.isWorking && d.hasFreeSlots).toList();
-
-    // Сколько гостей можно выбрать: за столик не больше самого большого
-    // столика, целиком — не больше вместимости, если она задана (25.09.2026).
-    // Ноль значит «ограничения нет», тогда разумный предел 500.
-    final maxGuests = _wholeHall
-        ? (hall.capacity > 0 ? hall.capacity : 500)
-        : (hall.maxTable > 0 ? hall.maxTable : 500);
-    final minGuests = _wholeHall ? hall.banquetMinGuests : 1;
-
-    // Схему зала показываем отдельным экраном (29.09.2026): на карточке
-    // объявления плану тесно, а выбирать стол пальцем по картинке в четверть
-    // экрана невозможно. Кнопка появляется, только если ресторан расставил
-    // столы на плане хотя бы в одном зале.
-    final withPlan = data.halls.where((h) => h.hasLayout).toList();
-
-    return _shell(
-      title: data.labels.bookTitle,
-      children: [
-        if (withPlan.isNotEmpty) ...[
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: activeIconColor),
-                minimumSize: const Size.fromHeight(46),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () => _openHallPlan(data, withPlan),
-              child: Text(
-                data.labels.seatPick,
-                style: const TextStyle(color: activeIconColor, fontSize: 16),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        _label('Зал'),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final h in data.halls)
-              _chip(
-                text: h.name,
-                selected: h.id == hall.id,
-                onTap: () => _choose(hallId: h.id),
-              ),
-          ],
-        ),
-        if (hall.hasTables && hall.banquetEnabled) ...[
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _chip(
-                  text: 'Столик',
-                  selected: !_wholeHall,
-                  expand: true,
-                  // За столик не больше мест самого большого столика.
-                  onTap: () => _choose(
-                    wholeHall: false,
-                    guests: guests > hall.maxTable ? hall.maxTable : null,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _chip(
-                  text: 'Весь зал (банкет)',
-                  selected: _wholeHall,
-                  expand: true,
-                  onTap: () => _choose(wholeHall: true),
-                ),
-              ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(child: _label('Сколько гостей')),
-            _stepButton(
-              Icons.remove,
-              guests > minGuests ? () => _choose(guests: guests - 1) : null,
-            ),
-            SizedBox(
-              width: 44,
-              child: Text(
-                '$guests',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            _stepButton(
-              Icons.add,
-              guests < maxGuests ? () => _choose(guests: guests + 1) : null,
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          _hallHint(hall, guests),
-          style: const TextStyle(color: textSecondary, fontSize: 13),
-        ),
-        const SizedBox(height: 14),
-        if (_isReloading) ...[
-          const LinearProgressIndicator(minHeight: 2, color: activeIconColor),
-          const SizedBox(height: 12),
-        ],
-        if (days.isEmpty)
-          const Text(
-            'В этом зале на ближайшие дни свободного времени нет. '
-            'Попробуйте другой зал или другое число гостей.',
-            style: TextStyle(color: textSecondary, fontSize: 14),
-          )
-        else ...[
-          _buildDayStrip(days),
-          const SizedBox(height: 14),
-          _buildSlotGrid(),
-          const SizedBox(height: 14),
-          _buildActionButton(data),
-        ],
-      ],
-    );
-  }
-
-  String _hallHint(BookingHall hall, int guests) {
-    if (_wholeHall) {
-      // Часы и вместимость показываем, только если их задали: у ресторанного
-      // банкета длительность жёсткая, у переговорной её нет (25.09.2026).
-      final parts = <String>[
-        if (hall.banquetHours > 0) 'на ${hall.banquetHours} ч',
-        if (hall.banquetMinGuests > 1) 'от ${hall.banquetMinGuests} гостей',
-        if (hall.capacity > 0) 'до ${hall.capacity} гостей',
-      ];
-
-      final about = parts.isEmpty ? '' : ' ${parts.join(', ')}';
-
-      return 'Бронируете целиком$about. Владелец подтвердит бронь.';
-    }
-
-    final tables = hall.tables
-        .map((t) => 'на ${t.seats}: ${t.count}')
-        .join(', ');
-
-    final more = hall.banquetEnabled && guests >= hall.maxTable
-        ? ' Для большой компании выберите «Весь зал».'
-        : '';
-
-    return 'Столик подберём под число гостей. Столики $tables.$more';
-  }
-
-  Widget _label(String text) => Text(
-        text,
-        style: const TextStyle(color: Colors.white, fontSize: 15),
-      );
-
-  /// Счётчик гостей: минус, число, плюс (25.09.2026).
-  Widget _guestsRow({required int guests, required int min, required int max}) {
-    return Row(
-      children: [
-        _stepButton(
-          Icons.remove,
-          guests > min ? () => _choose(guests: guests - 1) : null,
-        ),
-        SizedBox(
-          width: 44,
-          child: Text(
-            '$guests',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        _stepButton(
-          Icons.add,
-          guests < max ? () => _choose(guests: guests + 1) : null,
-        ),
-      ],
-    );
-  }
-
-  Widget _chip({
-    required String text,
-    required bool selected,
-    required VoidCallback onTap,
-    bool expand = false,
-  }) {
-    return GestureDetector(
-      onTap: selected ? null : onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        alignment: expand ? Alignment.center : null,
-        decoration: BoxDecoration(
-          color: selected ? activeIconColor : secondaryBackground,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: selected ? Colors.white : textSecondary,
-            fontSize: 14,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _stepButton(IconData icon, VoidCallback? onTap) {
-    return GestureDetector(
-      onTap: _isReloading ? null : onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: secondaryBackground,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          icon,
-          color: onTap == null ? textMuted : Colors.white,
-          size: 20,
-        ),
-      ),
-    );
-  }
-
-  /// Посуточное жильё с единицами (25.09.2026): выбор домика, потом ночи.
-  ///
-  /// Единица берётся целиком, поэтому ни столиков, ни выбора «часть или
-  /// целиком» здесь нет. Число гостей ограничено вместимостью, если её задали.
-  Widget _buildDailyUnits(BookingAvailability data) {
-    final unit = data.selectedHall!;
-    final guests = _guests ?? 1;
-    final maxGuests = unit.capacity > 0 ? unit.capacity : (data.maxGuests ?? 500);
-
-    return _shell(
-      title: data.labels.bookTitle,
-      children: [
-        _label('Что бронируем'),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final h in data.halls)
-              _chip(
-                text: h.name,
-                selected: h.id == unit.id,
-                onTap: () => _choose(hallId: h.id),
-              ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _label('Сколько гостей'),
-        const SizedBox(height: 8),
-        _guestsRow(guests: guests, min: 1, max: maxGuests),
-        if (unit.capacity > 0) ...[
-          const SizedBox(height: 6),
-          Text(
-            'Помещается до ${unit.capacity} гостей.',
-            style: const TextStyle(color: textSecondary, fontSize: 12, height: 1.35),
-          ),
-        ],
-        const SizedBox(height: 14),
-        if (_isReloading) ...[
-          const LinearProgressIndicator(minHeight: 2, color: activeIconColor),
-          const SizedBox(height: 12),
-        ],
-        if (!data.hasAnythingFree)
-          const Text(
-            'Здесь на ближайшие дни свободных дат нет. Посмотрите другой вариант '
-            'или загляните позже.',
-            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
-          )
-        else ...[
-          BookingNightsPicker(
-            availability: data,
-            firstNight: _firstNight,
-            lastNight: _lastNight,
-            onNightTap: (night) => _onNightTap(data, night),
-          ),
-          const SizedBox(height: 14),
-          _buildDailySummary(data),
-          const SizedBox(height: 12),
-          _buildDailyButton(data),
-        ],
-      ],
-    );
-  }
-
-  /// Посуточное жильё: календарь ночей и кнопка.
   Widget _buildDaily(BookingAvailability data) {
     return _shell(
       title: 'Забронировать',
