@@ -22,6 +22,10 @@ class ProductItem {
   final String? description;
 
   final int? categoryId;
+
+  /// Категория одной строкой: «Электроника / Телефоны» (30.09.2026). Карточка
+  /// показывает её отдельным блоком, чтобы человек понимал, откуда товар.
+  final String? categoryPath;
   final BrandBrief? brand;
   final ShopBrief? shop;
 
@@ -104,6 +108,7 @@ class ProductItem {
     this.images = const [],
     this.description,
     this.categoryId,
+    this.categoryPath,
     this.brand,
     this.shop,
     this.rating,
@@ -137,6 +142,13 @@ class ProductItem {
       inStock: data['in_stock'] == true || (_int(data['stock_quantity']) ?? 0) > 0,
       description: data['description']?.toString(),
       categoryId: _int(data['category_id']),
+      categoryPath: data['category'] is Map
+          ? ('${(data['category'] as Map)['path'] ?? (data['category'] as Map)['name'] ?? ''}'
+                  .trim()
+                  .isEmpty
+              ? null
+              : '${(data['category'] as Map)['path'] ?? (data['category'] as Map)['name']}'.trim())
+          : null,
       brand: BrandBrief.tryParse(data['brand']),
       shop: ShopBrief.tryParse(data['shop']),
       rating: _double(data['rating']),

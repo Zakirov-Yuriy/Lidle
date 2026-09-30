@@ -39,6 +39,10 @@ class Advert {
   /// вести человека к выбору зала или в объявление.
   final int hallsCount;
 
+  /// Категория одной строкой: «Недвижимость / Квартиры / Продажа»
+  /// (30.09.2026). Приходит только в карточке объявления.
+  final String? categoryPath;
+
   Advert({
     required this.id,
     this.slug,
@@ -64,6 +68,7 @@ class Advert {
     this.reviewsCount = 0,
     this.showsRating = false,
     this.hallsCount = 0,
+    this.categoryPath,
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -303,6 +308,13 @@ class Advert {
       reviewsCount: (json['reviews_count'] as num?)?.toInt() ?? 0,
       showsRating: json.containsKey('rating'),
       hallsCount: (json['halls_count'] as num?)?.toInt() ?? 0,
+      categoryPath: json['category'] is Map
+          ? ('${(json['category'] as Map)['path'] ?? (json['category'] as Map)['name'] ?? ''}'
+                  .trim()
+                  .isEmpty
+              ? null
+              : '${(json['category'] as Map)['path'] ?? (json['category'] as Map)['name']}'.trim())
+          : null,
     );
   }
 }
@@ -499,6 +511,7 @@ extension AdvertToListingExtension on Advert {
       description: description,
       characteristics: characteristics ?? {},
       city: extractedCity, // 🌍 ДОБАВИЛИ ГОРОД ИЗ АДРЕСА
+      categoryPath: categoryPath,
     );
   }
 }

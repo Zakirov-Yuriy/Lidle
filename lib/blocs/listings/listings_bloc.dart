@@ -1224,7 +1224,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// продавца: карточка продолжала звать компанию «Сваи Барнаул» личным именем
   /// владельца. Записи прошлой версии просто не читаются и перезаписываются
   /// свежим ответом сервера — поднимайте число при любом таком исправлении.
-  static const int _advertCacheVersion = 2;
+  // Версия 3 (30.09.2026): в кеш добавился путь категории. Старые записи
+  // без него отбрасываются, иначе блок «Категория» пропадал бы при втором
+  // открытии карточки.
+  static const int _advertCacheVersion = 3;
 
   /// Конвертирует Listing в JSON для кеша.
   Map<String, dynamic> _listingToJson(home.Listing listing) {
@@ -1245,6 +1248,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       'description': listing.description,
       'characteristics': listing.characteristics,
       'userId': listing.userId,
+      'categoryPath': listing.categoryPath,
     };
   }
 
@@ -1279,6 +1283,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       description: json['description'],
       characteristics: characteristics,
       userId: json['userId']?.toString(),
+      categoryPath: json['categoryPath'],
     );
   }
 

@@ -381,6 +381,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
         const SizedBox(height: 12),
         _buildStock(product),
+        // Из какой категории товар (30.09.2026).
+        if ((product.categoryPath ?? '').trim().isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _categoryCard(product.categoryPath!),
+        ],
         if (product.shop != null) ...[
           const SizedBox(height: 12),
           _buildShop(product.shop!),
@@ -760,6 +765,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         if (images.isNotEmpty) _buildGallery(images),
         const SizedBox(height: 12),
         _orderHeadCard(product),
+        // Из какой категории товар (30.09.2026).
+        if ((product.categoryPath ?? '').trim().isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _categoryCard(product.categoryPath!),
+        ],
         if (images.length > 1) ...[
           const SizedBox(height: 12),
           _thumbsRow(images),
@@ -781,6 +791,30 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         const SizedBox(height: 16),
         _similarBlock(),
       ],
+    );
+  }
+
+  /// Категория товара одной строкой.
+  Widget _categoryCard(String path) {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Категория',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            path,
+            style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.35),
+          ),
+        ],
+      ),
     );
   }
 

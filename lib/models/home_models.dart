@@ -112,6 +112,12 @@ class Listing {
   /// Возможен торг (показывать кнопку "Предложить свою цену" или нет)
   final bool isBargain;
 
+  /// Категория одной строкой: «Недвижимость / Квартиры / Продажа»
+  /// (30.09.2026). Карточка показывает её отдельным блоком: человеку нужно
+  /// понимать, откуда эта вещь, и номер категории ему ничего не говорит.
+  /// Приходит только в карточке объявления и товара, в ленте её нет.
+  final String? categoryPath;
+
   /// Это ТОВАР, а не объявление (лента главной с 09.09.2026).
   ///
   /// Лента отдаёт объявления и товары одним списком, и карточка по этому
@@ -192,6 +198,7 @@ class Listing {
     this.reviewsCount = 0,
     this.showsRating = false,
     this.hallsCount = 0,
+    this.categoryPath,
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -365,6 +372,16 @@ class Listing {
           UniqueKey()
               .toString(), // Assuming 'id' might be missing, generate a unique one
       slug: json['slug'] ?? json['id']?.toString(),
+
+      // Путь категории: «Недвижимость / Квартиры / Продажа». В ленте его нет,
+      // приходит только в карточке (30.09.2026).
+      categoryPath: json['category'] is Map
+          ? ('${(json['category'] as Map)['path'] ?? (json['category'] as Map)['name'] ?? ''}'
+                  .trim()
+                  .isEmpty
+              ? null
+              : '${(json['category'] as Map)['path'] ?? (json['category'] as Map)['name']}'.trim())
+          : null,
       imagePath:
           json['image'] ??
           'assets/home_page/image.png', // Default image if not provided

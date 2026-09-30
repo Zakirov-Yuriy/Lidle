@@ -609,6 +609,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 characteristics: state.listing.characteristics,
                 userId: state.listing.userId,
                 isBargain: state.listing.isBargain,
+                categoryPath: state.listing.categoryPath,
               );
               log.d('📸 Сохранили изображения из предыдущих данных');
             }
@@ -719,6 +720,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                                 advertTitle: _listing.title,
                                 listing: _listing,
                               ),
+                              // Из какой категории эта вещь (30.09.2026).
+                              // Стоит над расположением: человек сначала
+                              // понимает, что это, и только потом где.
+                              if ((_listing.categoryPath ?? '').trim().isNotEmpty) ...[
+                                _buildCategoryCard(),
+                                const SizedBox(height: 10),
+                              ],
                               _buildLocationCard(),
                               const SizedBox(height: 10),
                               _buildAboutApartmentCard(),
@@ -1122,6 +1130,35 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           //   "Без скидки",
           //   style: TextStyle(color: textMuted, fontSize: 12),
           // ),
+        ],
+      ),
+    );
+  }
+
+  /// Категория объявления одной строкой. Пока не пришла (или её нет) —
+  /// блок не показывается: пустая карточка с заголовком хуже её отсутствия.
+  Widget _buildCategoryCard() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6.0),
+            child: Text(
+              "Категория",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _listing.categoryPath ?? '',
+            style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.35),
+          ),
+          const SizedBox(height: 3),
         ],
       ),
     );
