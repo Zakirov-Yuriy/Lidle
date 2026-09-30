@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/bookings/booking_item.dart';
 import 'package:lidle/pages/full_category_screen/property_details_screen.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Брони пользователя: две вкладки в одном экране.
 ///
@@ -299,6 +301,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             const SizedBox(height: 10),
             _buildBill(item),
           ],
+          // Чем платить (30.09.2026). Только гостю и только когда есть за
+          // что: деньги идут заведению напрямую, мимо площадки.
+          if (!item.isOwnerView && item.hasBill && item.payment.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _buildPayment(item),
+          ],
           if (item.seat?.note.isNotEmpty == true) ...[
             const SizedBox(height: 8),
             Text(
@@ -417,6 +425,105 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         ],
       ),
     );
+  }
+
+  /// Как оплатить: способы заведения с реквизитами.
+  Widget _buildPayment(BookingItem item) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: primaryBackground,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Как оплатить',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Деньги идут заведению напрямую.',
+            style: TextStyle(color: textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          for (final way in item.payment) ...[
+            Text(
+              way.title,
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            if (way.hint != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  way.hint!,
+                  style: const TextStyle(color: textSecondary, fontSize: 12),
+                ),
+              ),
+            for (final field in way.fields)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: GestureDetector(
+                  // Реквизиты переписывают руками, и ошибиться в номере
+                  // карты легко: даём скопировать нажатием.
+                  onTap: () => _copy(field.value),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${field.key}: ${field.value}',
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                      ),
+                      const Icon(Icons.copy, color: textSecondary, size: 15),
+                    ],
+                  ),
+                ),
+              ),
+            if (way.link != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: GestureDetector(
+                  onTap: () => _openLink(way.link!),
+                  child: const Text(
+                    'Оплатить по ссылке банка',
+                    style: TextStyle(color: activeIconColor, fontSize: 13),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _copy(String value) async {
+    await Clipboard.setData(ClipboardData(text: value));
+
+    if (mounted) SnackBarHelper.showSuccess(context, 'Скопировано');
+  }
+
+  Future<void> _openLink(String url) async {
+    try {
+      final uri = Uri.parse(url);
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+        return;
+      }
+    } catch (_) {
+      // Ниже общее сообщение: человеку всё равно, почему не открылось.
+    }
+
+    if (mounted) SnackBarHelper.showWarning(context, 'Не удалось открыть ссылку');
   }
 
   Widget _billRow(String title, double value) => Padding(

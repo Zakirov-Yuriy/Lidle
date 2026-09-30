@@ -54,6 +54,11 @@ class BookingItem {
   /// Выбранное место: номер, вместимость, депозит, примечание заведения.
   final BookingSeat? seat;
 
+  /// Чем платить заведению (30.09.2026): способы и реквизиты. Деньги идут
+  /// заведению напрямую, мимо площадки, поэтому здесь реквизиты, а не кнопка
+  /// оплаты. Владельцу список не приходит: свои реквизиты он знает.
+  final List<BookingPayment> payment;
+
   const BookingItem({
     required this.id,
     required this.advertId,
@@ -75,6 +80,7 @@ class BookingItem {
     this.items = const [],
     this.totals = const PreorderTotals(),
     this.seat,
+    this.payment = const [],
   });
 
   /// Есть ли что показывать в счёте: предзаказ или депозит.
@@ -115,6 +121,10 @@ class BookingItem {
       items: PreorderCart.fromJson({'items': raw['items']}).items,
       totals: PreorderTotals.fromJson(raw['totals']),
       seat: BookingSeat.tryParse(raw['table']),
+      payment: [
+        for (final row in (raw['payment'] is List ? raw['payment'] as List : const []))
+          if (BookingPayment.tryParse(row) != null) BookingPayment.tryParse(row)!,
+      ],
     );
   }
 
@@ -129,6 +139,56 @@ class BookingItem {
     if (value == null) return null;
     final text = '$value'.trim();
     return text.isEmpty ? null : text;
+  }
+}
+
+/// Способ оплаты заведения с реквизитами (30.09.2026).
+class BookingPayment {
+  final String key;
+  final String title;
+  final String? hint;
+
+  /// Реквизиты строками «подпись: значение», уже готовые к показу.
+  final List<MapEntry<String, String>> fields;
+
+  /// Ссылка на оплату из банка заведения, если продавец её завёл.
+  final String? link;
+
+  const BookingPayment({
+    required this.key,
+    required this.title,
+    this.hint,
+    this.fields = const [],
+    this.link,
+  });
+
+  static BookingPayment? tryParse(dynamic raw) {
+    if (raw is! Map) return null;
+
+    final key = '${raw['key'] ?? ''}'.trim();
+
+    if (key.isEmpty) return null;
+
+    final fields = <MapEntry<String, String>>[];
+
+    for (final row in (raw['fields'] is List ? raw['fields'] as List : const [])) {
+      if (row is! Map) continue;
+
+      final label = '${row['label'] ?? ''}'.trim();
+      final value = '${row['value'] ?? ''}'.trim();
+
+      if (label.isNotEmpty && value.isNotEmpty) {
+        fields.add(MapEntry(label, value));
+      }
+    }
+
+    return BookingPayment(
+      key: key,
+      title: '${raw['title'] ?? ''}'.trim(),
+      hint: BookingItem._asString(raw['hint']),
+      fields: fields,
+      link: BookingItem._asString(raw['link']),
+    );
   }
 }
 
