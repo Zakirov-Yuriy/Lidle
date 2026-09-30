@@ -67,6 +67,16 @@ class _HallPickScreenState extends State<HallPickScreen> {
 
     final halls = data?.halls ?? const <BookingHall>[];
 
+    // Посуточная бронь: домик берут на ночь, и выбирают его вместе с
+    // диапазоном дат прямо в объявлении, где живёт календарь ночей
+    // (30.09.2026). Экран выбора зала умеет только часы и схему мест, и
+    // человек с дачи попадал бы на выбор часа вместо выбора дат.
+    if (data?.mode == BookingMode.daily) {
+      _openAdvert(replace: true);
+
+      return;
+    }
+
     // Залов нет (или бронь выключили): человеку нужно объявление.
     if (halls.isEmpty) {
       _openAdvert(replace: true);

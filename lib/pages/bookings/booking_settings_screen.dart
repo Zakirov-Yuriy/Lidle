@@ -176,6 +176,8 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
         _buildEnableCard(settings),
         if (settings.isEnabled) ...[
           const SizedBox(height: 12),
+          _buildModeCard(settings),
+          const SizedBox(height: 12),
           if (settings.resource?.isShared == true) _buildSharedNotice(settings),
           // Длительность приёма и перерыв имеют смысл только у записи по
           // часам. У посуточной аренды единица это ночь, и вместо них нужны
@@ -266,6 +268,85 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
                   ? 'В карточке объявления появится календарь свободных ночей и кнопка «Забронировать».'
                   : 'В карточке объявления появится календарь свободного времени и кнопка «Записаться».'),
         ],
+      ),
+    );
+  }
+
+  /// Как считать бронь: по часам или посуточно (30.09.2026).
+  ///
+  /// Раньше режим выбирался только в форме подачи, и передумать после
+  /// публикации было нельзя: хозяин дачи, поставивший часы, не мог перейти
+  /// на ночи, не пересоздав объявление. Сервер смену умел всё это время.
+  ///
+  /// Менять можно, пока по объявлению нет живых броней: иначе у созданной
+  /// брони изменился бы смысл её же времени.
+  Widget _buildModeCard(BookingSettings settings) {
+    final canChange = settings.resource?.canChangeMode != false;
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _title('Как считать бронь'),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _modeChip(
+                  'По часам',
+                  picked: !settings.isDaily,
+                  enabled: canChange && settings.isDaily,
+                  onTap: () => _save({'mode': 'slots'}),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _modeChip(
+                  'Посуточно',
+                  picked: settings.isDaily,
+                  enabled: canChange && !settings.isDaily,
+                  onTap: () => _save({'mode': 'daily'}),
+                ),
+              ),
+            ],
+          ),
+          _hint(!canChange
+              ? 'Сменить нельзя, пока по объявлению есть живые брони. Отмените или дождитесь их, и переключатель откроется.'
+              : settings.isDaily
+                  ? 'Гость выбирает даты заезда и выезда, а единица занимается на все ночи целиком.'
+                  : 'Гость выбирает час и, если есть схема, конкретное место.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _modeChip(
+    String title, {
+    required bool picked,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: enabled && !_isSaving ? onTap : null,
+      child: Container(
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: picked ? activeIconColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: picked ? activeIconColor : textMuted,
+          ),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: picked
+                ? Colors.white
+                : (enabled ? textPrimary : textMuted),
+            fontSize: 15,
+          ),
+        ),
       ),
     );
   }
