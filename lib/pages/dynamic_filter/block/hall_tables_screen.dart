@@ -29,6 +29,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/block_item.dart';
@@ -392,6 +393,16 @@ class _PlanBackground extends StatelessWidget {
   }
 }
 
+/// Распознаватель жеста, который не уступает прокрутке (30.09.2026).
+///
+/// Внутри списка обычный жест масштабирования проигрывает: прокрутка ловит
+/// движение раньше, и рамку нельзя было бы двигать вверх и вниз. Этот берёт
+/// касание себе, как карта внутри страницы.
+class _EagerScale extends ScaleGestureRecognizer {
+  @override
+  void rejectGesture(int pointer) => acceptGesture(pointer);
+}
+
 // ------------------------------------------------------------
 //  «Настройка стола»
 // ------------------------------------------------------------
@@ -454,6 +465,27 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
   /// поставил чуть мимо — удаляй и ставь заново.
   late double _x = widget.table.x.clamp(0.0, 1.0);
   late double _y = widget.table.y.clamp(0.0, 1.0);
+
+  /// Середина окна превью, долями плана (30.09.2026). Отдельно от положения
+  /// стола: рамку тянут пальцем, и план под ней должен стоять на месте, иначе
+  /// палец идёт вправо, а картинка уезжает влево — рука не понимает, что
+  /// происходит. Окно подъезжает, только когда рамка подходит к его краю.
+  late double _viewX = _x;
+  late double _viewY = _y;
+
+  /// Сторона окна превью в точках. Нужна ползункам: они тоже двигают рамку и
+  /// тоже должны подтягивать окно.
+  double _side = 300;
+
+  /// Размер и поворот на начало жеста двумя пальцами.
+  double _startW = 0;
+  double _startH = 0;
+  double _startAngle = 0;
+
+  /// Сколько пальцев было на прошлом шаге жеста. Если второй палец убрали и
+  /// снова поставили, распознаватель начинает масштаб заново, и без этого
+  /// счётчика размер прыгнул бы к тому, что был в начале жеста.
+  int _fingers = 0;
 
   /// Насколько приблизить план в превью. Считается ОДИН раз, при открытии
   /// стола: если пересчитывать от текущего размера, приближение будет его
@@ -621,19 +653,27 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
                   const SizedBox(height: 12),
                   _preview(),
                   const SizedBox(height: 12),
-                  _slider('Ширина', _w, kTableMarkMin, kTableMarkMax,
+                  _slider('Ширина', _w, kTableMarkMin, _maxSide,
                       (v) => setState(() => _w = v)),
-                  _slider('Высота', _h, kTableMarkMin, kTableMarkMax,
+                  _slider('Высота', _h, kTableMarkMin, _maxSide,
                       (v) => setState(() => _h = v)),
                   _slider('Поворот', _angle, 0.0, 355.0, (v) => setState(() => _angle = v),
                       divisions: 71, suffix: '°'),
 
                   // Положение без делений: стол двигают до точного совпадения
                   // с картинкой, и шаг в полпроцента тут мешал бы.
-                  _slider('Влево-вправо', _x, 0.0, 1.0, (v) => setState(() => _x = v),
-                      divisions: null),
-                  _slider('Вверх-вниз', _y, 0.0, 1.0, (v) => setState(() => _y = v),
-                      divisions: null),
+                  _slider('Влево-вправо', _x, 0.0, 1.0, (v) {
+                    setState(() {
+                      _x = v;
+                      _follow();
+                    });
+                  }, divisions: null),
+                  _slider('Вверх-вниз', _y, 0.0, 1.0, (v) {
+                    setState(() {
+                      _y = v;
+                      _follow();
+                    });
+                  }, divisions: null),
                   const SizedBox(height: 18),
                   const Text('Депозит за стол, ₽', style: TextStyle(color: textPrimary, fontSize: 15)),
                   const SizedBox(height: 9),
@@ -708,6 +748,72 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
     );
   }
 
+  /// Наибольший размер рамки. Ограничен не только общим потолком, но и
+  /// окном превью: рамка вдвое шире окна не даёт увидеть, что подгоняешь.
+  double get _maxSide => math.min(kTableMarkMax, 0.95 / _zoom);
+
+  /// Начало жеста: запоминаем, от чего считать размер и поворот.
+  void _scaleStart() {
+    _startW = _w;
+    _startH = _h;
+    _startAngle = _angle;
+    _fingers = 1;
+  }
+
+  /// Шаг жеста. Один палец двигает рамку, два меняют размер и поворот.
+  void _scaleUpdate(ScaleUpdateDetails d) {
+    setState(() {
+      if (d.pointerCount > 1) {
+        // Второй палец только что вернулся — считаем от нынешнего размера.
+        if (_fingers < 2) {
+          _startW = _w;
+          _startH = _h;
+          _startAngle = _angle;
+        }
+
+        _w = (_startW * d.scale).clamp(kTableMarkMin, _maxSide);
+        _h = (_startH * d.scale).clamp(kTableMarkMin, _maxSide);
+
+        final turned = _startAngle + d.rotation * 180 / math.pi;
+
+        _angle = (turned % 360 + 360) % 360;
+
+        // Ползунок кончается на 355. Дальше по кругу к нулю, а не упор:
+        // под пальцем рамка не должна застревать.
+        if (_angle > 355) _angle = 0;
+      }
+
+      _fingers = d.pointerCount;
+
+      _move(d.focalPointDelta.dx, d.focalPointDelta.dy);
+    });
+  }
+
+  /// Подвинуть рамку и подтянуть окно, если она ушла к краю.
+  void _move(double dx, double dy) {
+    final plan = _side * _zoom;
+
+    _x = (_x + dx / plan).clamp(0.0, 1.0);
+    _y = (_y + dy / plan).clamp(0.0, 1.0);
+
+    _follow();
+  }
+
+  /// Окно едет за рамкой, но не при каждом движении: пока рамка внутри
+  /// середины окна, план стоит. Так картинка не дёргается под пальцем.
+  void _follow() {
+    // Мёртвая зона — треть полуокна, в долях плана.
+    final margin = 0.32 / _zoom;
+
+    if (_x - _viewX > margin) _viewX = _x - margin;
+    if (_viewX - _x > margin) _viewX = _x + margin;
+    if (_y - _viewY > margin) _viewY = _y - margin;
+    if (_viewY - _y > margin) _viewY = _y + margin;
+
+    _viewX = _viewX.clamp(0.0, 1.0);
+    _viewY = _viewY.clamp(0.0, 1.0);
+  }
+
   /// Как рамка ляжет на план: кусок настоящей схемы вокруг этого стола,
   /// приближённый (30.09.2026).
   ///
@@ -735,59 +841,82 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
                   final side = box.maxWidth;
                   final plan = side * _zoom;
 
-                  // Рамка стоит в середине окна, а план едет под ней, как
-                  // прицел: так видно, на какой стол она наводится. У края
-                  // плана окно упирается в его край, а не уезжает в пустоту.
-                  final left = (side / 2 - _x * plan).clamp(side - plan, 0.0);
-                  final top = (side / 2 - _y * plan).clamp(side - plan, 0.0);
+                  // Сторона нужна ползункам, которые двигают рамку вне этого
+                  // метода. Запись без setState: перерисовку она не просит.
+                  _side = side;
+
+                  // Окно стоит на месте, пока рамка не подошла к его краю: у
+                  // края плана оно упирается в край схемы, а не уезжает в
+                  // пустоту.
+                  final left = (side / 2 - _viewX * plan).clamp(side - plan, 0.0);
+                  final top = (side / 2 - _viewY * plan).clamp(side - plan, 0.0);
 
                   // Номер меняется прямо во время набора: иначе кажется, что
                   // поле не сработало.
                   return AnimatedBuilder(
                     animation: _number,
-                    builder: (context, _) => Stack(
-                      clipBehavior: Clip.hardEdge,
-                      children: [
-                        Positioned(
-                          left: left,
-                          top: top,
-                          width: plan,
-                          height: plan,
-                          child: Stack(
-                            children: [
-                              Positioned.fill(child: _PlanBackground(hall: widget.hall)),
-                              ...tableMarkLayers(
-                                plan: Size(plan, plan),
-                                spots: [
-                                  for (final other in widget.others)
-                                    TableSpot(
-                                      key: other.key,
-                                      number: other.number,
-                                      seats: other.seats,
-                                      x: other.x,
-                                      y: other.y,
-                                      width: other.w,
-                                      height: other.h,
-                                      angle: other.angle,
-                                      state: TableMarkState.unknown,
-                                    ),
-                                  TableSpot(
-                                    key: widget.table.key,
-                                    number: _number.text.trim(),
-                                    seats: _seats,
-                                    x: _x,
-                                    y: _y,
-                                    width: _w,
-                                    height: _h,
-                                    angle: _angle,
-                                    state: TableMarkState.selected,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                    // Один палец двигает рамку, два меняют размер и поворот
+                    // (30.09.2026). Жест забираем себе раньше списка: обычный
+                    // GestureDetector отдал бы вертикальное движение прокрутке
+                    // экрана, и рамку нельзя было бы двигать вверх и вниз.
+                    // Плата за это — по самому превью список не прокручивается,
+                    // как и по карте: для прокрутки есть всё, что выше и ниже.
+                    builder: (context, _) => RawGestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      gestures: {
+                        _EagerScale:
+                            GestureRecognizerFactoryWithHandlers<_EagerScale>(
+                          () => _EagerScale(),
+                          (r) => r
+                            ..onStart = (_) => _scaleStart()
+                            ..onUpdate = _scaleUpdate,
                         ),
-                      ],
+                      },
+                      child: Stack(
+                        clipBehavior: Clip.hardEdge,
+                        children: [
+                          Positioned(
+                            left: left,
+                            top: top,
+                            width: plan,
+                            height: plan,
+                            child: Stack(
+                              children: [
+                                Positioned.fill(
+                                    child: _PlanBackground(hall: widget.hall)),
+                                ...tableMarkLayers(
+                                  plan: Size(plan, plan),
+                                  spots: [
+                                    for (final other in widget.others)
+                                      TableSpot(
+                                        key: other.key,
+                                        number: other.number,
+                                        seats: other.seats,
+                                        x: other.x,
+                                        y: other.y,
+                                        width: other.w,
+                                        height: other.h,
+                                        angle: other.angle,
+                                        state: TableMarkState.unknown,
+                                      ),
+                                    TableSpot(
+                                      key: widget.table.key,
+                                      number: _number.text.trim(),
+                                      seats: _seats,
+                                      x: _x,
+                                      y: _y,
+                                      width: _w,
+                                      height: _h,
+                                      angle: _angle,
+                                      state: TableMarkState.selected,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
