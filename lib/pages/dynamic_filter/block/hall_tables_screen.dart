@@ -867,9 +867,13 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
                         _EagerScale:
                             GestureRecognizerFactoryWithHandlers<_EagerScale>(
                           () => _EagerScale(),
-                          (r) => r
-                            ..onStart = (_) => _scaleStart()
-                            ..onUpdate = _scaleUpdate,
+                          // Обычный блок, а не каскад со стрелкой: каскад
+                          // прилипает к телу лямбды и присваивается её
+                          // результату.
+                          (r) {
+                            r.onStart = (_) => _scaleStart();
+                            r.onUpdate = _scaleUpdate;
+                          },
                         ),
                       },
                       child: Stack(
