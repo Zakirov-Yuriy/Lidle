@@ -530,7 +530,10 @@ class _PositionCard extends StatelessWidget {
           onTap: onOpen,
           child: Text(
             position.name,
-            maxLines: 2,
+            // Одна строка с многоточием (30.09.2026): длинное название
+            // раздвигало карточку, и соседние фотографии оказывались разной
+            // высоты. Полное название человек видит, открыв позицию.
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: textPrimary, fontSize: 14, height: 1.25),
           ),

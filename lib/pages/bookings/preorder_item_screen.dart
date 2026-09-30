@@ -264,7 +264,8 @@ class _PreorderItemScreenState extends State<PreorderItemScreen> {
               const SizedBox(height: 6),
               Text(
                 item.name,
-                maxLines: 2,
+                // Одна строка, как на витрине: карточки должны быть ровными.
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: textPrimary, fontSize: 13, height: 1.25),
               ),
