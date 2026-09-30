@@ -27,6 +27,7 @@
 // со сценарием (ScenariosService).
 
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
@@ -188,6 +189,13 @@ class _HallTablesScreenState extends State<HallTablesScreen> {
           staff: widget.staff,
           current: _staff[table.key]?.copy() ?? TableStaff(),
           isNew: isNew,
+          // Зал и соседние столы нужны превью: рамку подгоняют не на
+          // пустом квадрате, а на своём плане (30.09.2026).
+          hall: widget.hall,
+          others: [
+            for (final t in _tables)
+              if (t.key != table.key) t.copy(),
+          ],
         ),
       ),
     );
@@ -399,13 +407,22 @@ class TableSettingsScreen extends StatefulWidget {
     required this.table,
     required this.staff,
     required this.current,
+    required this.hall,
     this.isNew = false,
+    this.others = const [],
   });
 
   final HallTable table;
   final List<StaffRef> staff;
   final TableStaff current;
   final bool isNew;
+
+  /// Зал: из него берётся картинка плана для превью.
+  final BlockItemDraft hall;
+
+  /// Остальные столы зала: в превью они видны приглушёнными, чтобы рамка не
+  /// налезла на соседний стол.
+  final List<HallTable> others;
 
   @override
   State<TableSettingsScreen> createState() => _TableSettingsScreenState();
@@ -428,6 +445,17 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
   late double _w = widget.table.w.clamp(kTableMarkMin, kTableMarkMax);
   late double _h = widget.table.h.clamp(kTableMarkMin, kTableMarkMax);
   late double _angle = (widget.table.angle % 360).clamp(0, 355);
+
+  /// Насколько приблизить план в превью. Считается ОДИН раз, при открытии
+  /// стола: если пересчитывать от текущего размера, приближение будет его
+  /// компенсировать, и ползунок перестанет увеличивать рамку — вместо неё
+  /// станет отъезжать план. Оставляем запас, чтобы рамке было куда расти.
+  ///
+  /// План в PDF не приближаем: он рисуется своим просмотрщиком с
+  /// ограничением по высоте, и метки уехали бы мимо страницы.
+  late final double _zoom = widget.hall.isPdf
+      ? 1.0
+      : (0.4 / math.max(widget.table.w, widget.table.h)).clamp(1.0, 3.0);
 
   @override
   void dispose() {
@@ -662,52 +690,101 @@ class _TableSettingsScreenState extends State<TableSettingsScreen> {
     );
   }
 
-  /// Как рамка ляжет на план. Квадрат, как настоящая схема: размер задаётся
-  /// долями сторон, и на вытянутом превью рамка легла бы не так, как в зале.
+  /// Как рамка ляжет на план: кусок настоящей схемы вокруг этого стола,
+  /// приближённый (30.09.2026).
+  ///
+  /// На пустом квадрате подогнать размер нельзя: не с чем сравнить, и рамка
+  /// получается то мелкой, то во весь зал. Поэтому здесь тот же план, что на
+  /// схеме, только увеличенный и сдвинутый так, чтобы этот стол был в
+  /// середине. Соседние столы показаны приглушённо: видно, не налезла ли
+  /// рамка на чужой стол.
   Widget _preview() {
-    return Center(
-      child: SizedBox(
-        width: 220,
-        child: AspectRatio(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AspectRatio(
           aspectRatio: 1,
-          child: Container(
-            decoration: BoxDecoration(
-              color: formBackground,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: _divider),
-            ),
-            child: LayoutBuilder(
-              builder: (context, box) {
-                final plan = Size(box.maxWidth, box.maxHeight);
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              decoration: BoxDecoration(
+                color: formBackground,
+                border: Border.all(color: _divider),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  final side = box.maxWidth;
+                  final plan = side * _zoom;
 
-                // Номер меняется прямо во время набора: иначе кажется, что
-                // поле не сработало.
-                return AnimatedBuilder(
-                  animation: _number,
-                  builder: (context, _) => Stack(
-                    children: tableMarkLayers(
-                      plan: plan,
-                      spots: [
-                        TableSpot(
-                          key: widget.table.key,
-                          number: _number.text.trim(),
-                          seats: _seats,
-                          x: 0.5,
-                          y: 0.5,
-                          width: _w,
-                          height: _h,
-                          angle: _angle,
-                          state: TableMarkState.free,
+                  // Середина стола должна оказаться в середине окна. У стола
+                  // с краю плана окно упирается в край схемы, а не уезжает в
+                  // пустоту.
+                  final left = (side / 2 - widget.table.x * plan).clamp(side - plan, 0.0);
+                  final top = (side / 2 - widget.table.y * plan).clamp(side - plan, 0.0);
+
+                  // Номер меняется прямо во время набора: иначе кажется, что
+                  // поле не сработало.
+                  return AnimatedBuilder(
+                    animation: _number,
+                    builder: (context, _) => Stack(
+                      clipBehavior: Clip.hardEdge,
+                      children: [
+                        Positioned(
+                          left: left,
+                          top: top,
+                          width: plan,
+                          height: plan,
+                          child: Stack(
+                            children: [
+                              Positioned.fill(child: _PlanBackground(hall: widget.hall)),
+                              ...tableMarkLayers(
+                                plan: Size(plan, plan),
+                                spots: [
+                                  for (final other in widget.others)
+                                    TableSpot(
+                                      key: other.key,
+                                      number: other.number,
+                                      seats: other.seats,
+                                      x: other.x,
+                                      y: other.y,
+                                      width: other.w,
+                                      height: other.h,
+                                      angle: other.angle,
+                                      state: TableMarkState.unknown,
+                                    ),
+                                  TableSpot(
+                                    key: widget.table.key,
+                                    number: _number.text.trim(),
+                                    seats: _seats,
+                                    x: widget.table.x,
+                                    y: widget.table.y,
+                                    width: _w,
+                                    height: _h,
+                                    angle: _angle,
+                                    state: TableMarkState.selected,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ),
-      ),
+        const SizedBox(height: 6),
+        Text(
+          _zoom > 1.05
+              ? 'Ваш план, приближен ×${_zoom.toStringAsFixed(1)}. Зелёная рамка — этот стол.'
+              : 'Ваш план целиком. Зелёная рамка — этот стол.',
+          style: const TextStyle(color: textMuted, fontSize: 12),
+        ),
+      ],
     );
   }
 
