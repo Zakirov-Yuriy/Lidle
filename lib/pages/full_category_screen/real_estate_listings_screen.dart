@@ -17,10 +17,12 @@ import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
-import 'package:lidle/pages/full_category_screen/real_estate_listings_filter_screen.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/selected_city_service.dart';
+import 'package:lidle/models/place_filter.dart';
+import 'package:lidle/services/places_service.dart';
+import 'package:lidle/widgets/dialogs/place_search_dialog.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/home_page.dart';
@@ -82,8 +84,16 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   bool _isLoadingMore = false; // Для индикатора подгрузки
   String? _errorMessage;
   Map<String, dynamic> _appliedFilters = {}; // Применённые фильтры
-  String _selectedCityName = 'Ваш город'; // Выбранный из фильтра город (по умолчанию показываются все города)
-  String _baseCityName = 'Ваш город'; // 🌍 Базовый город (сохраняется при поиске, восстанавливается при очистке)
+  /// Место выдачи (01.10.2026, задача 24).
+  ///
+  /// Отбор по месту делает СЕРВЕР: в запрос уходит номер города или региона.
+  /// Раньше город жил здесь одной строкой, и выдача фильтровалась сравнением
+  /// этой строки с адресом объявления, из-за чего объявления с иначе
+  /// записанным адресом терялись.
+  PlaceFilter _place = const PlaceFilter.all();
+
+  String _selectedCityName = 'Все регионы'; // Подпись места в шапке
+  String _baseCityName = 'Все регионы'; // 🌍 Базовая подпись (восстанавливается после поиска)
   List<Attribute> _attributes = []; // Атрибуты для отображения фильтров
 
   // Пагинация
@@ -102,37 +112,38 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     super.initState();
     _selectedSortOptions.add('Сначала новые');
     
-    // 🎯 Инициализировать город из preSelectedCity если он передан
-    String previousCity = _selectedCityName;
-    if (widget.preSelectedCity != null && widget.preSelectedCity!.isNotEmpty) {
-      _selectedCityName = widget.preSelectedCity!;
-      log.d('✅ City initialized from widget parameter: $_selectedCityName');
+    // Место берём из общего выбора (01.10.2026).
+    //
+    // Диалоги выбора города кладут выбор в SelectedCityService вместе с
+    // номером, поэтому экрану не нужно знать, с какого из двух десятков
+    // экранов фильтров пришёл человек.
+    final previousPlace = _place;
+    final service = SelectedCityService();
+    final stored = service.place;
+
+    if (stored.isNotEmpty) {
+      _place = stored;
+    } else if (widget.preSelectedCity != null &&
+        widget.preSelectedCity!.trim().isNotEmpty) {
+      // Пришло только название, без номера: отобрать по нему сервер не может,
+      // поэтому показываем всю страну и честно подписываем место. Прежний код
+      // в этом случае фильтровал по строке адреса и терял объявления.
+      _place = const PlaceFilter.all();
+      log.d('Место пришло только названием, показываем все регионы: ${widget.preSelectedCity}');
     } else {
-      // 🎯 Пытаемся получить город из Service если есть
-      final cityService = SelectedCityService();
-      if (cityService.isFromFiltersScreen && 
-          cityService.selectedCity != null && 
-          cityService.selectedCity!.isNotEmpty) {
-        _selectedCityName = cityService.selectedCity!;
-        log.d('✅ City initialized from Service: $_selectedCityName');
-        previousCity = ''; // Помечаем как новый город из сервиса
-      } else {
-        // 🎯 Если город не выбран - используем "Ваш город" (показываем все объявления)
-        _selectedCityName = 'Ваш город';
-        log.d('⚠️  No city provided via parameter or Service, using default: $_selectedCityName (all cities)');
-      }
+      _place = const PlaceFilter.all();
     }
-    
-    // 🟢 Если город изменился - инвалидируем кеш
-    if (_selectedCityName != previousCity) {
-      log.d('🗑️  Город изменился с "$previousCity" на "$_selectedCityName" - очищаем кеш');
+
+    _selectedCityName = _place.title;
+
+    // Место поменялось: кеш собран по прежнему месту, его надо сбросить.
+    if (_place != previousPlace) {
       _cacheTimestamps.clear();
       _listingsCache.clear();
     }
     
-    // 🌍 Сохраняем базовый город (исходно выбранный)
+    // Подпись места до поиска: после очистки поиска вернём её.
     _baseCityName = _selectedCityName;
-    log.d('🌍 Base city saved: $_baseCityName');
     
     _searchController = TextEditingController();
     // 🚀 ОПТИМИЗАЦИЯ: Отложить загрузку атрибутов после отрисовки UI
@@ -163,8 +174,13 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     final filters = _appliedFilters.entries
         .map((e) => '${e.key}=${e.value}')
         .join('&');
-    // 🟢 ВАЖНО: Добавляем город в ключ кеша, чтобы при смене города кеш инвалидировался
-    return 'listings_${widget.categoryId}_${widget.catalogId}_${sort ?? _currentSort}_${_selectedCityName}_$filters';
+    // Место входит в ключ НОМЕРОМ, а не подписью: подпись меняется при поиске
+    // («Несколько городов»), и кеш из-за этого промахивался мимо себя же.
+    final place = _place.isAll
+        ? 'all'
+        : 'c${_place.cityId ?? 0}r${_place.regionId ?? 0}';
+
+    return 'listings_${widget.categoryId}_${widget.catalogId}_${sort ?? _currentSort}_${place}_$filters';
   }
 
   /// Проверяет является ли кеш валидным
@@ -359,10 +375,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         }
       }
 
-      // 🟢 ВАЖНО: НЕ отправляем город в API (он его игнорирует)
-      // Будем фильтровать по городу на КЛИЕНТЕ используя address field!
+      // Место отбирает сервер (01.10.2026): в запрос уходит номер города или
+      // региона. Пустая карта значит «все регионы».
       final filtersForApi = Map<String, dynamic>.from(_appliedFilters);
-      log.d('🌍 CITY FILTERING: Будет применены КЛИЕНТСКАЯ фильтрация по городу: "$_selectedCityName"');
+      final placeQuery = _place.toQuery();
+      log.d('Место выдачи: ${_place.toString()}, в запрос уходит $placeQuery');
 
       // Используем переданные параметры как есть:
       // - Если catalogId передан → используем для фильтрации по каталогу
@@ -406,6 +423,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         catalogId: widget.catalogId,
         sort: sort,
         filters: filtersForApi.isNotEmpty ? filtersForApi : null,
+        place: placeQuery.isNotEmpty ? placeQuery : null,
         page: isNextPage ? _currentPage + 1 : 1,
         limit: 20,
         token: token,
@@ -474,22 +492,12 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       }
       log.d('═══════════════════════════════════════════════════════════════\n');
 
-      // ✅ ФИЛЬТРАЦИЯ ПО ГОРОДУ: КЛИЕНТСКАЯ!
-      // Если выбран город отличный от "Ваш город", то фильтруем по городу
-      // Если выбран "Ваш город" - показываем все объявления всех городов
-      var result = listingsToFilter;
-      if (_selectedCityName.isNotEmpty && _selectedCityName != 'Ваш город') {
-        result = _filterByCity(result, _selectedCityName);
-      } else if (_selectedCityName == 'Ваш город') {
-        log.d('🌍 CITY FILTERING: Показываются ВСЕ города (Selected: "$_selectedCityName")');
-      }
-      
-      final filtersWithCity = Map<String, dynamic>.from(_appliedFilters);
-      // Город больше НЕ добавляем сюда, так как фильтруем его на клиенте перед остальными фильтрами
-
+      // Город на клиенте больше не фильтруем: это делает сервер по номеру.
+      // Прежний отбор сравнивал название города со строкой адреса и терял
+      // объявления, записанные иначе.
       var sortedNewListings = _applyClientSideFiltering(
-        result,
-        filtersWithCity,
+        listingsToFilter,
+        Map<String, dynamic>.from(_appliedFilters),
       );
 
       // ТОВАРЫ РАЗДЕЛА (14.09.2026).
@@ -1402,6 +1410,52 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
+  /// Выбрать место выдачи: город, посёлок или все регионы.
+  ///
+  /// Один и тот же диалог поиска, что и в фильтрах, только с пунктом «Все
+  /// регионы» первой строкой. Выбор кладём в общий сервис, чтобы остальные
+  /// экраны увидели то же место, и перезагружаем список: отбор делает сервер,
+  /// а значит нужен новый запрос, а не фильтрация того, что уже пришло.
+  Future<void> _pickPlace() async {
+    final picked = await showDialog<PlaceSuggestion>(
+      context: context,
+      builder: (_) => PlaceSearchDialog(
+        title: 'Место поиска',
+        hint: 'Город или посёлок',
+        promptText: 'Введите название города',
+        allRegionsTitle: 'Все регионы',
+        allRegionsSelected: _place.isAll,
+        selectedId: _place.cityId ?? _place.regionId,
+        selectedIsRegion: _place.cityId == null && _place.regionId != null,
+        onSearch: (query) => PlacesService.cities(query),
+      ),
+    );
+
+    if (picked == null || !mounted) return;
+
+    final place = picked.isAll
+        ? const PlaceFilter.all()
+        : PlaceFilter(
+            // У города-региона (Москва, Санкт-Петербург, Севастополь) в
+            // справочнике нет записи города: его номер это номер региона.
+            cityId: picked.isRegion ? null : picked.id,
+            regionId: picked.isRegion ? picked.id : null,
+            name: picked.name,
+          );
+
+    SelectedCityService().setPlace(place);
+
+    setState(() {
+      _place = place;
+      _selectedCityName = place.title;
+      _baseCityName = place.title;
+      _listingsCache.clear();
+      _cacheTimestamps.clear();
+    });
+
+    await _loadAdverts();
+  }
+
   Widget _buildLocationAndFilters() {
     log.d('🏗️ _buildLocationAndFilters() BUILDING');
     log.d('   _selectedCityName: "$_selectedCityName"');
@@ -1411,21 +1465,28 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
-          Row(
-            children: [
-              SvgPicture.asset(
-                'assets/home_page/marker-pin.svg',
-                color: textMuted,
-                width: 18,
-                height: 18,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                _selectedCityName,
-                style: TextStyle(color: textMuted, fontSize: 16),
-              ),
-              Icon(Icons.keyboard_arrow_down, color: textMuted),
-            ],
+          // Место нажимается (01.10.2026). Стрелка здесь была нарисована с
+          // самого начала, но обработчика у неё не было: человек видел
+          // подсказку «можно сменить» и ничего не мог сделать.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _pickPlace,
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/home_page/marker-pin.svg',
+                  color: textMuted,
+                  width: 18,
+                  height: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _selectedCityName,
+                  style: TextStyle(color: textMuted, fontSize: 16),
+                ),
+                Icon(Icons.keyboard_arrow_down, color: textMuted),
+              ],
+            ),
           ),
           const Spacer(),
           GestureDetector(
@@ -2057,40 +2118,6 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
 
     return result;
-  }
-
-  /// Фильтрует объявления по названию города
-  List<Listing> _filterByCity(List<Listing> listings, String cityName) {
-    log.d('\n🟢 ════════════════════════════════════════════════════════════════');
-    log.d('🟢 FILTER BY CITY: "$cityName"');
-    log.d('   BEFORE: ${listings.length} listings');
-
-    final filtered = listings.where((listing) {
-      final matches = listing.location.startsWith(cityName);
-      if (!matches) {
-        log.d('      ❌ ID=${listing.id}: ${listing.location}');
-      }
-      
-      // DEBUG для ID 3
-      if (listing.id == 3) {
-        log.d('   🔍 ID=3: location="${listing.location}", startsWith("$cityName")? $matches');
-      }
-      
-      return matches;
-    }).toList();
-
-    log.d('   AFTER: ${filtered.length} listings');
-    
-    // Проверяем прошла ли ID 3 фильтр по городу
-    if (listings.any((l) => l.id == 3)) {
-      if (filtered.any((l) => l.id == 3)) {
-        log.d('   ✅ ID=3 ПРОШЛО фильтр по городу');
-      } else {
-        log.d('   ❌ ID=3 НЕ ПРОШЛО фильтр по городу и было ИСКЛЮЧЕНО');
-      }
-    }
-    log.d('🟢 ════════════════════════════════════════════════════════════════\n');
-    return filtered;
   }
 
   /// Фильтрует объявления по value_selected атрибутам (ID < 1000)

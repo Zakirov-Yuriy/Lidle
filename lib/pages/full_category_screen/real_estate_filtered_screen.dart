@@ -6,6 +6,7 @@ import 'package:lidle/widgets/navigation/open_my_store.dart';
 import 'package:lidle/widgets/navigation/nav_metrics.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/selected_city_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/home_models.dart';
@@ -91,20 +92,13 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       log.d('💾 Фильтры загружены для категории ${widget.categoryId}: $savedFilters');
       log.d('📋 [API] Загруженные фильтры из Hive: $savedFilters');
 
-      // 🟢 ЗАГРУЖАЕМ ГОРОД ИЗ HIVE
-      String? cityFilter;
-      if (savedFilters.containsKey('_city') && savedFilters['_city'] is List) {
-        final cityList = (savedFilters['_city'] as List).cast<String>();
-        if (cityList.isNotEmpty) {
-          cityFilter = cityList.first;
-          log.d('🏙️ Город восстановлен из Hive: $cityFilter');
-        }
-      }
-      // Если город не в Hive, используем переданное значение
-      if (cityFilter == null && widget.selectedCity != null) {
-        cityFilter = widget.selectedCity;
-        log.d('🏙️ Город взят из параметра widget: $cityFilter');
-      }
+      // Место выдачи (01.10.2026, задача 24): берём общий выбор с номером
+      // города или региона. Названия города для отбора больше не хватает:
+      // сервер отбирает по номеру, а прежнее сравнение строк теряло
+      // объявления с иначе записанным адресом.
+      final place = SelectedCityService().place;
+      final placeQuery = place.toQuery();
+      log.d('Место выдачи: $place, в запрос уходит $placeQuery');
 
       // Получаем токен
       final token = TokenService.currentToken;
@@ -133,6 +127,7 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       final response = await ApiService.getAdverts(
         categoryId: widget.categoryId,  // ← ИСПРАВЛЕНО: используем categoryId
         filters: structuredFilters.isNotEmpty ? structuredFilters : null,  // ← ДОБАВЛЕНО: передаём фильтры серверу
+        place: placeQuery.isNotEmpty ? placeQuery : null,
         token: token,
         page: 1,
         limit: 50,
@@ -163,15 +158,8 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
 
       log.d('✅ [Result] Успешно сконвертировано ${listings.length} объявлений из ${allAdverts.length}');
 
-      // ✨ ПРИМЕНЯЕМ СОХРАНЕННЫЕ ФИЛЬТРЫ И ФИЛЬТР ПО ГОРОДУ
-      var filteredListings = _applyClientSideFiltering(listings, savedFilters);
-      
-      // 🟢 ПРИМЕНЯЕМ ФИЛЬТР ПО ГОРОДУ (если выбран)
-      if (cityFilter != null && cityFilter.isNotEmpty) {
-        log.d('🏙️ Применяем фильтр по городу: $cityFilter');
-        filteredListings = _filterByCity(filteredListings, cityFilter);
-        log.d('🏙️ После фильтра по городу: ${filteredListings.length} объявлений');
-      }
+      // Город на клиенте не фильтруем: это сделал сервер по номеру.
+      final filteredListings = _applyClientSideFiltering(listings, savedFilters);
 
       setState(() {
         _listings = filteredListings;
@@ -1162,15 +1150,33 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
           )
         : <String, String>{};
 
+    // Служебные ключи, которые сервер принимать не должен.
+    //
+    // Раньше отсекались только те, что начинаются с подчёркивания. Экран
+    // фильтров выдачи сохранял город по-своему, ключами `city_id`, `city_name`
+    // и `sort_*`, подчёркивания у них нет, и они доезжали до сервера как
+    // характеристики с нечисловым номером: `filters[value_selected][city_id][]`.
+    // Такой фильтр сервер не понимает, а место при этом всё равно не
+    // задавалось. Место теперь уходит отдельным блоком адреса.
+    const serviceKeys = {'city_id', 'city_name', 'region_id', 'sort', 'sort_date', 'sort_price'};
+
     flatFilters.forEach((keyStr, value) {
       // 🟢 ПРОПУСКАЕМ СПЕЦИАЛЬНЫЕ КЛЮЧИ (город, сортировка и т.д.) - они не передаются серверу
-      if (keyStr.startsWith('_')) {
-        log.d('   🔍 ПРОПУСКАЕМ специальный ключ: $keyStr (клиентская фильтрация)');
+      if (keyStr.startsWith('_') || serviceKeys.contains(keyStr)) {
+        log.d('   🔍 ПРОПУСКАЕМ служебный ключ: $keyStr');
         return;
       }
 
       // Конвертируем ключ в int для определения типа
       final attrId = int.tryParse(keyStr) ?? 0;
+
+      // Номер поля не разобрался: это чужой ключ, а не характеристика.
+      // Отправлять его серверу нельзя, он отклонит весь фильтр.
+      if (attrId <= 0) {
+        log.d('   🔍 ПРОПУСКАЕМ ключ без номера поля: $keyStr');
+
+        return;
+      }
 
       log.d('   🔍 Обработка: key=$keyStr, attrId=$attrId, value=$value, type=${value.runtimeType}');
 
@@ -1233,35 +1239,4 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
     return structured;
   }
 
-  /// Фильтрует объявления по названию города в адресе
-  /// Проверяет, содержит ли адрес название выбранного города
-  List<Listing> _filterByCity(List<Listing> listings, String cityName) {
-    if (cityName.isEmpty || listings.isEmpty) {
-      return listings;
-    }
-
-    log.d('\n🏙️ ═══════════════════════════════════════════════════════════════');
-    log.d('🏙️ ФИЛЬТР ПО ГОРОДУ');
-    log.d('🏙️ Город для фильтрации: "$cityName"');
-    log.d('🏙️ Объявлений до фильтра: ${listings.length}');
-
-    final filtered = listings.where((listing) {
-      // Проверяем, содержит ли адрес название города (case-insensitive)
-      final address = listing.location.toLowerCase();
-      final city = cityName.toLowerCase();
-      
-      final matches = address.contains(city);
-      
-      if (!matches) {
-        log.d('   ❌ ID=${listing.id}: адрес "$address" не содержит город "$city"');
-      }
-      
-      return matches;
-    }).toList();
-
-    log.d('🏙️ Объявлений после фильтра: ${filtered.length}');
-    log.d('🏙️ ═══════════════════════════════════════════════════════════════\n');
-
-    return filtered;
-  }
 }

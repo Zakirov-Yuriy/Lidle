@@ -9,6 +9,7 @@ import '../../models/home_models.dart' as home;
 import '../../models/advert_model.dart';
 import '../../services/api_service.dart';
 import '../../services/token_service.dart';
+import '../../services/selected_city_service.dart';
 import '../../services/loading_timer_service.dart';
 import '../../services/api_request_queue.dart';
 import '../../core/cache/cache_service.dart';
@@ -123,12 +124,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Человек нажал «Сбросить» под подписью о городе (24.09.2026).
   ///
-  /// Держим у себя, на время работы приложения: лента запрашивается с
-  /// `all_cities`, город в профиле при этом остаётся на месте. Раньше кнопка
-  /// СТИРАЛА адрес человека на сервере, и это было и разрушительно, и
-  /// бесполезно: если город записан у компании, лента всё равно оставалась
-  /// прежней.
-  bool _ignoreFeedCity = false;
+  /// Лента запрашивается с `all_cities`, город в профиле при этом остаётся на
+  /// месте. Раньше кнопка СТИРАЛА адрес человека на сервере, и это было и
+  /// разрушительно, и бесполезно: если город записан у компании, лента всё
+  /// равно оставалась прежней.
+  ///
+  /// Выбор запоминается между запусками (01.10.2026, задача 24): раньше он
+  /// жил только до закрытия приложения, и человек, выбравший все регионы,
+  /// после перезапуска снова получал ленту своего города.
+  bool _ignoreFeedCity = SelectedCityService().feedAllRegions;
 
   /// Конструктор ListingsBloc.
   /// Инициализирует Bloc с начальным состоянием ListingsInitial.
@@ -971,6 +975,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   ) async {
     _ignoreFeedCity = event.allCities;
     _feedCityName = null;
+
+    // Запоминаем выбор ленты. Отдельно от места выдачи: на главной это
+    // приоритет города, а не фильтр, и «Мой город» здесь не должен стирать
+    // город, выбранный в фильтрах категории.
+    SelectedCityService().setFeedAllRegions(event.allCities);
 
     // Кеш главной и дебаунс обновления иначе съели бы перезагрузку: человек
     // нажал бы кнопку и не увидел разницы. Признак «идёт загрузка» не трогаем:

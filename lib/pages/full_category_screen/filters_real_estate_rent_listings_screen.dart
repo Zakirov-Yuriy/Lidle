@@ -771,6 +771,7 @@ class _FiltersRealEstateRentListingsScreenState
               context: context,
               builder: (_) {
                 return CitySelectionDialog(
+                  forFilters: true,
                   title: 'Ваш город',
                   options: const [
                     'Маруполь',

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/cities_filter_dialog.dart';
-import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
 import 'package:lidle/services/selected_city_service.dart';
 
@@ -22,7 +20,16 @@ enum PriceSort { expensive, cheap }
 enum AccountKind { all, private, business }
 
 class _FiltersScreenState extends State<FiltersScreen> {
-  Set<String> _selectedCity = {'Выберете город'};
+  /// Подпись-заглушка выбора места.
+  ///
+  /// Раньше она была самим «городом»: пустой выбор означал город с названием
+  /// «Выберете город», это название уезжало в фильтр выдачи, и экран искал
+  /// объявления в несуществующем городе, то есть показывал пустой список
+  /// (01.10.2026, задача 24). Теперь это только подпись, а место хранится в
+  /// SelectedCityService вместе с номером.
+  static const String _cityPlaceholder = 'Выберете город';
+
+  Set<String> _selectedCity = {_cityPlaceholder};
   Set<String> _selectedCategories = {}; // «Выберите категорию»
   DateSort? _dateSort = DateSort.newest;
   PriceSort? _priceSort;
@@ -35,18 +42,39 @@ class _FiltersScreenState extends State<FiltersScreen> {
     super.initState();
     // Города загружаются динамически с API
     _cities = [];
+
+    // Показываем то место, которое человек уже выбрал.
+    //
+    // Раньше экран всегда открывался с «Выберете город», хотя место было
+    // выбрано и выдача шла по нему: подпись врала (01.10.2026, задача 24).
+    final place = SelectedCityService().place;
+
+    if (place.isAll) {
+      _selectedCity = {};
+    } else if (place.name.trim().isNotEmpty) {
+      _selectedCity = {place.name.trim()};
+    }
   }
 
   void _reset() async {
     setState(() {
-      _selectedCity = {'Выберете город'};
+      // Пустой выбор это и есть «все регионы»: подпись поля берётся из
+      // пустоты множества (см. hint ниже) и совпадает с тем, что уходит в
+      // SelectedCityService строкой ниже. Поставить тут заглушку «Выберете
+      // город» значило бы показывать одно, а искать другое.
+      _selectedCity = {};
       _selectedCategories = {};
       _dateSort = DateSort.newest;
       _priceSort = null;
       _account = AccountKind.all; // 👈 При сбросе тоже выбираем "Все"
       _showCategoryError = false;  // 🔴 Очистить ошибку при сбросе
     });
-    await HiveService.saveSelectedCity('г. Мариуполь. ДНР');
+
+    // Сброс это «все регионы», а не Мариуполь.
+    //
+    // Раньше здесь в настройки писался жёстко зашитый «г. Мариуполь. ДНР»:
+    // человек в другом городе нажимал «Сбросить» и получал чужой город.
+    SelectedCityService().setAllRegions(isFromFiltersScreen: true);
   }
 
   void _submit() async {
@@ -58,10 +86,8 @@ class _FiltersScreenState extends State<FiltersScreen> {
       return;  // Не закрываем экран пока не выбрана категория
     }
 
-    // ✅ Категория выбрана, сохраняем выбранный город
-    if (_selectedCity.isNotEmpty) {
-      await HiveService.saveSelectedCity(_selectedCity.first);
-    }
+    // Место уже сохранено диалогом выбора: здесь дублировать его названием
+    // не нужно, иначе номер города потеряется.
     // TODO: Вернуть выбранные фильтры на предыдущий экран или применить их
     Navigator.maybePop(context);
   }
@@ -164,8 +190,10 @@ class _FiltersScreenState extends State<FiltersScreen> {
                 padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: _buildDropdown(
                   label: 'Выберете город',
+                  // Пустой выбор это «все регионы»: так его оставляет
+                  // одноимённый пункт диалога.
                   hint: _selectedCity.isEmpty
-                      ? 'Ваш город'
+                      ? 'Все регионы'
                       : _selectedCity.join(', '),
                   icon: const Icon(
                     Icons.keyboard_arrow_right_outlined,
@@ -210,20 +238,21 @@ class _FiltersScreenState extends State<FiltersScreen> {
                       onTap: () {
                         // 🎯 Переход на экран выбора категорий из full_category_screen
                         // с передачей выбранного города через Service
-                        final selectedCity = _selectedCity.first;
-                        
-                        // Сохраняем город в Service для использования на других экранах
-                        SelectedCityService().setSelectedCity(
-                          selectedCity,
-                          isFromFiltersScreen: true,
-                        );
+                        // Заглушку и пустой выбор городом не считаем: иначе
+                        // дальше уедет фильтр по несуществующему городу, а на
+                        // пустом множестве `first` вообще падает. Пустым выбор
+                        // становится после пункта «Все регионы».
+                        final selectedCity =
+                            _selectedCity.isEmpty ? '' : _selectedCity.first;
+                        final hasCity = selectedCity.isNotEmpty &&
+                            selectedCity != _cityPlaceholder;
 
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => FullCategoryScreen(
                               isFromFiltersScreen: true,
-                              preSelectedCity: selectedCity,
+                              preSelectedCity: hasCity ? selectedCity : null,
                               onCategorySelected: (categoryName, categoryId) {
                                 // После выбора категории и подкатегории,
                                 // вернёмся с выбранной категорией

@@ -807,6 +807,7 @@ class _FiltersOfficeSellScreenenState extends State<FiltersOfficeSellScreenen> {
               context: context,
               builder: (_) {
                 return CitySelectionDialog(
+                  forFilters: true,
                   title: 'Ваш город',
                   options: const [
                     'Маруполь',

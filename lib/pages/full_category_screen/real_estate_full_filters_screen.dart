@@ -8,6 +8,8 @@ import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/place_search_dialog.dart';
 import 'package:lidle/services/places_service.dart';
+import 'package:lidle/services/selected_city_service.dart';
+import 'package:lidle/models/place_filter.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_filtered_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_subfilters_screen.dart';
@@ -1719,7 +1721,11 @@ class _RealEstateFullFiltersScreenState
         const SizedBox(height: 21),
         _buildTitle("Выберите город"),
         _buildSelector(
-          selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
+          selectedCity.isEmpty
+              ? (SelectedCityService().isAllRegions
+                  ? 'Все регионы'
+                  : 'Выберите город')
+              : selectedCity.first,
           onTap: () async {
             // Тот же поиск по всей стране, что в форме подачи (28.09.2026).
             // Раньше здесь был список городов, собранный заранее: в нём не
@@ -1732,11 +1738,31 @@ class _RealEstateFullFiltersScreenState
                 hint: 'Например, Мариуполь',
                 promptText: 'Введите название города или посёлка',
                 emptyText: 'Такого населённого пункта не нашлось',
+                allRegionsTitle: 'Все регионы',
+                allRegionsSelected: SelectedCityService().isAllRegions,
                 onSearch: (query) => PlacesService.cities(query),
               ),
             );
 
             if (picked == null || !mounted) return;
+
+            // Запоминаем место целиком, с номером: отбор делает сервер
+            // (01.10.2026, задача 24).
+            if (picked.isAll) {
+              SelectedCityService().setAllRegions();
+
+              setState(() => selectedCity = <String>{});
+
+              return;
+            }
+
+            SelectedCityService().setPlace(
+              PlaceFilter(
+                cityId: picked.isRegion ? null : picked.id,
+                regionId: picked.isRegion ? picked.id : null,
+                name: picked.name,
+              ),
+            );
 
             setState(() => selectedCity = {picked.name});
 

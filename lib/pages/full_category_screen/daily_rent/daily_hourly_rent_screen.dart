@@ -768,6 +768,7 @@ class _DailyHourlyRentScreenState extends State<DailyHourlyRentScreen> {
               context: context,
               builder: (_) {
                 return CitySelectionDialog(
+                  forFilters: true,
                   title: 'Ваш город',
                   options: const [
                     'Маруполь',

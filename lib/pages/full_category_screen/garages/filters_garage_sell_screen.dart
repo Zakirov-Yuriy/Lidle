@@ -548,6 +548,7 @@ class _FiltersGarageSellScreenState extends State<FiltersGarageSellScreen> {
               context: context,
               builder: (_) {
                 return CitySelectionDialog(
+                  forFilters: true,
                   title: 'Ваш город',
                   options: const [
                     'Маруполь',

@@ -844,6 +844,7 @@ class _FiltersHousesRentScreenenState extends State<FiltersHousesRentScreenen> {
               context: context,
               builder: (_) {
                 return CitySelectionDialog(
+                  forFilters: true,
                   title: 'Ваш город',
                   options: const [
                     'Маруполь',

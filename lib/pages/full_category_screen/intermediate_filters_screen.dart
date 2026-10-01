@@ -9,6 +9,8 @@ import 'package:lidle/services/token_service.dart';
 // Поиск населённого пункта одним полем (упрощение адреса, 24.09.2026).
 import 'package:lidle/widgets/dialogs/place_search_dialog.dart';
 import 'package:lidle/services/places_service.dart';
+import 'package:lidle/services/selected_city_service.dart';
+import 'package:lidle/models/place_filter.dart';
 import 'package:lidle/widgets/selectable_button.dart';
 import 'package:lidle/core/logger.dart';
 
@@ -555,15 +557,11 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
               hasErrors = true;
             }
             
-            // Проверяем что город выбран
-            if (selectedCity.isEmpty) {
-              log.d('🔴 Ошибка валидации: город не выбран!');
-              setState(() {
-                showCityError = true;
-              });
-              log.d('✅ showCityError установлен в true');
-              hasErrors = true;
-            }
+            // Город больше НЕ обязателен (01.10.2026, задача 24).
+            //
+            // Раньше без города кнопка «Применить» не пускала дальше, то есть
+            // «все регионы» были запрещены на этом экране явно. Теперь пустой
+            // выбор означает выдачу по всей стране, и это нормальный случай.
             
             // Если есть ошибки, прокручиваем вверх и выходим
             if (hasErrors) {
@@ -684,14 +682,31 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                 // этого на «москва» выпадали поселения ТиНАО, а самой Москвы
                 // в списке не было (28.09.2026). Фильтр по городу сравнивает
                 // название с адресом объявления, и «Москва» в нём есть.
+                allRegionsTitle: 'Все регионы',
+                allRegionsSelected: SelectedCityService().isAllRegions,
                 onSearch: (query) => PlacesService.cities(query),
               ),
             );
 
             if (picked == null || !mounted) return;
 
+            // Выбор запоминаем целиком, с номером города: отбор делает сервер
+            // (01.10.2026). Прежде наружу уходило одно название, и выдача
+            // фильтровалась сравнением строк.
+            if (picked.isAll) {
+              SelectedCityService().setAllRegions();
+            } else {
+              SelectedCityService().setPlace(
+                PlaceFilter(
+                  cityId: picked.isRegion ? null : picked.id,
+                  regionId: picked.isRegion ? picked.id : null,
+                  name: picked.name,
+                ),
+              );
+            }
+
             setState(() {
-              selectedCity = {picked.name};
+              selectedCity = picked.isAll ? <String>{} : {picked.name};
               showCityError = false;
             });
           },

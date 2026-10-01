@@ -150,6 +150,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
                     context: context,
                     builder: (_) {
                       return CitySelectionDialog(
+                        forFilters: true,
                         title: "Выберите город",
                         options: const [
                           'Абаза',

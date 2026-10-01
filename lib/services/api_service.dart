@@ -1070,12 +1070,20 @@ class ApiService {
     }
   }
 
+  /// Список объявлений.
+  ///
+  /// [place] это выбранное место выдачи (01.10.2026, задача 24): номер города
+  /// или региона уходит на сервер в `filters[address]`, и отбор делает он.
+  /// Пустая карта и `null` значат «все регионы»: место в запрос не попадает
+  /// вовсе. Пустые значения внутрь не кладём, сервер по непустому блоку
+  /// адреса раньше терял объявления без адресной записи.
   static Future<AdvertsResponse> getAdverts({
     int? categoryId,
     int? catalogId,
     String? sort,
     String? search,
     Map<String, dynamic>? filters,
+    Map<String, int>? place,
     int? page,
     int? limit,
     String? token,
@@ -1105,6 +1113,17 @@ class ApiService {
       if (sort != null) queryParams['sort'] = sort;
       if (page != null) queryParams['page'] = page;
       if (limit != null) queryParams['limit'] = limit;
+
+      // Место выдачи: город или регион. Раньше город на сервер не уходил
+      // вовсе, и выдача фильтровалась в приложении сравнением названия города
+      // со строкой адреса объявления.
+      if (place != null) {
+        place.forEach((key, value) {
+          if (value > 0) {
+            queryParams['filters[address][$key]'] = value;
+          }
+        });
+      }
 
       // Добавляем фильтры
       if (filters != null && filters.isNotEmpty) {

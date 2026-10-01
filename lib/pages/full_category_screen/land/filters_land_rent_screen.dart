@@ -540,6 +540,7 @@ class _FiltersLandRentScreenenState extends State<FiltersLandRentScreenen> {
               context: context,
               builder: (_) {
                 return CitySelectionDialog(
+                  forFilters: true,
                   title: 'Ваш город',
                   options: [],
                   selectedOptions: _selectedCity,

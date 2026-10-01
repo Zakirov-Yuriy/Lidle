@@ -117,14 +117,24 @@ class HiveService {
     return newFavoriteStatus;
   }
 
-  /// Сохраняет выбранный город в настройки.
+  /// Выбранное место выдачи теперь живёт в SelectedCityService
+  /// (01.10.2026, задача 24).
+  ///
+  /// Эти два метода оставлены только на случай старых сохранённых настроек и
+  /// больше ниоткуда не вызываются. Пользоваться ими нельзя: они хранят одно
+  /// название без номера города, а сервер отбирает выдачу по номеру. Значение
+  /// по умолчанию тоже было ловушкой: человек в другом городе получал
+  /// Мариуполь, потому что так написано в коде.
+  @Deprecated('Используйте SelectedCityService().place')
   static Future<void> saveSelectedCity(String city) async {
     await settingsBox.put('selectedCity', city);
   }
 
-  /// Получает выбранный город из настроек, по умолчанию 'г. Мариуполь. ДНР'.
-  static String getSelectedCity() {
-    return settingsBox.get('selectedCity', defaultValue: 'г. Мариуполь. ДНР');
+  @Deprecated('Используйте SelectedCityService().place')
+  static String? getSelectedCity() {
+    final value = settingsBox.get('selectedCity');
+
+    return value is String && value.trim().isNotEmpty ? value : null;
   }
 
   /// Сохраняет архивные сообщения.

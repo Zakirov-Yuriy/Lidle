@@ -1083,25 +1083,39 @@ class _RealEstateListingsFilterScreenState
                   title: 'Выберите город',
                   selectedCities: _selectedCity,
                   onSelectionChanged: (Set<String> selected) {
-                    if (selected.isNotEmpty) {
-                      final selectedCityName = selected.first;
-                      
-                      // 🎯 Если город найден в _cities, берем его ID
-                      int? cityId;
-                      for (final city in _cities) {
-                        if (city['name'] == selectedCityName) {
-                          cityId = city['id'] as int?;
-                          break;
-                        }
-                      }
-
+                    // Пустой выбор это «все регионы» (01.10.2026, задача 24).
+                    // Раньше он просто игнорировался, и экран продолжал
+                    // показывать прежний город, хотя место уже сменилось.
+                    if (selected.isEmpty) {
                       setState(() {
-                        _selectedCity = selected;
-                        _selectedCityId = cityId;
+                        _selectedCity = <String>{};
+                        _selectedCityId = null;
                       });
 
-                      log.d('✅ Выбран город: $selectedCityName (ID: $cityId)');
+                      log.d('Выбраны все регионы');
+
+                      return;
                     }
+
+                    final selectedCityName = selected.first;
+
+                    // Номер города здесь нужен только для подписи и старых
+                    // сохранённых настроек: место выдачи вместе с номером
+                    // диалог уже положил в SelectedCityService.
+                    int? cityId;
+                    for (final city in _cities) {
+                      if (city['name'] == selectedCityName) {
+                        cityId = city['id'] as int?;
+                        break;
+                      }
+                    }
+
+                    setState(() {
+                      _selectedCity = selected;
+                      _selectedCityId = cityId ?? SelectedCityService().cityId;
+                    });
+
+                    log.d('Выбран город: $selectedCityName (номер: $cityId)');
                   },
                 );
               },

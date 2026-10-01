@@ -810,6 +810,7 @@ class _FiltersRoomShellScreenState extends State<FiltersRoomShellScreen> {
               context: context,
               builder: (_) {
                 return CitySelectionDialog(
+                  forFilters: true,
                   title: 'Ваш город',
                   options: [], // 🔤 Города должны быть загружены с API
                   selectedOptions: _selectedCity,

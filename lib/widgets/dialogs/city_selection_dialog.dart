@@ -4,6 +4,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/models/place_filter.dart';
+import 'package:lidle/services/places_service.dart';
+import 'package:lidle/services/selected_city_service.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/address_model.dart';
 import 'package:lidle/services/address_service.dart';
@@ -22,6 +25,15 @@ class CitySelectionDialog extends StatefulWidget {
   // 🆕 Callback функция для поиска через API (опционально)
   final Future<List<String>> Function(String query)? onSearchQuery;
 
+  /// Диалог открыт из ФИЛЬТРОВ выдачи, а не из формы подачи объявления
+  /// (01.10.2026, задача 24).
+  ///
+  /// От этого зависят две вещи: показывать ли пункт «Все регионы» и запоминать
+  /// ли выбор как место поиска. В форме подачи объявления ни то, ни другое не
+  /// нужно: там выбирается адрес самого объявления, «все регионы» в нём
+  /// бессмысленны, а запись выбора сбивала бы человеку место поиска.
+  final bool forFilters;
+
   const CitySelectionDialog({
     super.key,
     required this.title,
@@ -29,6 +41,7 @@ class CitySelectionDialog extends StatefulWidget {
     required this.selectedOptions,
     required this.onSelectionChanged,
     this.onSearchQuery,
+    this.forFilters = false,
   });
 
   @override
@@ -563,6 +576,132 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
     _buildDisplayOptions(filtered, searchQuery: query);
   }
 
+  /// Пункт «Все регионы» (01.10.2026, задача 24).
+  ///
+  /// Через этот диалог город выбирают около двух десятков экранов фильтров
+  /// подкатегорий, поэтому пункт добавлен здесь, а не в каждом из них.
+  Widget _buildAllRegionsRow() {
+    final selected = SelectedCityService().isAllRegions;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            SelectedCityService().setAllRegions();
+            _currentSelectedOptions.clear();
+            widget.onSelectionChanged(_currentSelectedOptions);
+            Navigator.of(context).pop();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.public,
+                  size: 20,
+                  color: selected ? activeIconColor : textSecondary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Все регионы',
+                    style: TextStyle(
+                      color: selected ? activeIconColor : textPrimary,
+                      fontSize: 16,
+                      fontWeight:
+                          selected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                if (selected)
+                  const Icon(Icons.check, size: 18, color: activeIconColor),
+              ],
+            ),
+          ),
+        ),
+        const Divider(color: Color(0xFF3C3C3C), height: 1),
+        const SizedBox(height: 6),
+      ],
+    );
+  }
+
+  /// Запомнить выбранное место вместе с номером города.
+  ///
+  /// Номер нужен серверу: он отбирает выдачу по нему, а не по названию. У
+  /// диалога номера есть в `_citiesIdCache`, но заполняется он не на всех
+  /// путях: при тёплом кеше справочника и при поиске по уже загруженному
+  /// списку там пусто. Поэтому, если номера нет, спрашиваем его у сервера по
+  /// названию: один короткий запрос против молчаливой подмены выбранного
+  /// города на «все регионы».
+  Future<void> _rememberPlace(String city) async {
+    // Номер СНАЧАЛА спрашиваем у сервера, и только потом смотрим в кеш
+    // диалога (01.10.2026, задача 24).
+    //
+    // Так, а не наоборот, по двум причинам. Первая: кеш заполняется не на
+    // всех путях, и на тёплом справочнике его просто нет. Вторая, менее
+    // очевидная: у Москвы, Санкт-Петербурга и Севастополя в кеше лежит номер
+    // внутригородского округа, потому что городами там заведены округа, и
+    // выдача сузилась бы до одного округа вместо всего города. Сервер в ответ
+    // на «Москва» отдаёт запись региона, и это то, что нужно.
+    //
+    // Запрос один и только в момент выбора места, то есть редко.
+    final found = await PlacesService.cities(_cleanPlaceName(city));
+    final match = _matchPlace(found, city);
+
+    int? id = match == null || match.isRegion ? null : match.id;
+    final regionId = match != null && match.isRegion ? match.id : null;
+    final name = match?.name ?? city;
+
+    // Сервер не ответил или не нашёл: берём номер из кеша диалога, если он там
+    // есть. Это хуже, чем ответ сервера, но лучше, чем выдача по всей стране,
+    // когда человек выбрал город.
+    id ??= regionId == null ? _citiesIdCache[city] : null;
+
+    SelectedCityService().setPlace(
+      PlaceFilter(cityId: id, regionId: regionId, name: name),
+    );
+  }
+
+  /// Название без родовых сокращений: поиск по справочнику их не любит.
+  ///
+  /// В списке диалога города лежат как «г. Мариуполь» и «пгт Старобешево», а
+  /// подсказки ищутся по самому названию.
+  String _cleanPlaceName(String value) {
+    return value
+        .replaceAll(RegExp(r'^(г|пгт|с|п|ст|х|д|рп|кп|м\.о)\.?\s+', caseSensitive: false), '')
+        .trim();
+  }
+
+  /// Подсказка, подходящая выбранному названию.
+  ///
+  /// Сравниваем по «чистому» виду: в списке диалога города лежат как
+  /// «г. Мариуполь», а подсказки приходят как «г Мариуполь», и точное
+  /// сравнение строк не совпадёт никогда.
+  PlaceSuggestion? _matchPlace(List<PlaceSuggestion> found, String city) {
+    if (found.isEmpty) return null;
+
+    String clean(String value) => value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[.,]'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    final needle = clean(city);
+
+    for (final item in found) {
+      if (clean(item.name) == needle) return item;
+    }
+
+    // Точного совпадения нет: берём первую подсказку только если название
+    // человека в неё входит. Иначе лучше остаться без номера, чем отобрать
+    // выдачу по чужому городу.
+    final first = found.first;
+
+    return clean(first.name).contains(needle) ? first : null;
+  }
+
   /// Получить чистое название города
   String _getCleanCityName(String fullCityName) {
     String cleanName = fullCityName
@@ -681,6 +820,8 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
             ),
             const SizedBox(height: 15),
 
+            if (widget.forFilters) _buildAllRegionsRow(),
+
             Expanded(
               child: _isLoading
                   ? const Center(
@@ -774,11 +915,23 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
                                         final option = item as String;
                                         final isSelected = _currentSelectedOptions.contains(option);
                                         return GestureDetector(
-                                          onTap: () {
+                                          onTap: () async {
                                             _currentSelectedOptions.clear();
                                             _currentSelectedOptions.add(option);
-                                            widget.onSelectionChanged(_currentSelectedOptions);
-                                            Navigator.of(context).pop();
+
+                                            // Номер города ищем ДО закрытия:
+                                            // экран выдачи читает место сразу
+                                            // после возврата.
+                                            if (widget.forFilters) {
+                                              await _rememberPlace(option);
+                                            }
+
+                                            widget.onSelectionChanged(
+                                                _currentSelectedOptions);
+
+                                            if (context.mounted) {
+                                              Navigator.of(context).pop();
+                                            }
                                           },
                                           child: Padding(
                                             padding: const EdgeInsets.symmetric(vertical: 8.0),

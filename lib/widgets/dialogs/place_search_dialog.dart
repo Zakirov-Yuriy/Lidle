@@ -25,6 +25,8 @@ class PlaceSearchDialog extends StatefulWidget {
     this.selectedId,
     this.selectedIsRegion = false,
     this.minQueryLength = 2,
+    this.allRegionsTitle,
+    this.allRegionsSelected = false,
   });
 
   final String title;
@@ -48,6 +50,17 @@ class PlaceSearchDialog extends StatefulWidget {
   /// С какой длины запроса начинаем искать. Сервер адресов просит два символа,
   /// а по готовому списку (номера домов) достаточно одного.
   final int minQueryLength;
+
+  /// Показывать ли первой строкой «Все регионы» (01.10.2026, задача 24).
+  ///
+  /// Задаётся только в ФИЛЬТРАХ выдачи. На подаче объявления и в контактах
+  /// этого пункта быть не должно: там адрес обязателен, и «все регионы» в
+  /// адресе объявления бессмысленны. Поэтому по умолчанию `null`, то есть
+  /// пункта нет, и ни один существующий вызов диалога не меняет поведения.
+  final String? allRegionsTitle;
+
+  /// Сейчас выбраны все регионы: подсвечиваем пункт.
+  final bool allRegionsSelected;
 
   @override
   State<PlaceSearchDialog> createState() => _PlaceSearchDialogState();
@@ -183,10 +196,62 @@ class _PlaceSearchDialogState extends State<PlaceSearchDialog> {
             ),
             const SizedBox(height: 15),
 
+            if (widget.allRegionsTitle != null) _buildAllRegions(),
+
             Expanded(child: _buildList()),
           ],
         ),
       ),
+    );
+  }
+
+  /// Пункт «Все регионы»: стоит над списком и не зависит от поиска.
+  ///
+  /// Не первой строкой списка намеренно: список перерисовывается на каждый
+  /// ответ сервера, и пункт то появлялся бы, то исчезал, а при пустой выдаче
+  /// («ничего не нашлось») пропадал бы совсем, то есть именно тогда, когда он
+  /// человеку и нужен.
+  Widget _buildAllRegions() {
+    final selected = widget.allRegionsSelected;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).pop(
+            PlaceSuggestion.all(title: widget.allRegionsTitle!),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.public,
+                  size: 20,
+                  color: selected ? activeIconColor : textSecondary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    widget.allRegionsTitle!,
+                    style: TextStyle(
+                      color: selected ? activeIconColor : textPrimary,
+                      fontSize: 16,
+                      fontWeight:
+                          selected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                if (selected)
+                  const Icon(Icons.check, size: 18, color: activeIconColor),
+              ],
+            ),
+          ),
+        ),
+        const Divider(color: Color(0xFF3C3C3C), height: 1),
+        const SizedBox(height: 6),
+      ],
     );
   }
 
