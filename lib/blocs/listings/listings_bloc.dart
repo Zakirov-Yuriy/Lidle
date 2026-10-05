@@ -1236,7 +1236,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   // Версия 3 (30.09.2026): в кеш добавился путь категории. Старые записи
   // без него отбрасываются, иначе блок «Категория» пропадал бы при втором
   // открытии карточки.
-  static const int _advertCacheVersion = 3;
+  // 4 с 05.10.2026: в кеше появились поля из фида. У записей третьей версии
+  // их нет, и блок «Дополнительно» не появился бы, пока кеш не истечёт.
+  static const int _advertCacheVersion = 4;
 
   /// Конвертирует Listing в JSON для кеша.
   Map<String, dynamic> _listingToJson(home.Listing listing) {
@@ -1258,6 +1260,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       'characteristics': listing.characteristics,
       'userId': listing.userId,
       'categoryPath': listing.categoryPath,
+      // Поля из фида CRM (05.10.2026). Храним простыми картами: Hive не умеет
+      // складывать свои классы без адаптера.
+      'feedAttributes': listing.feedAttributes
+          .map((row) => {'key': row.key, 'title': row.title, 'value': row.value})
+          .toList(),
     };
   }
 
@@ -1273,6 +1280,21 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         characteristics['$key'] =
             value is Map ? Map<String, dynamic>.from(value) : value;
       });
+    }
+
+    // Поля из фида. Hive отдаёт вложенные карты как Map<dynamic, dynamic>, и
+    // без приведения разбор молча вернул бы пустой список, как это было с
+    // характеристиками 22.09.2026.
+    final feedAttributes = <home.FeedAttribute>[];
+
+    if (json['feedAttributes'] is List) {
+      for (final item in json['feedAttributes'] as List) {
+        if (item is Map) {
+          feedAttributes.add(
+            home.FeedAttribute.fromJson(Map<String, dynamic>.from(item)),
+          );
+        }
+      }
     }
 
     return home.Listing(
@@ -1293,6 +1315,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       characteristics: characteristics,
       userId: json['userId']?.toString(),
       categoryPath: json['categoryPath'],
+      feedAttributes: feedAttributes,
     );
   }
 

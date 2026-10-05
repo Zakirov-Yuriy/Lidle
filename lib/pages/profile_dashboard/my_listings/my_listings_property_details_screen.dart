@@ -139,6 +139,9 @@ class _MyListingsPropertyDetailsScreenState
   int _currentPage = 0;
   bool _showFullDescription = false;
   bool _showAllCharacteristics = false;
+
+  /// Раскрыт ли блок «Дополнительно» с полями из фида (05.10.2026).
+  bool _showAllFeedAttributes = false;
   bool _isAdvertLoaded = false;
   bool _imagesPrecached = false;
 
@@ -319,6 +322,12 @@ class _MyListingsPropertyDetailsScreenState
                     ? state.listing.characteristics
                     : _listing.characteristics,
                 userId: state.listing.userId ?? _listing.userId,
+                // Поля из фида: эта ветка пересобирает объявление ради
+                // сохранения прежних снимков, и без строки ниже блок
+                // «Дополнительно» исчезал бы (05.10.2026).
+                feedAttributes: state.listing.feedAttributes.isNotEmpty
+                    ? state.listing.feedAttributes
+                    : _listing.feedAttributes,
               );
             }
             // log.d('✅ _listing updated:');
@@ -421,6 +430,13 @@ class _MyListingsPropertyDetailsScreenState
                         const SizedBox(height: 10),
                         _buildAboutApartmentCard(),
                         const SizedBox(height: 10),
+                        // Поля из фида CRM (05.10.2026). Продавец, который
+                        // подключил фид, смотрит именно свои объявления и
+                        // должен видеть, что из его данных до нас доехало.
+                        if (_listing.feedAttributes.isNotEmpty) ...[
+                          _buildFeedAttributesCard(),
+                          const SizedBox(height: 10),
+                        ],
                         _buildDescriptionCard(),
                         const SizedBox(height: 24),
                         _buildSellerCard(),
@@ -724,6 +740,72 @@ class _MyListingsPropertyDetailsScreenState
             style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
           const SizedBox(height: 3),
+        ],
+      ),
+    );
+  }
+
+  /// Блок «Дополнительно»: характеристики из фида CRM (05.10.2026).
+  ///
+  /// То же, что в публичной карточке объявления. Здесь он нужен не меньше:
+  /// продавец заполнил у себя двадцать полей и хочет убедиться, что они до нас
+  /// доехали, а не пропали по дороге.
+  ///
+  /// По этим полям не работают фильтры, поэтому блок отдельный, а не
+  /// вперемешку с обычными характеристиками.
+  Widget _buildFeedAttributesCard() {
+    final rows = _listing.feedAttributes;
+
+    const int collapsedCount = 8;
+    final bool hasMore = rows.length > collapsedCount;
+    final visible = _showAllFeedAttributes
+        ? rows
+        : rows.take(collapsedCount).toList();
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6.0),
+            child: Text(
+              "Дополнительно",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...visible.map(
+            (row) => _InfoRow(title: '${row.title}: ', value: row.value),
+          ),
+          if (hasMore) ...[
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showAllFeedAttributes = !_showAllFeedAttributes;
+                });
+              },
+              child: Row(
+                children: [
+                  Text(
+                    _showAllFeedAttributes ? "Свернуть" : "Показать всё",
+                    style: const TextStyle(color: Colors.blue, fontSize: 14),
+                  ),
+                  Icon(
+                    _showAllFeedAttributes
+                        ? Icons.keyboard_arrow_up_sharp
+                        : Icons.keyboard_arrow_down_sharp,
+                    color: Colors.blue,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 2),
+          ],
         ],
       ),
     );

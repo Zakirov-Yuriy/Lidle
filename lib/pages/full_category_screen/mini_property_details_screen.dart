@@ -221,6 +221,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
 
   bool _showFullDescription = false;
   bool _showAllCharacteristics = false;
+
+  /// Раскрыт ли блок «Дополнительно» с полями из фида (05.10.2026).
+  bool _showAllFeedAttributes = false;
   final PageController _pageController = PageController();
   int _currentPage = 0;
   bool _isAdvertLoaded = false;
@@ -610,6 +613,11 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 userId: state.listing.userId,
                 isBargain: state.listing.isBargain,
                 categoryPath: state.listing.categoryPath,
+                // Поля из фида: эта ветка собирает объявление заново ради
+                // сохранения прежних снимков, и без строки ниже блок
+                // «Дополнительно» исчезал бы у объявлений, пришедших из API
+                // без фотографий (05.10.2026).
+                feedAttributes: state.listing.feedAttributes,
               );
               log.d('📸 Сохранили изображения из предыдущих данных');
             }
@@ -731,6 +739,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               const SizedBox(height: 10),
                               _buildAboutApartmentCard(),
                               const SizedBox(height: 10),
+                              // Поля из фида CRM, которым у нас пока нет пары
+                              // (05.10.2026). У объявлений, созданных руками,
+                              // список пуст и блока не видно вовсе.
+                              if (_listing.feedAttributes.isNotEmpty) ...[
+                                _buildFeedAttributesCard(),
+                                const SizedBox(height: 10),
+                              ],
                               _buildDescriptionCard(),
                               const SizedBox(height: 24),
                               // if (_priceOffers.isNotEmpty) ...[
@@ -1368,6 +1383,79 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
               ),
               const SizedBox(height: 2),
             ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Блок «Дополнительно»: характеристики из фида CRM (05.10.2026).
+  ///
+  /// Продавец, который подключил фид, заполнил у себя до двадцати полей, а
+  /// настоящими характеристиками у нас стало несколько: для остального
+  /// соответствия пока нет. Раньше это терялось на входе, и человек видел
+  /// полупустую карточку вместо заполненной.
+  ///
+  /// Отдельным блоком, а не вперемешку с обычными характеристиками, потому что
+  /// по этим полям не работают фильтры. Смешать их значит обещать человеку то,
+  /// чего карточка не умеет.
+  ///
+  /// Значения приходят готовыми к показу, поэтому здесь нет ни перевода, ни
+  /// разбора: сервер уже превратил `0` в «Нет», а `yard` во «Во двор».
+  Widget _buildFeedAttributesCard() {
+    final rows = _listing.feedAttributes;
+
+    // Свёрнутое состояние: столько же строк, сколько у блока выше, чтобы два
+    // блока подряд не выглядели по-разному.
+    const int collapsedCount = 8;
+    final bool hasMore = rows.length > collapsedCount;
+    final visible = _showAllFeedAttributes
+        ? rows
+        : rows.take(collapsedCount).toList();
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6.0),
+            child: Text(
+              "Дополнительно",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...visible.map(
+            (row) => _InfoRow(title: '${row.title}: ', value: row.value),
+          ),
+          if (hasMore) ...[
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showAllFeedAttributes = !_showAllFeedAttributes;
+                });
+              },
+              child: Row(
+                children: [
+                  Text(
+                    _showAllFeedAttributes ? "Свернуть" : "Показать всё",
+                    style: const TextStyle(color: Colors.blue, fontSize: 14),
+                  ),
+                  Icon(
+                    _showAllFeedAttributes
+                        ? Icons.keyboard_arrow_up_sharp
+                        : Icons.keyboard_arrow_down_sharp,
+                    color: Colors.blue,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 2),
           ],
         ],
       ),

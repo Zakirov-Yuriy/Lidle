@@ -43,6 +43,10 @@ class Advert {
   /// (30.09.2026). Приходит только в карточке объявления.
   final String? categoryPath;
 
+  /// Характеристики из фида CRM для блока «Дополнительно» (05.10.2026).
+  /// Пусто у объявлений, созданных человеком в приложении или на сайте.
+  final List<FeedAttribute> feedAttributes;
+
   Advert({
     required this.id,
     this.slug,
@@ -69,6 +73,7 @@ class Advert {
     this.showsRating = false,
     this.hallsCount = 0,
     this.categoryPath,
+    this.feedAttributes = const [],
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -315,6 +320,9 @@ class Advert {
               ? null
               : '${(json['category'] as Map)['path'] ?? (json['category'] as Map)['name']}'.trim())
           : null,
+      // Характеристики из фида CRM (05.10.2026). В списке объявлений этого
+      // ключа нет, приходит только в карточке.
+      feedAttributes: FeedAttribute.listFrom(json['feed_attributes']),
     );
   }
 }
@@ -512,6 +520,7 @@ extension AdvertToListingExtension on Advert {
       characteristics: characteristics ?? {},
       city: extractedCity, // 🌍 ДОБАВИЛИ ГОРОД ИЗ АДРЕСА
       categoryPath: categoryPath,
+      feedAttributes: feedAttributes,
     );
   }
 }

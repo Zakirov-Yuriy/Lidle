@@ -48,6 +48,75 @@ enum SortOption { newest, oldest, mostExpensive, cheapest }
 
 /// Модель данных для объявления (листинга).
 /// Используется для отображения отдельных объявлений на главной странице.
+/// Характеристика, приехавшая из фида CRM (05.10.2026).
+///
+/// Продавцы, которые подключают фид, заполняют у себя до двадцати полей, а
+/// настоящими характеристиками у нас становятся несколько: для остального
+/// соответствия пока нет. Раньше это просто терялось, и человек видел
+/// полупустую карточку вместо заполненной.
+///
+/// Сервер отдаёт их готовыми к показу: название по-русски, значение уже
+/// переведено, логическое поле превращено в «Да» и «Нет», единица измерения
+/// приклеена к числу. Переводить и склонять на клиенте нечего.
+///
+/// Фильтровать по ним нельзя: фильтры работают по обычным характеристикам.
+class FeedAttribute {
+  /// Имя поля в фиде, например `living-space`. Для показа не нужно, но по нему
+  /// понятно, что именно приехало, когда название выглядит странно.
+  final String key;
+
+  /// Название для человека: «Жилая площадь».
+  final String title;
+
+  /// Значение для человека: «27.7 кв.м.», «Во двор», «Да».
+  final String value;
+
+  const FeedAttribute({
+    required this.key,
+    required this.title,
+    required this.value,
+  });
+
+  factory FeedAttribute.fromJson(Map<String, dynamic> json) {
+    final key = '${json['key'] ?? ''}'.trim();
+    final title = '${json['title'] ?? ''}'.trim();
+
+    return FeedAttribute(
+      key: key,
+      // Если сервер названия не знает, он кладёт в title имя поля. Пустым
+      // title быть не должен, но подстрахуемся: строка без названия в карточке
+      // выглядит как ошибка.
+      title: title.isEmpty ? key : title,
+      value: '${json['value'] ?? ''}'.trim(),
+    );
+  }
+
+  /// Разобрать список из ответа сервера, отбросив пустые строки.
+  static List<FeedAttribute> listFrom(dynamic raw) {
+    if (raw is! List) {
+      return const [];
+    }
+
+    final rows = <FeedAttribute>[];
+
+    for (final item in raw) {
+      if (item is! Map) {
+        continue;
+      }
+
+      final row = FeedAttribute.fromJson(Map<String, dynamic>.from(item));
+
+      if (row.title.isEmpty || row.value.isEmpty) {
+        continue;
+      }
+
+      rows.add(row);
+    }
+
+    return rows;
+  }
+}
+
 class Listing {
   /// Уникальный идентификатор объявления.
   final String id;
@@ -154,6 +223,13 @@ class Listing {
   /// открывается оттуда по названию сверху.
   final int hallsCount;
 
+  /// Характеристики из фида CRM для блока «Дополнительно» (05.10.2026).
+  ///
+  /// Пусто у объявлений, которые человек создал сам в приложении или на сайте:
+  /// эти поля бывают только у тех, что приехали из CRM. Приходят только в
+  /// карточке объявления, в ленте их нет.
+  final List<FeedAttribute> feedAttributes;
+
   /// Показывать ли в карточке звёзды (28.09.2026).
   ///
   /// Решает сервер: оценку в списке он отдаёт только объявлениям каталога
@@ -199,6 +275,7 @@ class Listing {
     this.showsRating = false,
     this.hallsCount = 0,
     this.categoryPath,
+    this.feedAttributes = const [],
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -372,6 +449,10 @@ class Listing {
           UniqueKey()
               .toString(), // Assuming 'id' might be missing, generate a unique one
       slug: json['slug'] ?? json['id']?.toString(),
+
+      // Характеристики из фида CRM для блока «Дополнительно» (05.10.2026).
+      // В ленте этого ключа нет, тогда список пустой и блок не рисуется.
+      feedAttributes: FeedAttribute.listFrom(json['feed_attributes']),
 
       // Путь категории: «Недвижимость / Квартиры / Продажа». В ленте его нет,
       // приходит только в карточке (30.09.2026).
