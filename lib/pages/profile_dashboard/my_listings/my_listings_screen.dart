@@ -506,7 +506,17 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       // Пока шёл запрос, мог прийти каталог с категорией и загрузить свои,
       // уже отфильтрованные списки. Тогда ответ без фильтра не нужен: он
       // вернул бы в список чужие объявления (30.09.2026).
-      if (_selectedCatalogId != null || _selectedCategoryId != null) return;
+      //
+      // Выходя отсюда, обязательно снимаем признак загрузки (05.10.2026).
+      // Без этого вкладка оставалась под скелетоном навсегда: данные пришли,
+      // мы их осознанно выбросили, а экран так и не узнал, что ждать больше
+      // нечего. Видно это было только с выбранной категорией, поэтому долго
+      // не замечали.
+      if (_selectedCatalogId != null || _selectedCategoryId != null) {
+        if (mounted) setState(() => _crmLoading = false);
+
+        return;
+      }
 
       if (mounted) {
         setState(() {
@@ -544,8 +554,14 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         limit: _pageSize,
       );
 
-      // То же, что и в CRM: не затираем уже отфильтрованный список.
-      if (_selectedCatalogId != null || _selectedCategoryId != null) return;
+      // То же, что и в CRM: не затираем уже отфильтрованный список и так же
+      // снимаем признак загрузки, иначе вкладка висит под скелетоном
+      // (05.10.2026).
+      if (_selectedCatalogId != null || _selectedCategoryId != null) {
+        if (mounted) setState(() => _manualLoading = false);
+
+        return;
+      }
 
       if (mounted) {
         setState(() {
@@ -750,6 +766,13 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
           _isLoadingMore = false;
           _listingsLoading = false;
+
+          // Списки «CRM» и «Все» эта загрузка тоже заполняет, значит их
+          // отдельные признаки загрузки надо снять здесь же (05.10.2026).
+          // Иначе данные на экране есть, а вкладка показывает скелетон,
+          // потому что ждёт свой запрос, который давно вышел ни с чем.
+          _crmLoading = false;
+          _manualLoading = false;
         });
 
         // Если первой страницы не хватило, чтобы экран начал прокручиваться,
