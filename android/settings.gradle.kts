@@ -22,10 +22,19 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    // 8.10 — первая версия плагина Android, которая умеет собирать под
-    // API 36. С 8.9.1 сборка с compileSdk = 36 ругается на неизвестную
-    // версию платформы. Gradle в wrapper 8.12, ему этого плагина хватает.
-    id("com.android.application") version "8.11.1" apply false    
+    // 8.13, последняя версия восьмой ветки (05.10.2026).
+    //
+    // Подняли с 8.11.1 ради флага android.r8.optimizedResourceShrinking: он
+    // работает с 8.12, а Google Play в рекомендациях пишет, что
+    // оптимизированное удаление неиспользуемых ресурсов у нас не включено.
+    //
+    // Требует Gradle 8.13 и новее, в wrapper стоит 8.14.3, этого хватает.
+    //
+    // Девятая ветка пока не берётся намеренно: она требует перехода на
+    // встроенную поддержку Kotlin вместо плагина kotlin-android, а это
+    // отдельная работа с перепроверкой всей сборки, не перед отправкой в
+    // Google. См. mob/mob_google-play-recommendations.md в вики.
+    id("com.android.application") version "8.13.0" apply false    
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false    
     // Плагин Google Services читает android/app/google-services.json и
     // подставляет ключи проекта Firebase в сборку. Без него приложение не

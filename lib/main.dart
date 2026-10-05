@@ -221,12 +221,31 @@ void main() async {
     log.w('⚠️ MessagePollingService загрузка ID ошибка: $e');
   });
 
+  // Отображение от края до края (05.10.2026).
+  //
+  // Google Play в рекомендациях пишет, что оно «может работать не у всех
+  // пользователей». Причина в том, что мы красили системные полосы цветом
+  // через statusBarColor и systemNavigationBarColor, а начиная с Android 15
+  // система эти свойства не слушает: приложение и так рисуется под полосами,
+  // а краска просто игнорируется. На одних телефонах выходило как задумано,
+  // на других полосы оставались чужого цвета.
+  //
+  // Просим режим явно и делаем полосы прозрачными: фон под ними рисует само
+  // приложение. Содержимое не уедет под них, экраны обёрнуты в SafeArea
+  // (встречается 231 раз).
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Color(0xFF232E3C),
+      statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF232E3C),
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
       systemNavigationBarIconBrightness: Brightness.light,
+      // Без этого система подкладывает под полосу навигации свою полупрозрачную
+      // подложку, и низ экрана выглядит грязнее, чем задумано.
+      systemNavigationBarContrastEnforced: false,
+      systemStatusBarContrastEnforced: false,
     ),
   );
 
