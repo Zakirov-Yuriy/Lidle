@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart';
+import 'package:lidle/core/config/app_config.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/bookings/booking_flow.dart';
@@ -924,7 +925,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                 decorationColor: Color(0xFF38BDF8),
               ),
               recognizer: TapGestureRecognizer()
-                ..onTap = () => _openURL('https://lidle.ru/documents/privacy-policy.pdf'),
+                ..onTap = () => _openURL(AppConfig().privacyPolicyUrl),
             ),
             const TextSpan(text: ' и '),
             TextSpan(

@@ -125,7 +125,23 @@ class AppConfig {
   String get userAgreementUrl => '$documentDomain/documents/user-agreement.pdf';
   String get publicOfferUrl => '$documentDomain/documents/public-offer.pdf';
   String get consentUrl => '$documentDomain/documents/consent.pdf';
-  String get privacyPolicyUrl => '$documentDomain/documents/privacy-policy.pdf';
+  /// Политика конфиденциальности ОБЫЧНОЙ ВЕБ-СТРАНИЦЕЙ, не PDF (05.10.2026).
+  ///
+  /// Google Play отклонил обновление 04.10.2026 с формулировкой «Политика
+  /// конфиденциальности не соответствует требованиям»: в консоли стояла ссылка
+  /// на PDF, а правила прямо запрещают давать политику файлом для скачивания.
+  ///
+  /// Адрес НЕ зависит от окружения и НЕ собирается из documentDomain: документ
+  /// один и тот же для дева и прода, и он должен слово в слово совпадать с
+  /// ссылкой в консоли Google Play. Проверяющий открывает её вручную и
+  /// сверяет.
+  ///
+  /// Страницу отдаёт бэкенд, а не сайт: сайт это отдельный проект, и ждать
+  /// выката там значит держать приложение отклонённым. Когда такая же страница
+  /// появится на lidle.ru, адрес здесь можно будет поменять одной строкой.
+  ///
+  /// PDF никуда не делся, ссылка на него есть внизу самой страницы.
+  String get privacyPolicyUrl => 'https://api.lidle.ru/documents/privacy-policy';
   String get mailingUrl => '$documentDomain/documents/mailing.pdf';
   
   /// Веб сайт приложения

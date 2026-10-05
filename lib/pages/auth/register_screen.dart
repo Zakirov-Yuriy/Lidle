@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/core/config/app_config.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -324,7 +325,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.ru/documents/privacy-policy.pdf'),
+                                ..onTap = () => _openURL(AppConfig().privacyPolicyUrl),
                             ),
                           ],
                         ),
