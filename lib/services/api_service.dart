@@ -2122,6 +2122,27 @@ class ApiService {
     required String fieldName,
     String? token,
   }) async {
+    // Через общий повтор, как и загрузка картинок (07.10.2026).
+    //
+    // Так было: запрос уходил ОДИН раз, и на просроченном токене подключение
+    // фида падало с «Не удалось загрузить файл», хотя список фидов на том же
+    // экране открывался. Причина: обычные запросы при 401 обновляют токен и
+    // повторяются, а этот не умел ни того, ни другого.
+    //
+    // Параметр token больше ни на что не влияет и оставлен ради вызывающего
+    // кода: токен всегда берётся из хранилища, иначе повтор ушёл бы со
+    // старым, уже недействительным.
+    return _retryRequest(
+      () => _uploadFileRequest(endpoint, filePath, fieldName),
+      endpoint,
+    );
+  }
+
+  static Future<Map<String, dynamic>> _uploadFileRequest(
+    String endpoint,
+    String filePath,
+    String fieldName,
+  ) async {
     try {
       // `X-Requested-With` обязателен и здесь: без него прод отвечает пустым
       // 404 на любой ручке /v1 (18.09.2026, см. defaultHeaders выше).
@@ -2131,13 +2152,10 @@ class ApiService {
         'X-Requested-With': 'XMLHttpRequest',
       };
 
-      // Токен читаем из хранилища, если его не передали: вызывающему коду
-      // незачем знать, где он лежит, а забытый токен здесь означал бы 401 на
-      // ровном месте.
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
+      // Токен читаем из хранилища: после обновления он лежит именно там.
+      final effectiveToken = HiveService.getUserData('token') as String?;
 
-      if (effectiveToken != null) {
+      if (effectiveToken != null && effectiveToken.isNotEmpty) {
         headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
@@ -2163,6 +2181,13 @@ class ApiService {
       final response = await http.Response.fromStream(streamedResponse);
 
       return _handleResponse(response);
+    } on TokenExpiredException {
+      // Пробрасываем как есть: по нему `_retryRequest` понимает, что надо
+      // обновить токен и повторить. Обёрнутое в общий Exception, оно
+      // выглядело бы обычной ошибкой, и повтор не сработал бы.
+      rethrow;
+    } on RateLimitException {
+      rethrow;
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
     } on TimeoutException {
