@@ -2233,14 +2233,59 @@ class _DynamicFilterState extends State<DynamicFilter>
         }
       } else if (value is String) {
         if (attr.values.isEmpty) {
+          // Поле без вариантов: текст или число.
+          //
           // Текстовое поле (стиль H, тип string). Раньше не отправлялось
           // вовсе («API не принимает»), но сервер строки принимает и
           // проверяет (AttributesWithCategoryRule, case 'string'). Без этого
           // обязательное «Название заведения» не проходило бы никогда
-          // (22.09.2026). Числовые поля без вариантов не трогаем: их путь
-          // отдельный.
-          if (attr.dataType == 'string' && value.trim().isNotEmpty) {
-            attributes['values']['$key'] = {'value': value.trim()};
+          // (22.09.2026).
+          //
+          // ЧИСЛА ТЕПЕРЬ ТОЖЕ ЗДЕСЬ (07.10.2026). Раньше числовые поля без
+          // вариантов этот путь пропускал, а уезжала только «Общая площадь»,
+          // и то отдельным куском кода, который искал её по слову «площадь».
+          //
+          // Пока площадь в категории была одна, это работало. Потом в
+          // недвижимость добавили поля из фида: жилая площадь, площадь кухни,
+          // площадь комнат. Поиск по слову стал находить первую попавшуюся,
+          // «Общая площадь» не уезжала вовсе, и человек получал отказ
+          // «Обязательный атрибут "Общая площадь" не заполнен» при заполненном
+          // поле. Заодно тот кусок кода умел подставлять 50 вместо непонятого
+          // числа и терял дробное: 44.5 превращалось в 50.
+          //
+          // Теперь уезжают все поля на общих правилах, и угадывать по названию
+          // больше ничего не нужно.
+          final text = value.trim();
+
+          if (text.isNotEmpty) {
+            switch (attr.dataType) {
+              case 'string':
+                attributes['values']['$key'] = {'value': text};
+                break;
+              case 'integer':
+                // «44.0» это тоже целое: число могло приехать из фида с
+                // нулевой дробной частью, и отбрасывать его из-за точки
+                // значило бы потерять заполненное поле.
+                final asInt = int.tryParse(text);
+                final asDouble = double.tryParse(text.replaceAll(',', '.'));
+
+                if (asInt != null) {
+                  attributes['values']['$key'] = {'value': asInt};
+                } else if (asDouble != null && asDouble == asDouble.roundToDouble()) {
+                  attributes['values']['$key'] = {'value': asDouble.toInt()};
+                }
+                break;
+              case 'numeric':
+                // Запятая как разделитель: человек набирает «44,5», сервер
+                // ждёт точку.
+                final parsed = double.tryParse(text.replaceAll(',', '.'));
+                if (parsed != null) {
+                  attributes['values']['$key'] = {'value': parsed};
+                }
+                break;
+              default:
+                break;
+            }
           }
         } else {
           // Single selection - lookup value ID
@@ -2325,54 +2370,18 @@ class _DynamicFilterState extends State<DynamicFilter>
       log.d('   ⚠️ Offer Price Attribute ID is null (not available for this category)');
     }
 
-    // Handle required attribute "Общая площадь" (Total area) - ID varies by category
-    // ⚠️ КРИТИЧНО: Отправляем только если атрибут существует в этой категории!
-    final areaAttrId = _attributeResolver.getAreaAttributeId();
-
-    if (areaAttrId != null && _attributes.any((a) => a.id == areaAttrId)) {
-      // Атрибут существует в этой категории - добавляем в запрос
-      if (_selectedValues.containsKey(areaAttrId)) {
-        final area = _selectedValues[areaAttrId];
-        if (area is String && area.isNotEmpty) {
-          final areaVal = int.tryParse(area.toString().trim());
-          if (areaVal != null) {
-            attributes['values']['$areaAttrId'] = {'value': areaVal};
-            // log.d('✅ Attribute $areaAttrId (area) set: value=$areaVal');
-          } else {
-            // If parsing fails, set default - но только если атрибут обязательный!
-            final areaAttr = _attributeResolver.getAttributeById(areaAttrId);
-            if (areaAttr != null && areaAttr.isRequired) {
-              attributes['values']['$areaAttrId'] = {'value': 50};
-              // log.d('⚠️ Failed to parse area value, using default: 50');
-            } else {
-              // log.d();
-            }
-          }
-        } else {
-          // Set default area if not selected - но только если атрибут обязательный!
-          final areaAttr = _attributeResolver.getAttributeById(areaAttrId);
-          if (areaAttr != null && areaAttr.isRequired) {
-            attributes['values']['$areaAttrId'] = {'value': 50};
-            // log.d('✅ Set default $areaAttrId: value=50');
-          } else {
-            // log.d();
-          }
-        }
-      } else {
-        // Атрибут заполнен? Нет - проверяем обязателен ли
-        final areaAttr = _attributeResolver.getAttributeById(areaAttrId);
-        if (areaAttr != null && areaAttr.isRequired) {
-          // Обязательный - добавляем дефолт
-          attributes['values']['$areaAttrId'] = {'value': 50};
-          // log.d('✅ Set required default $areaAttrId: value=50');
-        } else {
-          // Не обязательный - не добавляем
-          // log.d();
-        }
-      }
-    } else {
-      // log.d();
-    }
+    // «Общая площадь» больше не обрабатывается отдельно (07.10.2026).
+    //
+    // Здесь стоял кусок кода, который искал поле по слову «площадь» и
+    // отправлял его сам. Он делал три вредные вещи: находил первую площадь
+    // из нескольких, подставлял 50 вместо непонятого числа и терял дробную
+    // часть, потому что читал значение как целое. После того как в
+    // недвижимость добавились поля из фида (жилая площадь, площадь кухни,
+    // площадь комнат), он стал находить не ту площадь, и объявление не
+    // сохранялось: «Обязательный атрибут "Общая площадь" не заполнен» при
+    // заполненном поле.
+    //
+    // Теперь все числовые поля уезжают общим путём выше, по своему типу.
 
     // NOTE: attribute_1048 (boolean type) is handled separately via toJson() in CreateAdvertRequest
     // It's extracted to top-level and NOT added to value_selected
