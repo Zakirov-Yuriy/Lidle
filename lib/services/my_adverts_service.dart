@@ -344,6 +344,9 @@ class MyAdvertsService {
     int? page,
     int? perPage,
     required String token,
+    // Раздел сайта, выбранный перед автовыгрузкой (07.10.2026). Не задан —
+    // сервер отдаёт объявления всех разделов, как раньше.
+    int? catalogId,
   }) async {
     try {
       final params = <String, dynamic>{};
@@ -352,6 +355,9 @@ class MyAdvertsService {
       }
       if (perPage != null) {
         params['per_page'] = perPage;
+      }
+      if (catalogId != null) {
+        params['catalog_id'] = catalogId;
       }
 
       final response = await ApiService.getWithQuery(
@@ -401,12 +407,22 @@ class MyAdvertsService {
   }
 
   /// Количество объявлений на модерации (для блокировки добавления фида).
-  static Future<int> getModerationCount({required String token}) async {
+  static Future<int> getModerationCount({
+    required String token,
+    // Раздел сайта (07.10.2026). Не задан — считаются все разделы.
+    int? catalogId,
+  }) async {
     try {
-      final response = await ApiService.get(
-        '/me/adverts/moderation-count',
-        token: token,
-      );
+      final response = catalogId != null
+          ? await ApiService.getWithQuery(
+              '/me/adverts/moderation-count',
+              {'catalog_id': catalogId},
+              token: token,
+            )
+          : await ApiService.get(
+              '/me/adverts/moderation-count',
+              token: token,
+            );
       return (response['count'] as int?) ?? 0;
     } catch (e) {
       throw Exception('Ошибка при получении счётчика модерации: $e');

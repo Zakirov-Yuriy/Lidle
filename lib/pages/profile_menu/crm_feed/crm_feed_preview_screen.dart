@@ -31,7 +31,14 @@ import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 
 class CrmFeedPreviewScreen extends StatefulWidget {
-  const CrmFeedPreviewScreen({super.key});
+  /// Раздел сайта, выбранный перед входом в автовыгрузку (07.10.2026).
+  ///
+  /// Список показывает объявления только этого раздела. Без него (старые
+  /// переходы) показываются все, как было раньше.
+  final int? catalogId;
+  final String? catalogName;
+
+  const CrmFeedPreviewScreen({super.key, this.catalogId, this.catalogName});
 
   @override
   State<CrmFeedPreviewScreen> createState() => _CrmFeedPreviewScreenState();
@@ -186,6 +193,7 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
           token: token,
           page: page,
           perPage: pageSize,
+          catalogId: widget.catalogId,
         );
 
         all.addAll(response.data);
@@ -715,14 +723,19 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
         child: Column(
           children: [
             const Header(),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
-                      'Объявления из фида',
-                      style: TextStyle(
+                      // Раздел в заголовке: список отфильтрован по нему, и
+                      // без подписи человек решит, что часть объявлений
+                      // пропала (07.10.2026).
+                      widget.catalogName != null
+                          ? 'Объявления из фида: ${widget.catalogName}'
+                          : 'Объявления из фида',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,

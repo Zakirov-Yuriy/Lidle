@@ -27,7 +27,7 @@
 ///
 /// `true`  — прячем то, что перечислено выше;
 /// `false` — обычное приложение, как на деве и в RuStore.
-const bool kGooglePlayBuild = false;
+const bool kGooglePlayBuild = true;
 
 /// Каталоги, которые видно в сборке для Google Play.
 ///

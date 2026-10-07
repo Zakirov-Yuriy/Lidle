@@ -28,7 +28,15 @@ import 'package:lidle/core/logger.dart';
 class CrmFeedScreen extends StatefulWidget {
   static const routeName = '/crm_feed';
 
-  const CrmFeedScreen({super.key});
+  /// Раздел сайта, выбранный ПЕРЕД входом сюда (07.10.2026).
+  ///
+  /// Экран говорит только про него: и проверка незавершённых объявлений, и
+  /// предпросмотр считают по этому разделу. Без него (переход по старому
+  /// маршруту) всё работает как раньше, по всем разделам сразу.
+  final int? catalogId;
+  final String? catalogName;
+
+  const CrmFeedScreen({super.key, this.catalogId, this.catalogName});
 
   @override
   State<CrmFeedScreen> createState() => _CrmFeedScreenState();
@@ -70,7 +78,10 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) return;
 
-      final count = await MyAdvertsService.getModerationCount(token: token);
+      final count = await MyAdvertsService.getModerationCount(
+        token: token,
+        catalogId: widget.catalogId,
+      );
 
       if (count > 0 && mounted) {
         await showDialog(
@@ -87,9 +98,15 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'У вас есть объявления из фида на модерации ($count). '
-                  'Сначала опубликуйте или разберите их, '
-                  'прежде чем подключать новый фид.',
+                  widget.catalogName != null
+                      // Раздел назван: человек выбрал его сам минуту назад,
+                      // и ему важно понимать, что речь именно про него.
+                      ? 'В разделе «${widget.catalogName}» есть объявления '
+                          'из фида на модерации ($count). Сначала опубликуйте '
+                          'или разберите их, прежде чем подключать новый фид.'
+                      : 'У вас есть объявления из фида на модерации ($count). '
+                          'Сначала опубликуйте или разберите их, '
+                          'прежде чем подключать новый фид.',
                   style: const TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 20),
@@ -131,7 +148,10 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => const CrmFeedPreviewScreen(),
+              builder: (_) => CrmFeedPreviewScreen(
+                catalogId: widget.catalogId,
+                catalogName: widget.catalogName,
+              ),
             ),
           );
         }
@@ -198,7 +218,10 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const CrmFeedPreviewScreen(),
+          builder: (context) => CrmFeedPreviewScreen(
+            catalogId: widget.catalogId,
+            catalogName: widget.catalogName,
+          ),
         ),
       );
     }

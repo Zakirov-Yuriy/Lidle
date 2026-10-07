@@ -11,6 +11,8 @@ import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'real_estate_subcategories_screen.dart';
 import 'universal_category_screen.dart';
+import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_catalog_dialog.dart';
+import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_screen.dart';
 import 'package:lidle/core/logger.dart';
 
 /// ============================================================
@@ -459,12 +461,36 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     );
   }
 
+  /// Переход к автовыгрузке: сначала спрашиваем раздел (07.10.2026).
+  ///
+  /// Раньше кнопка вела прямо на экран фида, и тот сразу считал все
+  /// незавершённые объявления скопом. Человек, пришедший за транспортом,
+  /// упирался в неразобранную недвижимость и не понимал, при чём она тут.
+  ///
+  /// Отказ от выбора (закрыл окно) ничего не делает: это осознанное
+  /// действие, а не ошибка, и уводить его куда-то не нужно.
+  Future<void> _openCrmFeed() async {
+    final catalog = await CrmFeedCatalogDialog.show(context);
+
+    if (catalog == null || !mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CrmFeedScreen(
+          catalogId: catalog.id,
+          catalogName: catalog.name,
+        ),
+      ),
+    );
+  }
+
   /// Кнопка "Автовыгрузка через CRM систему".
   /// Внешний вид одинаковый; ширину задаёт родитель
   /// (в сетке — как ячейка, вне сетки — на всю ширину).
   Widget _buildCrmButton({double fontSize = 12}) {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/crm_feed'),
+      onTap: _openCrmFeed,
       child: Container(
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 8),
