@@ -84,7 +84,11 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
       );
 
       if (count > 0 && mounted) {
-        await showDialog(
+        // Выбор человека: уйти к объявлениям или остаться здесь
+        // (07.10.2026). Так было: диалог уводил в предпросмотр при любом
+        // ответе, и посмотреть список подключённых фидов или удалить
+        // лишний было нельзя, экран просто не успевал открыться.
+        final goToList = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
@@ -135,7 +139,14 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(ctx),
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text(
+                  'Отмена',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
                 child: const Text(
                   'Перейти к объявлениям',
                   style: TextStyle(color: Color(0xFF00B7FF)),
@@ -144,7 +155,10 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
             ],
           ),
         );
-        if (mounted) {
+
+        // Отмена оставляет на этом экране: отсюда видно подключённые фиды,
+        // их можно удалить и подключить новый.
+        if (goToList == true && mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
