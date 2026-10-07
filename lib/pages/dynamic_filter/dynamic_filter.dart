@@ -222,6 +222,13 @@ class _DynamicFilterState extends State<DynamicFilter>
   Map<int, dynamic> _selectedValues = {};
   bool _isLoading = true;
   bool _isPublishing = false;
+
+  /// Публикация по всей стране (07.10.2026, задача 73).
+  ///
+  /// Город в форме остаётся обязательным: это адрес продавца, по нему
+  /// считается регион и собираются выгрузки. Отметка снимает только
+  /// ограничение показа: объявление видно в выдаче любого города.
+  bool _isNationwide = false;
   String _publishingProgress = '';
   Map<int, TextEditingController> _controllers = {};
 
@@ -977,6 +984,11 @@ class _DynamicFilterState extends State<DynamicFilter>
 
       if (mounted) {
         setState(() {
+          // Публикация по всей стране (07.10.2026, задача 73). Без этой
+          // строки отметка слетала бы при каждом редактировании: форма
+          // отправляет её всегда, и пустое значение затёрло бы прежний выбор.
+          _isNationwide = advertData['is_nationwide'] == true;
+
           _isFeedAdvert = advertData['is_feed'] == true;
           _feedOriginalName = originalName;
           _feedOriginalDescription = originalDescription;
@@ -2434,6 +2446,7 @@ class _DynamicFilterState extends State<DynamicFilter>
       attributes: attributes,
       contacts: contacts,
       isAutoRenew: isAutoRenewal,
+      isNationwide: _isNationwide,
       booking: _bookingSettings,
     );
   }
@@ -2681,6 +2694,7 @@ class _DynamicFilterState extends State<DynamicFilter>
                 attributes: updatedAttributes,
                 contacts: request.contacts,
                 isAutoRenew: request.isAutoRenew,
+                isNationwide: request.isNationwide,
                 images: request.images,
                 booking: _bookingSettings,
               );
@@ -4948,9 +4962,64 @@ class _DynamicFilterState extends State<DynamicFilter>
           ),
           onTap: _selectedStreetId == null ? null : () => _pickBuilding(context),
         ),
+
+        // Показ по всей стране (07.10.2026, задача 73).
+        //
+        // В недвижимости отметки нет: квартира стоит в конкретном городе, и
+        // показывать её всей стране бессмысленно. Сервер такую публикацию
+        // тоже не примет, так что прятать здесь обязательно, иначе человек
+        // упрётся в непонятную ошибку.
+        if (!_nationwideForbidden) ...[
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () => setState(() => _isNationwide = !_isNationwide),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  _isNationwide
+                      ? Icons.check_box_rounded
+                      : Icons.check_box_outline_blank_rounded,
+                  color: _isNationwide ? activeIconColor : textSecondary,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Показывать по всей России',
+                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Объявление увидят в любом городе, а не только в вашем',
+                        style: TextStyle(color: textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
+
+  /// Где показ по всей стране запрещён.
+  ///
+  /// Недвижимость: квартира стоит в конкретном городе, показывать её всей
+  /// стране бессмысленно. Сервер такую публикацию тоже не примет, и если не
+  /// спрятать отметку здесь, человек упрётся в ошибку уже после заполнения
+  /// всей формы.
+  ///
+  /// Признак берём тот же, по которому форма решает, подставлять ли адрес
+  /// компании. Заводить второй, со своим списком каталогов, значит получить
+  /// два источника правды об одном и том же.
+  bool get _nationwideForbidden => widget.isRealEstate;
 
   /// Выбор населённого пункта. Сбрасывает улицу и дом: они были от прошлого
   /// города.

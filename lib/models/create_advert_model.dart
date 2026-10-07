@@ -9,6 +9,15 @@ class CreateAdvertRequest {
   final Map<String, dynamic> attributes;
   final Map<String, dynamic> contacts;
   final bool isAutoRenew;
+
+  /// Публикация по всей стране (07.10.2026, задача 73).
+  ///
+  /// Объявление показывается в выдаче любого города, а не только своего.
+  /// Адрес при этом никуда не девается: он остаётся адресом продавца, по
+  /// нему считается регион и работают выгрузки. Меняется только охват
+  /// показа.
+  final bool isNationwide;
+
   final List<String> images; // URLs of uploaded images
 
   /// Настройки бронирования из блока стилей L и M.
@@ -31,6 +40,7 @@ class CreateAdvertRequest {
     required this.attributes,
     required this.contacts,
     required this.isAutoRenew,
+    this.isNationwide = false,
     this.images = const [],
     this.booking,
   });
@@ -81,6 +91,7 @@ class CreateAdvertRequest {
       'attributes': flatAttributes,
       'contacts': contacts,
       'is_auto_renew': isAutoRenew,
+      'is_nationwide': isNationwide,
       if (images.isNotEmpty) 'images': images,
       if (booking != null) 'booking': booking,
     };
