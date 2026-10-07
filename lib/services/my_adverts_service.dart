@@ -347,6 +347,9 @@ class MyAdvertsService {
     // Раздел сайта, выбранный перед автовыгрузкой (07.10.2026). Не задан —
     // сервер отдаёт объявления всех разделов, как раньше.
     int? catalogId,
+    // Конкретный фид (07.10.2026): человек нажал на фид в списке и ждёт
+    // объявления именно этого фида. Задан — раздел уже не нужен.
+    int? feedId,
   }) async {
     try {
       final params = <String, dynamic>{};
@@ -358,6 +361,9 @@ class MyAdvertsService {
       }
       if (catalogId != null) {
         params['catalog_id'] = catalogId;
+      }
+      if (feedId != null) {
+        params['feed_id'] = feedId;
       }
 
       final response = await ApiService.getWithQuery(

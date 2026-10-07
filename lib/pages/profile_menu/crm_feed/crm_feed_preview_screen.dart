@@ -38,7 +38,17 @@ class CrmFeedPreviewScreen extends StatefulWidget {
   final int? catalogId;
   final String? catalogName;
 
-  const CrmFeedPreviewScreen({super.key, this.catalogId, this.catalogName});
+  /// Конкретный фид (07.10.2026). Задан, когда человек нажал на фид в
+  /// списке подключённых: показываем объявления именно этого фида, а не
+  /// всего раздела. Фидов в одном разделе может быть несколько.
+  final int? feedId;
+
+  const CrmFeedPreviewScreen({
+    super.key,
+    this.catalogId,
+    this.catalogName,
+    this.feedId,
+  });
 
   @override
   State<CrmFeedPreviewScreen> createState() => _CrmFeedPreviewScreenState();
@@ -194,6 +204,7 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
           page: page,
           perPage: pageSize,
           catalogId: widget.catalogId,
+          feedId: widget.feedId,
         );
 
         all.addAll(response.data);

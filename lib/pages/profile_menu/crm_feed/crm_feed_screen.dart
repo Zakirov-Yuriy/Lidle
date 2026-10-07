@@ -661,7 +661,22 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
     final hasCatalog =
         catalogName != null && catalogName.toString().trim().isNotEmpty;
 
-    return Container(
+    // Нажатие на карточку открывает объявления ЭТОГО фида (07.10.2026).
+    //
+    // Так было: попав на этот экран, человек не мог посмотреть объявления
+    // без возврата назад и повторного выбора раздела. Теперь фид и его
+    // объявления связаны напрямую.
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CrmFeedPreviewScreen(
+            feedId: id is int ? id : int.tryParse('$id'),
+            catalogName: catalogName?.toString(),
+          ),
+        ),
+      ),
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -723,6 +738,7 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
