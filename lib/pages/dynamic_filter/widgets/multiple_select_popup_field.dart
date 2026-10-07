@@ -93,25 +93,48 @@ class MultipleSelectPopupField extends StatelessWidget {
       attribute.title.isEmpty ? 'Выбор' : attribute.title,
     );
 
-    // Варианты выбора — с переносом.
-    final processedOptions =
-        attribute.values.map((v) => wrapLongText(v.value)).toList();
-
-    // Текущие выбранные значения — с переносом. Сохраняем маппинг
-    // обратно, чтобы потом в onChanged вернуть оригинальные строки.
+    // Варианты выбора — с переносом. Заодно сразу запоминаем обратный
+    // путь: перенесённый текст → исходное название.
+    //
+    // ПОЧЕМУ ПО ВСЕМ ВАРИАНТАМ, А НЕ ПО ВЫБРАННЫМ (07.10.2026).
+    // Раньше обратный путь строился только из уже выбранных значений. Для
+    // них возврат работал, а вот значение, выбранное в окне ВПЕРВЫЕ, в
+    // этом списке отсутствовало, и наверх уходил текст С ПЕРЕНОСОМ внутри
+    // («Сменный график\nработы» вместо «Сменный график работы»).
+    //
+    // Дальше в форме выбранное значение сопоставляется с его номером по
+    // тексту. Перенос ломал сравнение, номер не находился, характеристика
+    // до сервера не доезжала вовсе, и человек получал отказ «обязательный
+    // атрибут не заполнен» при заполненном на вид поле. Нашли на деве при
+    // подаче вакансии оператора ПК, поле «График работы».
     final wrappedToOriginal = <String, String>{};
+    final processedOptions = attribute.values.map((v) {
+      final wrapped = wrapLongText(v.value);
+      if (wrapped != v.value) {
+        wrappedToOriginal[wrapped] = v.value;
+      }
+
+      return wrapped;
+    }).toList();
+
+    // Текущие выбранные значения — с переносом, чтобы в окне выбора они
+    // совпали с вариантами.
     final processedSelected = selectedValues.map((original) {
       final wrapped = wrapLongText(original);
       if (wrapped != original) {
         wrappedToOriginal[wrapped] = original;
       }
+
       return wrapped;
     }).toSet();
 
-    // Hint в плашке — через запятую, уже перенесённые.
-    final hint = processedSelected.isEmpty
-        ? 'Выбрать'
-        : processedSelected.join(', ');
+    // Hint в плашке — через запятую и БЕЗ переносов.
+    //
+    // Перенос нужен в окне выбора, где строки широкие. В плашке высота
+    // фиксированная: вторая строка туда не помещается и обрезается
+    // посередине, из-за чего поля «График работы» и «Образование»
+    // выглядели иначе, чем соседние. Показываем исходные названия.
+    final hint = selectedValues.isEmpty ? 'Выбрать' : selectedValues.join(', ');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

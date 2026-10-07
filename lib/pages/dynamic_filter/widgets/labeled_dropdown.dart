@@ -42,6 +42,25 @@ class LabeledDropdown extends StatelessWidget {
   /// Показать слева от иконки надпись «Изменить» синим.
   final bool showChangeText;
 
+  /// Подсказка в одну строку (07.10.2026).
+  ///
+  /// В названиях значений характеристик встречается мусор: перенос строки,
+  /// табуляция, двойной или неразрывный пробел. Из-за переноса плашка
+  /// рисовала текст в две строки и он налезал на край, тогда как соседние
+  /// поля помещались в одну (видно было на «Графике работы» и
+  /// «Образовании»). Высота плашки фиксированная, поэтому вторая строка
+  /// просто обрезалась посередине.
+  ///
+  /// Сами названия чинит команда `attributes:tidy-values` на сервере, но
+  /// поле не должно разъезжаться даже если мусор где-то остался.
+  String get _oneLineHint {
+    return hint
+        .replaceAll('\u00A0', ' ')
+        .replaceAll('\u200B', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasRedAsterisk = label.endsWith('*');
@@ -50,7 +69,8 @@ class LabeledDropdown extends StatelessWidget {
 
     // Цвет подсказки зависит от того, выбрано ли значение.
     // Пустая строка или «Выбрать» = placeholder → серый.
-    final hintIsPlaceholder = hint == 'Выбрать' || hint.isEmpty;
+    final cleanHint = _oneLineHint;
+    final hintIsPlaceholder = cleanHint == 'Выбрать' || cleanHint.isEmpty;
     final hintColor = hasError
         ? const Color(0xFFff7272)
         : (hintIsPlaceholder
@@ -105,7 +125,9 @@ class LabeledDropdown extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              hint,
+                              _oneLineHint,
+                              maxLines: 1,
+                              softWrap: false,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: hintColor,
@@ -123,7 +145,9 @@ class LabeledDropdown extends StatelessWidget {
                           ],
                         )
                       : Text(
-                          hint,
+                          _oneLineHint,
+                          maxLines: 1,
+                          softWrap: false,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: hintColor,

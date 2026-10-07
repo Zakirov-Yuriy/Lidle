@@ -2121,7 +2121,7 @@ class _DynamicFilterState extends State<DynamicFilter>
           // log.d();
           for (final val in value) {
             final attrValue = attr.values.firstWhere(
-              (v) => v.value == val,
+              (v) => _tidyValue(v.value) == _tidyValue(val),
               orElse: () => const Value(id: 0, value: ''),
             );
             if (attrValue.id != 0) {
@@ -2135,7 +2135,7 @@ class _DynamicFilterState extends State<DynamicFilter>
           if (value.isNotEmpty) {
             final firstVal = value.first;
             final attrValue = attr.values.firstWhere(
-              (v) => v.value == firstVal,
+              (v) => _tidyValue(v.value) == _tidyValue(firstVal),
               orElse: () => const Value(id: 0, value: ''),
             );
             if (attrValue.id != 0) {
@@ -2245,7 +2245,7 @@ class _DynamicFilterState extends State<DynamicFilter>
         } else {
           // Single selection - lookup value ID
           final attrValue = attr.values.firstWhere(
-            (v) => v.value == value,
+            (v) => _tidyValue(v.value) == _tidyValue(value),
             orElse: () => const Value(id: 0, value: ''),
           );
           if (attrValue.id != 0) {
@@ -3319,6 +3319,25 @@ class _DynamicFilterState extends State<DynamicFilter>
 
   /// Адаптер над [LabeledDropdown]. Ошибки вычисляются здесь, сам
   /// виджет про `_fieldErrors` не знает.
+  /// Название значения характеристики без мусора (07.10.2026).
+  ///
+  /// Выбранное значение сопоставляется с его номером ПО ТЕКСТУ. Если в
+  /// названии затесался перенос строки, табуляция, двойной или неразрывный
+  /// пробел, сравнение не сходится, номер не находится, и характеристика до
+  /// сервера не доезжает вовсе. Человек при этом видит заполненное поле и
+  /// отказ «обязательный атрибут не заполнен» (найдено на деве 07.10.2026,
+  /// вакансия оператора ПК, поле «График работы»).
+  ///
+  /// Чистим на обеих сторонах сравнения, поэтому мусор в справочнике больше
+  /// ничего не ломает. Сами названия чинит команда `attributes:tidy-values`.
+  static String _tidyValue(String value) {
+    return value
+        .replaceAll('\u00A0', ' ')
+        .replaceAll('\u200B', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
   Widget _buildDropdown({
     required String label,
     required String hint,
