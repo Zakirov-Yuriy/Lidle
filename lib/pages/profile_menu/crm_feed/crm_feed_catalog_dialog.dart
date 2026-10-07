@@ -79,10 +79,14 @@ class _CrmFeedCatalogDialogState extends State<CrmFeedCatalogDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: bgColor,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      // Отступы подобраны так, чтобы ячейка вышла той же ширины, что на
+      // экране подачи объявления (там поля экрана 25). Иначе при одной и
+      // той же пропорции картинки в окне выглядят крупнее и обрезаются
+      // сильнее (07.10.2026).
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+        padding: const EdgeInsets.fromLTRB(13, 20, 13, 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,9 +111,12 @@ class _CrmFeedCatalogDialogState extends State<CrmFeedCatalogDialog> {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text(
+                child: Text(
                   'Отмена',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(
+                    color: activeIconColor,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -172,22 +179,28 @@ class _CrmFeedCatalogDialogState extends State<CrmFeedCatalogDialog> {
       );
     }
 
+    // Сетка один в один как на экране подачи объявления: те же отступы,
+    // та же пропорция ячейки, то же скругление. Человек видит привычные
+    // плитки, а не второй вариант того же списка (07.10.2026).
     return GridView.builder(
       shrinkWrap: true,
       padding: EdgeInsets.zero,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        mainAxisSpacing: 10,
+        mainAxisSpacing: 8,
         crossAxisSpacing: 8,
-        // Выше, чем ячейка на экране подачи: здесь под картинкой ещё и
-        // подпись, иначе названия обрезаются.
-        childAspectRatio: 100 / 100,
+        childAspectRatio: 120 / 83,
       ),
       itemCount: _catalogs.length,
       itemBuilder: (context, index) => _buildTile(_catalogs[index]),
     );
   }
 
+  /// Плитка раздела.
+  ///
+  /// Подписи под картинкой нет сознательно: название нарисовано на самой
+  /// картинке, и вторая надпись снизу дублировала её и не помещалась в
+  /// ячейку. Текст остаётся только в заглушке, когда картинки нет вовсе.
   Widget _buildTile(Catalog catalog) {
     final hasImage = catalog.thumbnail != null &&
         catalog.thumbnail!.isNotEmpty &&
@@ -195,47 +208,51 @@ class _CrmFeedCatalogDialogState extends State<CrmFeedCatalogDialog> {
 
     return GestureDetector(
       onTap: () => Navigator.pop(context, catalog),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: hasImage
-                  ? Image.network(
-                      catalog.thumbnail!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholder(),
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return Container(color: tileColor);
-                      },
-                    )
-                  : _placeholder(),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            catalog.name,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              height: 1.2,
-            ),
-          ),
-        ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(5),
+        child: Stack(
+          // Картинка занимает ячейку целиком, иначе не закругляются нижний
+          // и правый углы (та же правка, что на экране подачи 22.09.2026).
+          fit: StackFit.expand,
+          children: [
+            hasImage
+                ? Image.network(
+                    catalog.thumbnail!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _placeholder(catalog),
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(color: tileColor);
+                    },
+                  )
+                : _placeholder(catalog),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _placeholder() {
+  Widget _placeholder(Catalog catalog) {
     return Container(
       color: tileColor,
-      child: const Center(
-        child: Icon(Icons.category, color: Colors.white70, size: 22),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.category, color: Colors.white70, size: 24),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                catalog.name,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white70, fontSize: 10),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
