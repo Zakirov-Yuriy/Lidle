@@ -4923,6 +4923,42 @@ class _DynamicFilterState extends State<DynamicFilter>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Показ по всей стране (07.10.2026, задача 73).
+        //
+        // Стоит ПЕРЕД адресом: отметка отвечает на вопрос «где показывать», и
+        // человеку полезно увидеть её до того, как он начнёт выбирать город.
+        //
+        // В недвижимости отметки нет: квартира стоит в конкретном городе, и
+        // показывать её всей стране бессмысленно. Сервер такую публикацию
+        // тоже не примет, так что прятать здесь обязательно, иначе человек
+        // упрётся в непонятную ошибку уже после заполнения всей формы.
+        if (!_nationwideForbidden) ...[
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Показывать по всей России',
+                      style: TextStyle(color: textPrimary, fontSize: 16),
+                    ),
+                    Text(
+                      'Объявление увидят в любом городе,\n а не только в вашем',
+                      style: TextStyle(color: textMuted, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              CustomCheckbox(
+                value: _isNationwide,
+                onChanged: (v) => setState(() => _isNationwide = v),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+        ],
+
         // Населённый пункт: город, посёлок, село.
         _buildDropdown(
           label: 'Ваш город или посёлок*',
@@ -4963,48 +4999,6 @@ class _DynamicFilterState extends State<DynamicFilter>
           onTap: _selectedStreetId == null ? null : () => _pickBuilding(context),
         ),
 
-        // Показ по всей стране (07.10.2026, задача 73).
-        //
-        // В недвижимости отметки нет: квартира стоит в конкретном городе, и
-        // показывать её всей стране бессмысленно. Сервер такую публикацию
-        // тоже не примет, так что прятать здесь обязательно, иначе человек
-        // упрётся в непонятную ошибку.
-        if (!_nationwideForbidden) ...[
-          const SizedBox(height: 14),
-          GestureDetector(
-            onTap: () => setState(() => _isNationwide = !_isNationwide),
-            behavior: HitTestBehavior.opaque,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  _isNationwide
-                      ? Icons.check_box_rounded
-                      : Icons.check_box_outline_blank_rounded,
-                  color: _isNationwide ? activeIconColor : textSecondary,
-                  size: 22,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Показывать по всей России',
-                        style: TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Объявление увидят в любом городе, а не только в вашем',
-                        style: TextStyle(color: textSecondary, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ],
     );
   }
