@@ -2121,6 +2121,9 @@ class ApiService {
     required String filePath,
     required String fieldName,
     String? token,
+    /// Обычные поля формы рядом с файлом (07.10.2026): так уходит раздел
+    /// сайта при подключении фида файлом.
+    Map<String, String> fields = const {},
   }) async {
     // Через общий повтор, как и загрузка картинок (07.10.2026).
     //
@@ -2133,7 +2136,7 @@ class ApiService {
     // кода: токен всегда берётся из хранилища, иначе повтор ушёл бы со
     // старым, уже недействительным.
     return _retryRequest(
-      () => _uploadFileRequest(endpoint, filePath, fieldName),
+      () => _uploadFileRequest(endpoint, filePath, fieldName, fields),
       endpoint,
     );
   }
@@ -2142,6 +2145,7 @@ class ApiService {
     String endpoint,
     String filePath,
     String fieldName,
+    Map<String, String> fields,
   ) async {
     try {
       // `X-Requested-With` обязателен и здесь: без него прод отвечает пустым
@@ -2173,6 +2177,7 @@ class ApiService {
       );
 
       request.headers.addAll(headers);
+      request.fields.addAll(fields);
       request.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
 
       final streamedResponse = await request.send().timeout(

@@ -250,6 +250,9 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
           'is_active': true,
           'archive_missing': true,
           'ai_rewrite': _aiRewrite,
+          // Раздел, выбранный перед входом сюда (07.10.2026). Сервер
+          // сохранит его и вернёт в списке фидов названием.
+          if (widget.catalogId != null) 'catalog_id': widget.catalogId,
         },
       );
 
@@ -290,10 +293,21 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
         filePath: filePath,
         fieldName: 'file',
         token: token,
+        fields: {
+          // Раздел, выбранный перед входом сюда (07.10.2026).
+          if (widget.catalogId != null) 'catalog_id': '${widget.catalogId}',
+        },
       );
 
-      _showSnack('Фид из файла подключён. Объявления загрузятся автоматически.');
       await _loadFeeds();
+
+      // Та же плашка с переходом, что и при подключении ссылкой
+      // (07.10.2026). Так было: после файла показывалась только короткая
+      // подсказка внизу, экран оставался прежним, и человек не понимал, что
+      // объявления уже грузятся и где их смотреть.
+      if (mounted) {
+        await _showLoadingDialogAndGoToPreview();
+      }
     } catch (e) {
       log.d('Ошибка загрузки файла фида: $e');
       _showSnack('Не удалось загрузить файл');
@@ -629,6 +643,9 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
     final isActive = feed['is_active'] == true;
     final lastStatus = feed['last_status'];
     final lastSynced = feed['last_synced_at'];
+    final catalogName = feed['catalog_name'];
+    final hasCatalog =
+        catalogName != null && catalogName.toString().trim().isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 6),
@@ -677,6 +694,20 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
               style: const TextStyle(color: Colors.white38, fontSize: 11),
             ),
           ],
+          // Раздел сайта (07.10.2026). Без него в списке видно только путь к
+          // файлу или длинную ссылку, и у кого фидов десяток, понять, что за
+          // фид, нельзя вовсе.
+          const SizedBox(height: 4),
+          Text(
+            hasCatalog
+                ? 'Раздел: ${catalogName.toString()}'
+                : 'Раздел: не указан',
+            style: TextStyle(
+              color: hasCatalog ? activeIconColor : Colors.white38,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
