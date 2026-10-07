@@ -1213,14 +1213,20 @@ class _DynamicFilterState extends State<DynamicFilter>
                         });
                         log.d('   ✅ Attr $attrId: boolean value=$value');
                       } else {
-                        // Для текстовых атрибутов сохраняем в controller
+                        // Значение кладём И в поле ввода, И в карту значений
+                        // (07.10.2026). Раньше при готовом поле ввода оно
+                        // уходило только туда, а карта оставалась пустой.
+                        // Сбор перед отправкой идёт по карте, поэтому
+                        // характеристика не уезжала на сервер вовсе, и
+                        // человек видел заполненное поле и отказ
+                        // «обязательный атрибут не заполнен».
                         if (_controllers[attrId] != null) {
                           _controllers[attrId]!.text = value.toString();
-                        } else {
-                          setState(() {
-                            _selectedValues[attrId] = value;
-                          });
                         }
+
+                        setState(() {
+                          _selectedValues[attrId] = value.toString();
+                        });
                         log.d('   ✅ Attr $attrId: value=$value');
                       }
                     }
@@ -2255,37 +2261,17 @@ class _DynamicFilterState extends State<DynamicFilter>
           //
           // Теперь уезжают все поля на общих правилах, и угадывать по названию
           // больше ничего не нужно.
-          final text = value.trim();
+          // Текст берём из самого поля ввода, а карту значений используем
+          // как запасной источник. Это важно при правке объявления, см.
+          // пояснение у добора ниже.
+          final raw = _controllers[key]?.text ?? '';
+          final payload = _plainFieldPayload(
+            attr,
+            raw.trim().isEmpty ? value : raw,
+          );
 
-          if (text.isNotEmpty) {
-            switch (attr.dataType) {
-              case 'string':
-                attributes['values']['$key'] = {'value': text};
-                break;
-              case 'integer':
-                // «44.0» это тоже целое: число могло приехать из фида с
-                // нулевой дробной частью, и отбрасывать его из-за точки
-                // значило бы потерять заполненное поле.
-                final asInt = int.tryParse(text);
-                final asDouble = double.tryParse(text.replaceAll(',', '.'));
-
-                if (asInt != null) {
-                  attributes['values']['$key'] = {'value': asInt};
-                } else if (asDouble != null && asDouble == asDouble.roundToDouble()) {
-                  attributes['values']['$key'] = {'value': asDouble.toInt()};
-                }
-                break;
-              case 'numeric':
-                // Запятая как разделитель: человек набирает «44,5», сервер
-                // ждёт точку.
-                final parsed = double.tryParse(text.replaceAll(',', '.'));
-                if (parsed != null) {
-                  attributes['values']['$key'] = {'value': parsed};
-                }
-                break;
-              default:
-                break;
-            }
+          if (payload != null) {
+            attributes['values']['$key'] = payload;
           }
         } else {
           // Single selection - lookup value ID
@@ -2368,6 +2354,45 @@ class _DynamicFilterState extends State<DynamicFilter>
       }
     } else {
       log.d('   ⚠️ Offer Price Attribute ID is null (not available for this category)');
+    }
+
+    // Добор полей ввода, которых нет в карте значений (07.10.2026).
+    //
+    // ЗАЧЕМ. При открытии объявления на правку значение числового поля
+    // кладётся в САМО ПОЛЕ ВВОДА, а в карту значений не попадает. Потом
+    // поле рисуется и ставит в карту пустую строку, потому что там ничего
+    // нет. Выходит расхождение: на экране «53», в карте пусто.
+    //
+    // Сбор идёт по карте, поэтому характеристика не уезжала на сервер вовсе,
+    // и человек получал отказ «Обязательный атрибут "Общая площадь" не
+    // заполнен» при заполненном поле. Пока он не трогал поле руками, ничего
+    // не менялось: карта заполняется только при вводе.
+    //
+    // Поле ввода это то, что человек видит, поэтому здесь оно и есть
+    // источник правды.
+    for (final attr in _attributes) {
+      if (attr.values.isNotEmpty) {
+        continue;
+      }
+
+      // Только простые поля. У поля «от и до» два своих поля ввода с
+      // отдельными ключами, и собирается оно выше, целиком. Признак простого
+      // поля это строка в карте значений: его рисование кладёт туда хотя бы
+      // пустую строку.
+      if (_selectedValues[attr.id] is! String) {
+        continue;
+      }
+
+      if (attributes['values'].containsKey('${attr.id}')) {
+        continue;
+      }
+
+      final text = _controllers[attr.id]?.text ?? '';
+      final payload = _plainFieldPayload(attr, text);
+
+      if (payload != null) {
+        attributes['values']['${attr.id}'] = payload;
+      }
     }
 
     // «Общая площадь» больше не обрабатывается отдельно (07.10.2026).
@@ -3326,8 +3351,43 @@ class _DynamicFilterState extends State<DynamicFilter>
     );
   }
 
-  /// Адаптер над [LabeledDropdown]. Ошибки вычисляются здесь, сам
-  /// виджет про `_fieldErrors` не знает.
+  /// Значение поля без вариантов в том виде, в каком его ждёт сервер
+  /// (07.10.2026). Возвращает null, если отправлять нечего.
+  static Map<String, dynamic>? _plainFieldPayload(Attribute attr, String raw) {
+    final text = raw.trim();
+
+    if (text.isEmpty) {
+      return null;
+    }
+
+    switch (attr.dataType) {
+      case 'string':
+        return {'value': text};
+      case 'integer':
+        // «44.0» это тоже целое: число могло приехать из фида с нулевой
+        // дробной частью, и отбрасывать его из-за точки значило бы потерять
+        // заполненное поле.
+        final asInt = int.tryParse(text);
+        final asDouble = double.tryParse(text.replaceAll(',', '.'));
+
+        if (asInt != null) {
+          return {'value': asInt};
+        }
+        if (asDouble != null && asDouble == asDouble.roundToDouble()) {
+          return {'value': asDouble.toInt()};
+        }
+
+        return null;
+      case 'numeric':
+        // Запятая как разделитель: человек набирает «44,5», сервер ждёт точку.
+        final parsed = double.tryParse(text.replaceAll(',', '.'));
+
+        return parsed == null ? null : {'value': parsed};
+      default:
+        return null;
+    }
+  }
+
   /// Название значения характеристики без мусора (07.10.2026).
   ///
   /// Выбранное значение сопоставляется с его номером ПО ТЕКСТУ. Если в
@@ -3347,6 +3407,8 @@ class _DynamicFilterState extends State<DynamicFilter>
         .trim();
   }
 
+  /// Адаптер над [LabeledDropdown]. Ошибки вычисляются здесь, сам
+  /// виджет про `_fieldErrors` не знает.
   Widget _buildDropdown({
     required String label,
     required String hint,
