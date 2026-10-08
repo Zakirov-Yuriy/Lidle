@@ -185,7 +185,16 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
 
       // Токен не передаём — ApiService сам возьмёт актуальный из хранилища
       // и при 401 обновит его и повторит запрос.
-      final response = await ApiService.get('/me/crm-feeds');
+      //
+      // Раздел передаём, если он выбран (08.10.2026). Человек выбирает его
+      // перед входом сюда, и дальше экран говорит только про него. Раньше
+      // список показывал все фиды подряд: выбрал недвижимость, а в списке
+      // ещё работа, подработка и услуги.
+      final path = widget.catalogId != null
+          ? '/me/crm-feeds?catalog_id=${widget.catalogId}'
+          : '/me/crm-feeds';
+
+      final response = await ApiService.get(path);
 
       setState(() {
         _feeds = (response['data'] as List?) ?? [];
@@ -537,45 +546,11 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
                 ),
               ),
 
-              // ───── Список подключённых фидов ─────
-              const Padding(
-                padding: EdgeInsets.fromLTRB(25, 28, 25, 8),
-                child: Text(
-                  'Подключённые фиды',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-
-              if (_isLoading)
-                const Padding(
-                  padding: EdgeInsets.all(25),
-                  child: Center(
-                    child: CircularProgressIndicator(color: activeIconColor),
-                  ),
-                )
-              else if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.redAccent),
-                  ),
-                )
-              else if (_feeds.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-                  child: Text(
-                    'Пока нет подключённых фидов',
-                    style: TextStyle(color: Colors.white54),
-                  ),
-                )
-              else
-                ..._feeds.map((feed) => _feedCard(feed)).toList(),
-
+              // Блок про ИИ и видеообзор стоит ДО списка фидов
+              // (08.10.2026). Раньше он был в самом низу, под списком, и
+              // при нескольких подключённых фидах до него надо было
+              // долистать. А переключатель влияет на импорт, то есть нужен
+              // раньше, а не после.
               // ───── Переключатель: ИИ меняет заголовок и описание ─────
               Padding(
                 padding: const EdgeInsets.fromLTRB(25, 20, 25, 0),
@@ -641,6 +616,55 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
                   ),
                 ),
               ),
+
+              // ───── Список подключённых фидов ─────
+              //
+              // В заголовке называем раздел (08.10.2026). Список теперь
+              // показывает только фиды выбранного раздела, и без подписи
+              // короткий список выглядел бы так, будто фиды пропали.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(25, 28, 25, 8),
+                child: Text(
+                  widget.catalogName != null
+                      ? 'Подключённые фиды: ${widget.catalogName}'
+                      : 'Подключённые фиды',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(25),
+                  child: Center(
+                    child: CircularProgressIndicator(color: activeIconColor),
+                  ),
+                )
+              else if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                )
+              else if (_feeds.isEmpty)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+                  child: Text(
+                    widget.catalogName != null
+                        ? 'В разделе «${widget.catalogName}» пока нет '
+                            'подключённых фидов'
+                        : 'Пока нет подключённых фидов',
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                )
+              else
+                ..._feeds.map((feed) => _feedCard(feed)).toList(),
 
               const SizedBox(height: 30),
             ],
