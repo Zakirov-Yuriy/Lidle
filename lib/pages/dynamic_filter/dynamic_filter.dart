@@ -2294,6 +2294,27 @@ class _DynamicFilterState extends State<DynamicFilter>
             // log.d();
           }
         }
+      } else if (value is num) {
+        // ЧИСЛО В КАРТЕ ЗНАЧЕНИЙ (07.10.2026).
+        //
+        // Ветки для числа здесь не было вовсе, и оно молча пропадало. Так
+        // терялась «Общая площадь» при правке объявления: загрузка кладёт в
+        // карту значение С СЕРВЕРА как есть, то есть число 53, а не строку
+        // «53». Все ветки рядом проверяют строку, множество, карту или
+        // галочку, поэтому число не подходило ни под одну, и характеристика
+        // до сервера не доезжала.
+        //
+        // На экране при этом всё было заполнено: поле ввода берёт текст из
+        // своего контроллера, а он создаётся из того же числа. Человек видел
+        // «53» и отказ «Обязательный атрибут "Общая площадь" не заполнен».
+        //
+        // Подтверждено логом сервера 07.10.2026: в запросе приходили только
+        // этаж и «вам предложат цену», площади не было.
+        final payload = _plainFieldPayload(attr, value.toString());
+
+        if (payload != null) {
+          attributes['values']['$key'] = payload;
+        }
       } else if (value is bool && value) {
         // Checkbox or boolean value
         // Attribute 1048 (Вам предложат цену) is a boolean type with no values array
@@ -4969,6 +4990,59 @@ class _DynamicFilterState extends State<DynamicFilter>
     );
   }
 
+  /// Скрытая характеристика без значения (08.10.2026).
+  ///
+  /// ЗАЧЕМ. Под поля из фида завели характеристики: жилая площадь, площадь
+  /// кухни, площадь комнат, вид из окна, балкон. Нужны они затем, чтобы
+  /// данные из фида попадали в карточку и работали в фильтрах. Но человеку,
+  /// который подаёт объявление РУКАМИ, они не нужны: в макете их не было, и
+  /// форма из-за них разрослась.
+  ///
+  /// Просто убрать их из справочника нельзя: тогда фиду будет некуда класть
+  /// эти данные. Поэтому характеристика помечается в админке скрытой и
+  /// ведёт себя так:
+  ///
+  ///   пустая    в форме не показывается вовсе;
+  ///   заполнена показывается, чтобы значение было видно и его можно было
+  ///             поправить или убрать.
+  ///
+  /// Обычных характеристик правило не касается: пометку ставят осознанно.
+  bool _hiddenAndEmpty(Attribute attr) {
+    if (!attr.isHidden) {
+      return false;
+    }
+
+    // Текст в поле ввода это тоже значение, причём самое свежее.
+    final typed = _controllers[attr.id]?.text ?? '';
+    if (typed.trim().isNotEmpty) {
+      return false;
+    }
+
+    final value = _selectedValues[attr.id];
+
+    if (value == null) {
+      return true;
+    }
+    if (value is String) {
+      return value.trim().isEmpty;
+    }
+    if (value is bool) {
+      return !value;
+    }
+    if (value is Iterable) {
+      return value.isEmpty;
+    }
+    if (value is Map) {
+      // Поле «от и до» и календарь: пустым считаем, когда пусты все части.
+      return value.values.every(
+        (part) => part == null || part.toString().trim().isEmpty,
+      );
+    }
+
+    // Число и всё прочее это заполненное значение.
+    return false;
+  }
+
   /// Список динамических фильтров-атрибутов. Показывает индикатор
   /// загрузки, пока атрибуты не пришли с API, затем сортирует по
   /// `order`, фильтрует по непустому title и рендерит каждый через
@@ -4985,7 +5059,9 @@ class _DynamicFilterState extends State<DynamicFilter>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final attr in sorted.where((a) => a.title.isNotEmpty))
+        for (final attr in sorted.where(
+          (a) => a.title.isNotEmpty && !_hiddenAndEmpty(a),
+        ))
           Column(
             children: [
               _buildDynamicFilter(attr),
@@ -5111,31 +5187,31 @@ class _DynamicFilterState extends State<DynamicFilter>
         ? attr.vmText!
         : 'Объявление увидят в любом городе,\n а не только в вашем';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(color: textPrimary, fontSize: 16),
-                ),
-                Text(
-                  hint,
-                  style: const TextStyle(color: textMuted, fontSize: 11),
-                ),
-              ],
-            ),
+    // Своего отступа у поля нет: список характеристик уже разделяет их
+    // одинаковым промежутком. Лишний отступ делал под галочкой заметную
+    // дыру, вдвое больше, чем между остальными полями.
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              Text(
+                hint,
+                style: const TextStyle(color: textMuted, fontSize: 11),
+              ),
+            ],
           ),
-          CustomCheckbox(
-            value: _isNationwide,
-            onChanged: (v) => setState(() => _isNationwide = v),
-          ),
-        ],
-      ),
+        ),
+        CustomCheckbox(
+          value: _isNationwide,
+          onChanged: (v) => setState(() => _isNationwide = v),
+        ),
+      ],
     );
   }
 
