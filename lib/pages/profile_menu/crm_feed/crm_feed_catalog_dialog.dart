@@ -92,7 +92,7 @@ class _CrmFeedCatalogDialogState extends State<CrmFeedCatalogDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Выберите раздел',
+              'Выберите категорию автовыгрузки',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -101,7 +101,12 @@ class _CrmFeedCatalogDialogState extends State<CrmFeedCatalogDialog> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Из какого раздела объявления вы загружаете или хотите посмотреть',
+              'Подключите CRM или XML файл',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Категории, доступные для загрузки или просмотра.',
               style: TextStyle(color: Colors.white70, fontSize: 13),
             ),
             const SizedBox(height: 16),
