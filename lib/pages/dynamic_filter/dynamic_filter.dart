@@ -228,6 +228,16 @@ class _DynamicFilterState extends State<DynamicFilter>
   /// Город в форме остаётся обязательным: это адрес продавца, по нему
   /// считается регион и собираются выгрузки. Отметка снимает только
   /// ограничение показа: объявление видно в выдаче любого города.
+  /// Пометка характеристики, которая означает «Показывать по всей России».
+  /// Приходит с сервера в поле `type_field`.
+  static const String kNationwideTypeField = 'nationwide';
+
+  /// Та ли это характеристика. Пометку держит [AttributesApi]: модель
+  /// собирается генератором, которого в проекте нет, поэтому новое поле у
+  /// неё не завести.
+  bool _isNationwideAttribute(Attribute attr) =>
+      AttributesApi.typeFieldOf(attr.id) == kNationwideTypeField;
+
   bool _isNationwide = false;
   String _publishingProgress = '';
   Map<int, TextEditingController> _controllers = {};
@@ -2284,27 +2294,6 @@ class _DynamicFilterState extends State<DynamicFilter>
             // log.d();
           }
         }
-      } else if (value is num) {
-        // ЧИСЛО В КАРТЕ ЗНАЧЕНИЙ (07.10.2026).
-        //
-        // Ветки для числа здесь не было вовсе, и оно молча пропадало. Так
-        // терялась «Общая площадь» при правке объявления: загрузка кладёт в
-        // карту значение С СЕРВЕРА как есть, то есть число 53, а не строку
-        // «53». Все ветки ниже проверяют строку, множество, карту или
-        // галочку, поэтому число не подходило ни под одну, и характеристика
-        // до сервера не доезжала.
-        //
-        // На экране при этом всё было заполнено: поле ввода берёт текст из
-        // своего контроллера, а он создаётся из того же числа. Человек видел
-        // «53» и отказ «Обязательный атрибут "Общая площадь" не заполнен».
-        //
-        // Подтверждено логом сервера 07.10.2026: в запросе приходили только
-        // этаж и «вам предложат цену», площади не было.
-        final payload = _plainFieldPayload(attr, value.toString());
-
-        if (payload != null) {
-          attributes['values']['$key'] = payload;
-        }
       } else if (value is bool && value) {
         // Checkbox or boolean value
         // Attribute 1048 (Вам предложат цену) is a boolean type with no values array
@@ -2396,14 +2385,17 @@ class _DynamicFilterState extends State<DynamicFilter>
         continue;
       }
 
+      // Галочка «по всей России» уезжает отдельным полем объявления, среди
+      // характеристик ей делать нечего.
+      if (_isNationwideAttribute(attr)) {
+        continue;
+      }
+
       // Только простые поля. У поля «от и до» два своих поля ввода с
       // отдельными ключами, и собирается оно выше, целиком. Признак простого
-      // поля это строка или число в карте значений: его рисование кладёт
-      // туда хотя бы пустую строку, а загрузка объявления может положить
-      // число с сервера.
-      final current = _selectedValues[attr.id];
-
-      if (current is! String && current is! num) {
+      // поля это строка в карте значений: его рисование кладёт туда хотя бы
+      // пустую строку.
+      if (_selectedValues[attr.id] is! String) {
         continue;
       }
 
@@ -3536,6 +3528,13 @@ class _DynamicFilterState extends State<DynamicFilter>
   /// Важно: резолвер может вернуть изменённый атрибут (например, с
   /// `copyWith(isMultiple: true)` для style F) — строим именно его.
   Widget _buildDynamicFilter(Attribute attr) {
+    // Пометка смысла важнее стиля (08.10.2026). «Показывать по всей России»
+    // внешне обычная галочка, но значение хранит не среди характеристик, а
+    // отдельным полем объявления, поэтому и рисуется своим виджетом.
+    if (_isNationwideAttribute(attr)) {
+      return _buildNationwideField(attr);
+    }
+
     final plan = resolveFilterField(attr);
     final a = plan.attribute;
     switch (plan.kind) {
@@ -5037,41 +5036,18 @@ class _DynamicFilterState extends State<DynamicFilter>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Показ по всей стране (07.10.2026, задача 73).
+        // Галочка «Показывать по всей России» переехала отсюда в обычные
+        // характеристики (08.10.2026).
         //
-        // Стоит ПЕРЕД адресом: отметка отвечает на вопрос «где показывать», и
-        // человеку полезно увидеть её до того, как он начнёт выбирать город.
+        // Здесь она стояла жёстко вшитой, а прятали её по признаку «это
+        // недвижимость», который знало только приложение. Признак работал
+        // при обычной подаче и не работал при правке объявления из фида: там
+        // галочка вылезала в недвижимости, где её быть не должно.
         //
-        // В недвижимости отметки нет: квартира стоит в конкретном городе, и
-        // показывать её всей стране бессмысленно. Сервер такую публикацию
-        // тоже не примет, так что прятать здесь обязательно, иначе человек
-        // упрётся в непонятную ошибку уже после заполнения всей формы.
-        if (!_nationwideForbidden) ...[
-          Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Показывать по всей России',
-                      style: TextStyle(color: textPrimary, fontSize: 16),
-                    ),
-                    Text(
-                      'Объявление увидят в любом городе,\n а не только в вашем',
-                      style: TextStyle(color: textMuted, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              CustomCheckbox(
-                value: _isNationwide,
-                onChanged: (v) => setState(() => _isNationwide = v),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-        ],
+        // Теперь где показывать галочку, решает админка: в категории заводят
+        // характеристику с пометкой «nationwide», и форма рисует её среди
+        // прочих характеристик. Значение по-прежнему уезжает отдельным полем
+        // объявления, а не в характеристики, см. _buildNationwideField.
 
         // Населённый пункт: город, посёлок, село.
         _buildDropdown(
@@ -5119,15 +5095,49 @@ class _DynamicFilterState extends State<DynamicFilter>
 
   /// Где показ по всей стране запрещён.
   ///
-  /// Недвижимость: квартира стоит в конкретном городе, показывать её всей
-  /// стране бессмысленно. Сервер такую публикацию тоже не примет, и если не
-  /// спрятать отметку здесь, человек упрётся в ошибку уже после заполнения
-  /// всей формы.
+  /// Галочка «Показывать по всей России» (08.10.2026).
   ///
-  /// Признак берём тот же, по которому форма решает, подставлять ли адрес
-  /// компании. Заводить второй, со своим списком каталогов, значит получить
-  /// два источника правды об одном и том же.
-  bool get _nationwideForbidden => widget.isRealEstate;
+  /// Рисуется как обычная характеристика, на своём месте по порядку, но
+  /// значение хранит НЕ в характеристиках: оно уезжает отдельным полем
+  /// объявления, потому что по нему идёт отбор в выдаче каждого города.
+  ///
+  /// Где эта галочка показывается, решает админка: характеристика с пометкой
+  /// «nationwide» заводится в нужных категориях. Раньше признак «это
+  /// недвижимость» знало только приложение, и при правке объявления из фида
+  /// галочка вылезала там, где её быть не должно.
+  Widget _buildNationwideField(Attribute attr) {
+    final title = attr.title.isEmpty ? 'Показывать по всей России' : attr.title;
+    final hint = (attr.vmText != null && attr.vmText!.trim().isNotEmpty)
+        ? attr.vmText!
+        : 'Объявление увидят в любом городе,\n а не только в вашем';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(color: textPrimary, fontSize: 16),
+                ),
+                Text(
+                  hint,
+                  style: const TextStyle(color: textMuted, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          CustomCheckbox(
+            value: _isNationwide,
+            onChanged: (v) => setState(() => _isNationwide = v),
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Выбор населённого пункта. Сбрасывает улицу и дом: они были от прошлого
   /// города.

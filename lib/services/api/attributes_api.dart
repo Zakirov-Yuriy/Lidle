@@ -23,6 +23,21 @@ class AttributesApi {
   static AdvertFormConfig formFor(int categoryId) =>
       _formByCategory[categoryId] ?? AdvertFormConfig.fallback;
 
+  /// Смысл характеристики по её номеру (08.10.2026).
+  ///
+  /// Сервер отдаёт его в поле `type_field`. По нему форма узнаёт поля,
+  /// которые хранятся НЕ среди характеристик: `nationwide` это галочка
+  /// «Показывать по всей России», её значение лежит в самом объявлении.
+  ///
+  /// Держим отдельной картой, а не полем модели: модель собирается
+  /// генератором, а его в проекте нет, только готовые файлы. Добавить поле
+  /// значило бы править сгенерированный код руками, а это куда опаснее
+  /// простой карты.
+  static final Map<int, String> _typeFieldById = {};
+
+  /// Пометка смысла характеристики, или null у обычной.
+  static String? typeFieldOf(int attributeId) => _typeFieldById[attributeId];
+
   /// Поля экранов блоков «Добавить …» по номеру блока (22.09.2026):
   /// «Название зала», «Этаж зала» у «Добавить общий план зала». Сервер отдаёт
   /// их вложенными в атрибут блока (`fields`). В модель Attribute их не
@@ -80,6 +95,13 @@ class AttributesApi {
           if (json is Map<String, dynamic>) {
             final attr = Attribute.fromJson(json);
             attributes.add(attr);
+
+            final typeField = json['type_field'];
+            if (typeField is String && typeField.trim().isNotEmpty) {
+              _typeFieldById[attr.id] = typeField.trim();
+            } else {
+              _typeFieldById.remove(attr.id);
+            }
 
             final fields = json['fields'];
             if (fields is List && fields.isNotEmpty) {
