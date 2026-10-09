@@ -147,20 +147,36 @@ class ResponseCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    response.category,
-                    style: const TextStyle(color: Colors.white54, fontSize: 16),
+                  // Название занимает остаток строки и обрезается
+                  // многоточием. Прежде здесь стоял простой Text со
+                  // Spacer, и длинное название выдавливало подпись исхода
+                  // за край экрана: «Выполнена» вылезала на 12 пикселей
+                  // (09.10.2026).
+                  Expanded(
+                    child: Text(
+                      response.category,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 16,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Text(
                     archiveReason == 'rejected' ? 'Отказано' : 'Выполнена',
                     style: TextStyle(
                       color: archiveReason == 'rejected'
                           ? Colors.red
                           : Colors.green,
-                      fontSize: 16,
+                      // Мельче заголовка: это подпись к строке, а не сама
+                      // строка. Заодно запас на случай длинных слов.
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 1,
+                    softWrap: false,
                   ),
                 ],
               ),
@@ -173,6 +189,8 @@ class ResponseCard extends StatelessWidget {
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 16),
               Row(
@@ -211,6 +229,8 @@ class ResponseCard extends StatelessWidget {
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         // Рейтинг показываем ТОЛЬКО когда он есть. Пустые
@@ -317,9 +337,11 @@ class ResponseCard extends StatelessWidget {
                       color: status == 'Выполняется'
                           ? const Color.fromARGB(255, 255, 193, 7)
                           : Colors.green,
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 1,
+                    softWrap: false,
                   ),
                 ],
               ],
@@ -332,6 +354,8 @@ class ResponseCard extends StatelessWidget {
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             // Текст отклика. Это главное в отклике: автор объявления решает
             // по нему, а не по цене.
@@ -381,6 +405,8 @@ class ResponseCard extends StatelessWidget {
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (response.rating > 0) ...[
