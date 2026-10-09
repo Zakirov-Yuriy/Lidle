@@ -309,6 +309,30 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
     }
   }
 
+  /// Текст из ответа сервера, чем бы он ни пришёл.
+  ///
+  /// Цена приходит то строкой, то числом: у объявления это целое 60000, у
+  /// предложения строка 55000.00. Жёсткое приведение к строке роняло разбор
+  /// целиком, и экран «Предложения мне» показывал пустоту при живом
+  /// предложении в базе (09.10.2026). Ошибка глушилась общим перехватом, и
+  /// найти её удалось только по логу приложения.
+  static String _text(dynamic value, {String fallback = ''}) {
+    if (value == null) return fallback;
+
+    final text = '$value'.trim();
+
+    return text.isEmpty ? fallback : text;
+  }
+
+  /// Целое из ответа сервера, числом оно пришло или строкой.
+  static int? _int(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+
+    return int.tryParse('$value');
+  }
+
   /// Преобразует API ответ в объект Offer
   /// Поддерживает как собственные предложения (Мои предложения),
   /// так и полученные предложения (Предложения мне)
@@ -340,7 +364,12 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
 
       // Извлекаем type.slug — используется в URL: /me/offers/received/{type.slug}/{id}
       final type = apiData['type'] as Map<String, dynamic>? ?? {};
-      final typeSlugValue = type['slug'] as String? ?? 'adverts';
+      // Сервер отдаёт тип полями `type` и `path`, поля `slug` у него нет.
+      // Читаем все три, иначе адрес дозагрузки собирается наугад.
+      final typeSlugValue = _text(
+        type['slug'] ?? type['path'] ?? type['type'],
+        fallback: 'adverts',
+      );
 
       log.d('🔄 Parsing received offer (my advertisement):');
       log.d('   advert id: ${apiData['id']}');
@@ -353,19 +382,16 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
       return Offer(
         id: apiData['id']?.toString() ?? '', // ✅ ID объявления
         advertisementId: apiData['id']?.toString(), // ✅ ID объявления
-        slug: apiData['slug'] as String?, // ✅ Listing slug (информационный)
-        typeSlug:
-            typeSlugValue, // ✅ type.slug для URL: /me/offers/received/{typeSlug}/{id}
-        imageUrl: (apiData['thumbnail'] as String?) ?? '',
-        title: apiData['name'] as String? ?? 'Объявление',
+        slug: apiData['slug'] == null ? null : _text(apiData['slug']),
+        typeSlug: typeSlugValue,
+        imageUrl: _text(apiData['thumbnail']),
+        title: _text(apiData['name'], fallback: 'Объявление'),
         description: '', // Нет описания в списке объявлений с предложениями
-        originalPrice: apiData['price'] as String? ?? '0',
+        originalPrice: _text(apiData['price'], fallback: '0'),
         yourPrice: '0', // Нет "вашей цены" - это входящие предложения
         status: OfferStatus.pending,
         viewed: false,
-        offeredPricesCount:
-            apiData['new_offers_count'] as int? ??
-            0, // ✅ Количество предложений
+        offeredPricesCount: _int(apiData['new_offers_count']) ?? 0,
       );
     } else {
       // 📤 Это предложение цены которое пользователь сам отправил
@@ -385,13 +411,13 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         advertisementId: model['id']?.toString(), // ✅ ID объявления (товара)
         slug: null, // ✅ Не используем для собственных предложений
         typeSlug: null, // ✅ Не используем для собственных предложений
-        imageUrl: (model['thumbnail'] as String?) ?? '',
-        title: model['name'] as String? ?? 'Объявление',
-        description: apiData['message'] as String? ?? '',
-        originalPrice: model['price'] as String? ?? '0',
-        yourPrice: apiData['price'] as String? ?? '0',
-        status: _parseStatusFromId(status['id'] as int?),
-        viewed: (apiData['read_at'] as String?) != null,
+        imageUrl: _text(model['thumbnail']),
+        title: _text(model['name'], fallback: 'Объявление'),
+        description: _text(apiData['message']),
+        originalPrice: _text(model['price'], fallback: '0'),
+        yourPrice: _text(apiData['price'], fallback: '0'),
+        status: _parseStatusFromId(_int(status['id'])),
+        viewed: apiData['read_at'] != null,
         offeredPricesCount: null, // ✅ Не заполняем для собственных предложений
       );
     }
