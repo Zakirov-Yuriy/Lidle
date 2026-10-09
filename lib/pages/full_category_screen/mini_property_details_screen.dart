@@ -2203,6 +2203,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           message: message,
           openedFromAdvertScreen: true,
           initialListing: _listing, // ✅ Передаем объявление для отправки как сообщение
+          // Откуда написано (09.10.2026, задача 15).
+          sourceType: 'advert',
+          sourceId: int.tryParse('${_listing.id}'),
         ),
       ),
     );

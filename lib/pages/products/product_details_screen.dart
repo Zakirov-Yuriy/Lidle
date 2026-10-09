@@ -1337,9 +1337,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     });
   }
 
-  /// Чат с продавцом, без привязки к товару. Тот же способ, что на странице
-  /// продавца: переписка одна, и заводить вторую под товар значит разнести
-  /// разговор по двум местам.
+  /// Чат с продавцом. Переписка остаётся одна, но сообщение помечается
+  /// товаром (09.10.2026, задача 15): продавец должен видеть, с какой
+  /// карточки к нему пришли, иначе первый его ответ это вопрос «о чём
+  /// речь». Отдельную ветку под товар по-прежнему не заводим.
   void _writeSeller(ShopBrief shop) {
     final token = TokenService.currentToken;
 
@@ -1371,6 +1372,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             isCompany: false,
             userId: '${shop.userId}',
           ),
+          sourceType: 'product',
+          sourceId: widget.productId,
         ),
       ),
     );

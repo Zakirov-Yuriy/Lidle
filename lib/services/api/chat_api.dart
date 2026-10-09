@@ -77,6 +77,10 @@ class ChatApi {
     int chatId,
     String messageText, {
     String? token,
+    // Откуда написано (09.10.2026, задача 15). Необязательно: из списка
+    // чатов пишут просто так, без привязки.
+    String? sourceType,
+    int? sourceId,
   }) async {
     try {
       final effectiveToken = ApiBase.requireToken(token);
@@ -89,6 +93,8 @@ class ChatApi {
 
       final response = await ApiService.post('/chats/$chatId/messages', {
         'message': messageText,
+        if (sourceType != null && sourceId != null) 'source_type': sourceType,
+        if (sourceType != null && sourceId != null) 'source_id': sourceId,
       }, token: effectiveToken);
 
       log.d('✅ Сообщение отправлено: $response');
@@ -105,6 +111,8 @@ class ChatApi {
     int userId,
     String messageText, {
     String? token,
+    String? sourceType,
+    int? sourceId,
   }) async {
     try {
       final effectiveToken = ApiBase.requireToken(token);
@@ -118,6 +126,8 @@ class ChatApi {
       final response = await ApiService.post('/chats/start', {
         'user_id': userId,
         'message': messageText,
+        if (sourceType != null && sourceId != null) 'source_type': sourceType,
+        if (sourceType != null && sourceId != null) 'source_id': sourceId,
       }, token: effectiveToken);
 
       log.d('✅ Чат создан: $response');

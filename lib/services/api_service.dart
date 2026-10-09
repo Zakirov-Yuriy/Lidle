@@ -2776,15 +2776,22 @@ class ApiService {
     int chatId,
     String messageText, {
     String? token,
+    // Откуда написано (09.10.2026, задача 15).
+    String? sourceType,
+    int? sourceId,
   }) =>
-      ChatApi.sendMessage(chatId, messageText, token: token);
+      ChatApi.sendMessage(chatId, messageText,
+          token: token, sourceType: sourceType, sourceId: sourceId);
 
   static Future<int?> startChat(
     int userId,
     String messageText, {
     String? token,
+    String? sourceType,
+    int? sourceId,
   }) =>
-      ChatApi.startChat(userId, messageText, token: token);
+      ChatApi.startChat(userId, messageText,
+          token: token, sourceType: sourceType, sourceId: sourceId);
 
   /// 🗑️ Удалить чат
   /// DELETE /v1/chats/{chatId}

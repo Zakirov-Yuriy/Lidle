@@ -9,6 +9,9 @@ import 'package:lidle/blocs/messages/messages_bloc.dart';
 import 'package:lidle/blocs/messages/messages_event.dart';
 import 'package:lidle/models/message_model.dart';
 import 'package:lidle/models/chat_message_model.dart';
+import 'package:lidle/models/chat_source.dart';
+import 'package:lidle/widgets/chat/chat_source_card.dart';
+import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
@@ -24,9 +27,20 @@ class ChatPage extends StatefulWidget {
   final bool openedFromAdvertScreen;
   final Listing? initialListing; // ✅ Объявление для отправки как первое сообщение
 
+  /// Откуда открыта переписка (09.10.2026, задача 15).
+  ///
+  /// Вид источника и его номер: advert, product, offer, response, booking.
+  /// Уходят на сервер с каждым сообщением, и по ним собирается плашка над
+  /// диалогом. Не передали, значит плашки не будет, и никакой ошибки при
+  /// этом не случится, поэтому пропуск легко не заметить.
+  final String? sourceType;
+  final int? sourceId;
+
   const ChatPage({
     super.key,
     required this.message,
+    this.sourceType,
+    this.sourceId,
     this.openedFromAdvertScreen = false,
     this.initialListing,
   });
@@ -61,6 +75,13 @@ class _ChatPageState extends State<ChatPage> {
 
   // 🔗 Защита от множественных нажатий на "Перейти"
   bool _isNavigatingToProperty = false;
+
+  /// Откуда покупатель написал (09.10.2026, задача 15).
+  ///
+  /// Приходит с сервера в каждом сообщении. Показываем ПОСЛЕДНИЙ источник,
+  /// так решил заказчик: написал с объявления, потом с предложения цены,
+  /// значит в шапке видно предложение цены.
+  ChatSource? _source;
 
   @override
   void initState() {
@@ -259,6 +280,46 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  /// Последняя привязка в ленте сообщений.
+  ///
+  /// Идём с конца: нужен последний источник, а сообщения без привязки
+  /// прежний не отменяют. Человек написал с объявления, потом дописал ещё
+  /// строку, и плашка должна остаться на месте.
+  ChatSource? _lastSourceOf(List<Map<String, dynamic>> messages) {
+    for (var i = messages.length - 1; i >= 0; i--) {
+      final parsed = ChatSource.fromJson(messages[i]['source']);
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  /// Переход по кнопке «Перейти» в плашке.
+  void _openSource(ChatSource source) {
+    final targetId = source.targetId;
+
+    if (_isNavigatingToProperty || targetId == null) return;
+
+    // Переписка открыта с того же экрана, куда ведёт плашка: возвращаемся
+    // назад, а не кладём сверху ещё одну копию того же экрана.
+    if (widget.openedFromAdvertScreen && Navigator.canPop(context)) {
+      Navigator.pop(context);
+      return;
+    }
+
+    _isNavigatingToProperty = true;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => source.leadsToProduct
+            ? ProductDetailsScreen(productId: targetId)
+            : PropertyDetailsScreen(advertisementId: '$targetId'),
+      ),
+    ).then((_) {
+      if (mounted) setState(() => _isNavigatingToProperty = false);
+    });
+  }
+
   /// 💬 Загрузить сообщения из API
   Future<void> _loadMessages() async {
     try {
@@ -286,6 +347,7 @@ class _ChatPageState extends State<ChatPage> {
         setState(() {
           _messages = messages;
           _isLoading = false;
+          _source = _lastSourceOf(messages) ?? _source;
         });
 
         // После загрузки сообщений — попробуем найти связанное объявление
@@ -485,6 +547,9 @@ class _ChatPageState extends State<ChatPage> {
         chatId = await ApiService.startChat(
           int.parse(widget.message.userId!),
           messageText,
+          // Откуда написано (09.10.2026, задача 15).
+          sourceType: widget.sourceType,
+          sourceId: widget.sourceId,
         );
 
         // 🔄 Если чат не создан (возможно уже существует), ищем его в списке
@@ -517,7 +582,12 @@ class _ChatPageState extends State<ChatPage> {
         // ✅ Обычная отправка сообщения в существующий чат
         log.d('📤 Отправляем сообщение в чат #$chatId...');
 
-        await ApiService.sendMessage(chatId, messageText);
+        await ApiService.sendMessage(
+          chatId,
+          messageText,
+          sourceType: widget.sourceType,
+          sourceId: widget.sourceId,
+        );
       }
 
       // 📇 Регистрируем контакт по объявлению (первое сообщение по объявлению).
@@ -798,9 +868,18 @@ class _ChatPageState extends State<ChatPage> {
               child: const Divider(color: Color(0xFF474747), height: 0),
             ),
 
-            // Если чат открыт с экрана объявления, не показываем отдельную карточку сверху —
-            // превью объявления будет показано как первое сообщение в ленте
-            if (!widget.openedFromAdvertScreen && 
+            // Плашка «откуда написал» (09.10.2026, задача 15). Данные с
+            // сервера, одна вёрстка на пять видов источника.
+            if (_source != null)
+              ChatSourceCard(
+                source: _source!,
+                onOpen: () => _openSource(_source!),
+              ),
+
+            // Старый блок: показывается только когда привязки с сервера нет.
+            // Нужен для переписок, заведённых до задачи 15, и для случая,
+            // когда экран открыт с карточки объявления.
+            if (_source == null && !widget.openedFromAdvertScreen && 
                 (_topAdvertImage != null || 
                  widget.message.advertImage != null || 
                  _topAdvertTitle != null || 
