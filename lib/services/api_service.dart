@@ -313,7 +313,11 @@ class ApiService {
     String? token,
   }) async {
     return _retryRequest(
-      () => _getWithBodyRequest(endpoint, body, null),
+      // Токен передавался как null, и запрос всегда брал сохранённый
+      // (09.10.2026). Работало по совпадению: сохранённый обычно тот же
+      // самый. Но вызовы, которые передают токен явно, рассчитывают
+      // именно на него.
+      () => _getWithBodyRequest(endpoint, body, token),
       endpoint,
     );
   }
