@@ -246,9 +246,30 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
     // Теперь парсим офферы, используя закэшированные профили
     List<PriceOfferItem> result = [];
 
+    // Текст из ответа сервера, чем бы он ни пришёл (09.10.2026).
+    //
+    // Цена объявления приходит числом, цена предложения строкой. Жёсткое
+    // приведение к строке роняло разбор целиком, и экран показывал
+    // «Ошибка загрузки предложений: type int is not a subtype of String».
+    String? text(dynamic value) {
+      if (value == null) return null;
+
+      final s = '$value'.trim();
+
+      return s.isEmpty ? null : s;
+    }
+
+    int? number(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+
+      return int.tryParse('$value');
+    }
+
     for (final offer in offersData) {
       final statusMap = offer['status'] as Map<String, dynamic>?;
-      final statusId = statusMap?['id'] as int?;
+      final statusId = number(statusMap?['id']);
 
       // Определяем флаги статуса
       final isAccepted = statusId == 2;
@@ -256,11 +277,11 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
 
       final user = offer['user'] as Map<String, dynamic>? ?? {};
       final model = offer['model'] as Map<String, dynamic>? ?? {};
-      final createdAt = offer['created_at'] as String? ?? '';
-      final price = offer['price'] as String? ?? '0';
-      final userAvatar = user['avatar'] as String?;
-      final message = offer['message'] as String?;
-      final userId = user['id'] as int?;
+      final createdAt = text(offer['created_at']) ?? '';
+      final price = text(offer['price']) ?? '0';
+      final userAvatar = text(user['avatar']);
+      final message = text(offer['message']);
+      final userId = number(user['id']);
 
       // Получаем номер телефона и никнейм пользователя из кэша
       String? userPhone;
@@ -269,7 +290,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       if (userId != null && profileCache.containsKey(userId)) {
         final userProfile = profileCache[userId]!;
         if (userProfile.isNotEmpty) {
-          final userName = userProfile['name'] as String?;
+          final userName = text(userProfile['name']);
           userNickname = userName != null ? '@$userName' : '@user';
 
           // Номер телефона из контактов
@@ -278,7 +299,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
             final phones = contacts['phones'] as List?;
             if (phones != null && phones.isNotEmpty) {
               final firstPhone = phones[0] as Map<String, dynamic>?;
-              userPhone = firstPhone?['phone'] as String?;
+              userPhone = text(firstPhone?['phone']);
             }
           }
         }
@@ -286,7 +307,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
 
       result.add(
         PriceOfferItem(
-          name: user['name'] as String? ?? 'Неизвестный пользователь',
+          name: text(user['name']) ?? 'Неизвестный пользователь',
           subtitle: _formatDate(createdAt),
           price: _formatPrice(price),
           badgeCount: '1',
@@ -296,9 +317,9 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
           userId: userId?.toString(),
           offerId: offer['id']?.toString(),
           listingId: model['id']?.toString(),
-          listingTitle: model['name'] as String?,
-          listingPrice: model['price'] as String?,
-          listingImage: model['thumbnail'] as String?,
+          listingTitle: text(model['name']),
+          listingPrice: text(model['price']),
+          listingImage: text(model['thumbnail']),
           message: message,
           isAccepted: isAccepted,
           isRejected: isRejected,
