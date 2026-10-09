@@ -522,32 +522,39 @@ class _ChatPageState extends State<ChatPage> {
     try {
       if (_chatId == null) return;
 
-      // Находим все входящие сообщения которые еще не прочитаны
-      final unreadIncomingMessages = messages.where((msg) {
-        final isMe = msg['is_me'] as bool? ?? false;
-        final readAt = msg['read_at'] as String?;
-        return !isMe &&
-            readAt == null; // От другого пользователя и не прочитано
-      }).toList();
+      // Последнее ЧУЖОЕ сообщение в ленте (09.10.2026).
+      //
+      // Раньше отбирались сообщения с пустым полем «прочитано», и в этом
+      // была ошибка: поле отвечает не на тот вопрос. Сервер кладёт в него
+      // признак того, что сообщение прочитал СОБЕСЕДНИК, а приложение
+      // понимало его как «я уже прочитал». Поэтому отмечать было «нечего»,
+      // запрос не уходил вовсе, и счётчик непрочитанного горел вечно.
+      //
+      // Теперь отмечаем ПОСЛЕДНЕЕ входящее, и этого достаточно: сервер
+      // считает непрочитанными всё, что новее отметки. Повторная отметка
+      // безопасна, с 09.10.2026 сервер её принимает и заодно пересчитывает
+      // счётчик.
+      final incoming = messages
+          .where((msg) => !(msg['is_me'] as bool? ?? false))
+          .toList();
 
-      if (unreadIncomingMessages.isEmpty) {
-        log.d('✅ Нет непрочитанных входящих сообщений');
+      if (incoming.isEmpty) {
+        log.d('✅ Входящих сообщений нет, отмечать нечего');
         return;
       }
 
-      log.d(
-        '📨 Отмечаем ${unreadIncomingMessages.length} сообщений как прочитанные...',
-      );
+      final lastIncomingId = incoming.last['id'] as int?;
 
-      // Отмечаем каждое сообщение как прочитанное
-      for (final msg in unreadIncomingMessages) {
-        final messageId = msg['id'] as int?;
-        if (messageId != null) {
-          await ApiService.markMessageAsRead(_chatId!, messageId);
-        }
+      if (lastIncomingId == null) {
+        log.d('⚠️ У последнего входящего сообщения нет номера');
+        return;
       }
 
-      log.d('✅ Все входящие сообщения отмечены как прочитанные');
+      log.d('📨 Отмечаем прочитанным последнее входящее #$lastIncomingId...');
+
+      await ApiService.markMessageAsRead(_chatId!, lastIncomingId);
+
+      log.d('✅ Входящие отмечены как прочитанные');
       
       // 🔴 Обновляем unreadCount в MessagesBloc чтобы бейдж исчез
       if (mounted && context.mounted) {
