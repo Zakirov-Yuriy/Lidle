@@ -83,6 +83,28 @@ class _ChatPageState extends State<ChatPage> {
   /// значит в шапке видно предложение цены.
   ChatSource? _source;
 
+  /// Что отправлять на сервер как привязку.
+  ///
+  /// Обычно это то, что передал экран, откуда открыли переписку. Но
+  /// карточка объявления живёт в приложении в нескольких экранах, и не у
+  /// всех можно быстро проставить передачу. Поэтому запасной путь: если
+  /// номер объявления уже известен самой переписке, собираем привязку из
+  /// него. Так плашка появится и с тех экранов, которых правка не
+  /// коснулась.
+  String? get _outgoingSourceType {
+    if (widget.sourceType != null && widget.sourceId != null) {
+      return widget.sourceType;
+    }
+    return widget.message.advertisementId != null ? 'advert' : null;
+  }
+
+  int? get _outgoingSourceId {
+    if (widget.sourceType != null && widget.sourceId != null) {
+      return widget.sourceId;
+    }
+    return int.tryParse('${widget.message.advertisementId}');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -548,8 +570,8 @@ class _ChatPageState extends State<ChatPage> {
           int.parse(widget.message.userId!),
           messageText,
           // Откуда написано (09.10.2026, задача 15).
-          sourceType: widget.sourceType,
-          sourceId: widget.sourceId,
+          sourceType: _outgoingSourceType,
+          sourceId: _outgoingSourceId,
         );
 
         // 🔄 Если чат не создан (возможно уже существует), ищем его в списке
@@ -585,8 +607,8 @@ class _ChatPageState extends State<ChatPage> {
         await ApiService.sendMessage(
           chatId,
           messageText,
-          sourceType: widget.sourceType,
-          sourceId: widget.sourceId,
+          sourceType: _outgoingSourceType,
+          sourceId: _outgoingSourceId,
         );
       }
 
