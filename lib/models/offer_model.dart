@@ -76,6 +76,23 @@ class PriceOfferItem {
   final String? phone; // Номер телефона пользователя
   final String? nickname; // Никнейм пользователя (может начинаться с @)
 
+  // Контакты покупателя (09.10.2026, задача 15).
+  //
+  // Экран аккаунта показывал подставные значения: ник, телеграм, вотсап и
+  // город были прописаны в вёрстке. Теперь всё настоящее, а чего у человека
+  // нет, то и не показывается.
+  final List<String> phones;
+  final List<String> telegrams;
+  final List<String> whatsapps;
+  final List<String> maxes;
+
+  /// Город из адреса покупателя. Пусто, если не указан.
+  final String? city;
+
+  /// Ссылка на аватар. null, если аватара нет: тогда рисуем стандартную
+  /// заглушку, а не цветной кружок с буквами.
+  final String? avatarUrl;
+
   // ID пользователя который сделал предложение (user['id']) — нужен для жалобы
   final String? userId;
 
@@ -106,6 +123,12 @@ class PriceOfferItem {
     required this.avatar,
     this.phone,
     this.nickname,
+    this.phones = const [],
+    this.telegrams = const [],
+    this.whatsapps = const [],
+    this.maxes = const [],
+    this.city,
+    this.avatarUrl,
     this.userId,
     this.offerId,
     this.listingId,

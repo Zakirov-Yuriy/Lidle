@@ -183,9 +183,22 @@ class _UserCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
+                // Нет аватара, значит стандартная заглушка, как в списке
+                // сообщений (09.10.2026). Прежде сюда подставлялся файл из
+                // ресурсов, и при ссылке с сервера экран мог упасть.
                 CircleAvatar(
                   radius: 36,
-                  backgroundImage: AssetImage(offerItem.avatar),
+                  backgroundColor: Colors.white10,
+                  backgroundImage:
+                      (offerItem.avatarUrl != null &&
+                          offerItem.avatarUrl!.startsWith('http'))
+                      ? NetworkImage(offerItem.avatarUrl!)
+                      : null,
+                  child:
+                      (offerItem.avatarUrl == null ||
+                          !offerItem.avatarUrl!.startsWith('http'))
+                      ? const Icon(Icons.person, color: Colors.white54, size: 36)
+                      : null,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -211,42 +224,68 @@ class _UserCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Text(
-                  'В сети',
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
-                ),
+                // «В сети» убрано 09.10.2026: присутствия мы не отслеживаем.
               ],
             ),
           ),
 
           const Divider(color: Colors.white24, height: 1),
 
-          const _InfoRow(label: 'Ник в Lidle', value: 'AndrawP', isLink: true),
-          const _InfoRow(label: 'Номер', value: '+7 949 456 78 76'),
-          const _InfoRow(label: '', value: '+7 949 456 78 76'),
-          const _InfoRow(label: 'Телеграмм', value: '@AndrawP', isLink: true),
-          const _InfoRow(label: 'WhatsApp', value: '@AndrawP', isLink: true),
-          const _InfoRow(label: 'VK', value: '@AndrawP', isLink: true),
-
-          const Divider(color: Colors.white24, height: 1),
-
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Город',
-                  style: TextStyle(color: Colors.white54, fontSize: 14),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Мариуполь',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ],
+          // Контакты настоящие и только те, что есть (09.10.2026).
+          if (offerItem.nickname != null)
+            _InfoRow(
+              label: 'Ник в Lidle',
+              value: offerItem.nickname!,
+              isLink: true,
             ),
-          ),
+
+          for (final phone in offerItem.phones)
+            _InfoRow(
+              label: phone == offerItem.phones.first ? 'Номер' : '',
+              value: phone,
+            ),
+
+          for (final telegram in offerItem.telegrams)
+            _InfoRow(
+              label: telegram == offerItem.telegrams.first ? 'Телеграмм' : '',
+              value: telegram.startsWith('@') ? telegram : '@$telegram',
+              isLink: true,
+            ),
+
+          for (final whatsapp in offerItem.whatsapps)
+            _InfoRow(
+              label: whatsapp == offerItem.whatsapps.first ? 'WhatsApp' : '',
+              value: whatsapp,
+              isLink: true,
+            ),
+
+          for (final max in offerItem.maxes)
+            _InfoRow(
+              label: max == offerItem.maxes.first ? 'Max' : '',
+              value: max.startsWith('@') ? max : '@$max',
+              isLink: true,
+            ),
+
+          if (offerItem.city != null) ...[
+            const Divider(color: Colors.white24, height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Город',
+                    style: TextStyle(color: Colors.white54, fontSize: 14),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    offerItem.city!,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

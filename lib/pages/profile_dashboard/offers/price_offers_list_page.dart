@@ -283,25 +283,52 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       final message = text(offer['message']);
       final userId = number(user['id']);
 
-      // Получаем номер телефона и никнейм пользователя из кэша
+      // Контакты покупателя из его профиля (09.10.2026, задача 15).
+      //
+      // Раньше бралcя только первый телефон, а ник собирался из ИМЕНИ
+      // пользователя, что давало «@ФЕНИКС КОМПАНИЯ». Теперь берём настоящий
+      // ник и все контакты, какие есть.
       String? userPhone;
       String? userNickname;
+      String? userCity;
+      List<String> phones = const [];
+      List<String> telegrams = const [];
+      List<String> whatsapps = const [];
+      List<String> maxes = const [];
+
+      List<String> pick(dynamic list, String key) {
+        if (list is! List) return const [];
+
+        return list
+            .whereType<Map>()
+            .map((item) => text(item[key]))
+            .whereType<String>()
+            .toList();
+      }
 
       if (userId != null && profileCache.containsKey(userId)) {
         final userProfile = profileCache[userId]!;
-        if (userProfile.isNotEmpty) {
-          final userName = text(userProfile['name']);
-          userNickname = userName != null ? '@$userName' : '@user';
 
-          // Номер телефона из контактов
+        if (userProfile.isNotEmpty) {
+          final nick = text(userProfile['nickname']);
+          userNickname = nick == null
+              ? null
+              : (nick.startsWith('@') ? nick : '@$nick');
+
           final contacts = userProfile['contacts'] as Map<String, dynamic>?;
+
           if (contacts != null) {
-            final phones = contacts['phones'] as List?;
-            if (phones != null && phones.isNotEmpty) {
-              final firstPhone = phones[0] as Map<String, dynamic>?;
-              userPhone = text(firstPhone?['phone']);
-            }
+            phones = pick(contacts['phones'], 'phone');
+            telegrams = pick(contacts['telegrams'], 'username');
+            whatsapps = pick(contacts['whatsapps'], 'number');
+            maxes = pick(contacts['maxes'], 'username');
           }
+
+          userPhone = phones.isEmpty ? null : phones.first;
+
+          final address = userProfile['address'] as Map<String, dynamic>?;
+          final city = address?['city'] as Map<String, dynamic>?;
+          userCity = text(city?['name']);
         }
       }
 
@@ -312,8 +339,14 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
           price: _formatPrice(price),
           badgeCount: '1',
           avatar: _getAvatarUrl(userAvatar),
+          avatarUrl: userAvatar,
           phone: userPhone,
           nickname: userNickname,
+          phones: phones,
+          telegrams: telegrams,
+          whatsapps: whatsapps,
+          maxes: maxes,
+          city: userCity,
           userId: userId?.toString(),
           offerId: offer['id']?.toString(),
           listingId: model['id']?.toString(),

@@ -168,68 +168,24 @@ class _UserCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Аватар пользователя
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.grey[300],
-                  ),
-                  child: ClipOval(
-                    child:
-                        offerItem?.avatar != null &&
-                            offerItem!.avatar.isNotEmpty
-                        ? Image.network(
-                            offerItem.avatar,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.blue[600]!,
-                                      Colors.blue[900]!,
-                                    ],
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    _getInitials(offerItem.name),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          )
-                        : Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Colors.blue[600]!, Colors.blue[900]!],
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                _getInitials(offerItem?.name ?? 'ВП'),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                  ),
+                // Аватар пользователя.
+                //
+                // Нет аватара, значит стандартная заглушка, как в списке
+                // сообщений. Прежде рисовался цветной кружок с буквами, и
+                // на экране это выглядело как сиреневое пятно (09.10.2026).
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.white10,
+                  backgroundImage:
+                      (offerItem?.avatarUrl != null &&
+                          offerItem!.avatarUrl!.startsWith('http'))
+                      ? NetworkImage(offerItem.avatarUrl!)
+                      : null,
+                  child:
+                      (offerItem?.avatarUrl == null ||
+                          !offerItem!.avatarUrl!.startsWith('http'))
+                      ? const Icon(Icons.person, color: Colors.white54, size: 32)
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -248,15 +204,9 @@ class _UserCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'В сети',
-                            style: TextStyle(
-                              color: Colors.green[400],
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                          // «В сети» убрано 09.10.2026: присутствия мы не
+                          // отслеживаем, и надпись была просто нарисована.
+                          // Вернуть можно, когда появится последний визит.
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -275,39 +225,63 @@ class _UserCard extends StatelessWidget {
           ),
 
           // const Divider(color: Colors.white24, height: 1),
-          _InfoRow(
-            label: 'Ник в Lidle',
-            value: offerItem?.nickname ?? '@user',
-            isLink: true,
-          ),
-          _InfoRow(
-            label: 'Номер',
-            value: offerItem?.phone ?? '+7 000 000 00 00',
-          ),
-          // _InfoRow(label: '', value: '+7 949 456 78 76'),
-          _InfoRow(label: 'Max', value: '@AndrawP', isLink: true),
-          // _InfoRow(label: 'WhatsApp', value: '@AndrawP', isLink: true),
-          _InfoRow(label: 'VK', value: '@AndrawP', isLink: true),
-
-          const Divider(color: Colors.white24, height: 1),
-
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Город',
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Мариуполь',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ],
+          // Контакты. Показываем только то, что у человека есть: пустая
+          // строка с подставным значением хуже, чем её отсутствие
+          // (09.10.2026, задача 15).
+          if (offerItem?.nickname != null)
+            _InfoRow(
+              label: 'Ник в Lidle',
+              value: offerItem!.nickname!,
+              isLink: true,
             ),
-          ),
+
+          for (final phone in (offerItem?.phones ?? const <String>[]))
+            _InfoRow(
+              label: phone == offerItem!.phones.first ? 'Номер' : '',
+              value: phone,
+            ),
+
+          for (final telegram in (offerItem?.telegrams ?? const <String>[]))
+            _InfoRow(
+              label: telegram == offerItem!.telegrams.first ? 'Телеграмм' : '',
+              value: telegram.startsWith('@') ? telegram : '@$telegram',
+              isLink: true,
+            ),
+
+          for (final whatsapp in (offerItem?.whatsapps ?? const <String>[]))
+            _InfoRow(
+              label: whatsapp == offerItem!.whatsapps.first ? 'WhatsApp' : '',
+              value: whatsapp,
+              isLink: true,
+            ),
+
+          for (final max in (offerItem?.maxes ?? const <String>[]))
+            _InfoRow(
+              label: max == offerItem!.maxes.first ? 'Max' : '',
+              value: max.startsWith('@') ? max : '@$max',
+              isLink: true,
+            ),
+
+          if (offerItem?.city != null) ...[
+            const Divider(color: Colors.white24, height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Город',
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    offerItem!.city!,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
