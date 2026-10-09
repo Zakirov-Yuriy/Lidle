@@ -319,6 +319,16 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
 
           if (contacts != null) {
             phones = pick(contacts['phones'], 'phone');
+
+            // Только два последних номера (09.10.2026, решение заказчика).
+            //
+            // У давних пользователей в контактах накапливаются все номера,
+            // которые они когда-либо меняли: у одного их оказалось десять,
+            // и карточка превращалась в простыню. Нужны свежие, а старые
+            // хранить не мешает, просто не показываем.
+            if (phones.length > 2) {
+              phones = phones.sublist(phones.length - 2);
+            }
             telegrams = pick(contacts['telegrams'], 'username');
             whatsapps = pick(contacts['whatsapps'], 'number');
             maxes = pick(contacts['maxes'], 'username');
