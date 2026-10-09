@@ -11,6 +11,8 @@ import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 import 'package:lidle/models/response_model.dart';
 import 'package:lidle/pages/profile_dashboard/responses/widgets/response_card.dart';
+import 'package:lidle/services/api_service.dart';
+import 'package:lidle/core/logger.dart';
 
 class ResponsesEmptyPage extends StatefulWidget {
   static const routeName = '/responses-empty';
@@ -29,7 +31,134 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
   bool _isSelectionMode = false; // Track selection mode for performing tab
   bool _isArchiveSelectionMode = false; // Track selection mode for archive tab
 
-  // Separate lists for different tabs
+  /// Идёт ли загрузка с сервера.
+  bool _isLoading = true;
+
+  /// Что пошло не так при загрузке. Пусто — всё в порядке.
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  /// Забрать отклики с сервера (09.10.2026, задача 15).
+  ///
+  /// Две верхние вкладки это две разные ручки: «Отклики мне» спрашивает
+  /// отклики на мои объявления, «Мои отклики» — те, что отправил я.
+  ///
+  /// Внутренние вкладки раскладываются по СОСТОЯНИЮ отклика:
+  ///
+  ///   Отклики      новые, автор их ещё не рассматривал
+  ///   Выполняется  принятые
+  ///   Архив        отклонённые
+  ///
+  /// Завершения сделки на сервере пока нет, это отдельный экран по макету,
+  /// поэтому «Выполняется» означает «принят», а не «работа идёт».
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final rows = _currentTopTab == 0
+          ? await ApiService.getReceivedResponses()
+          : await ApiService.getMyResponses();
+
+      final items = rows.map(ResponseModel.fromJson).toList();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        mainResponses = items.where((r) => r.isNew).toList();
+        performingResponses = items.where((r) => r.isAccepted).toList();
+        archivedResponses = items.where((r) => r.isRejected).toList();
+
+        archiveReasons = {
+          for (final row in archivedResponses) row.id: 'rejected',
+        };
+
+        _selectedCards = {};
+        _isSelectionMode = false;
+        _isArchiveSelectionMode = false;
+        _isLoading = false;
+      });
+    } catch (e) {
+      log.d('Не удалось загрузить отклики: $e');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _error = '$e'.contains('авторизация')
+            ? 'Войдите, чтобы увидеть отклики'
+            : 'Не удалось загрузить отклики';
+      });
+    }
+  }
+
+  /// Принять отклик: состояние 2.
+  Future<void> _accept(ResponseModel response) => _setStatus(response, 2);
+
+  /// Отклонить отклик: состояние 3.
+  Future<void> _setRejected(ResponseModel response) => _setStatus(response, 3);
+
+  /// Поменять состояние на сервере и перечитать список.
+  ///
+  /// Перечитываем, а не двигаем карточку в памяти: состояние меняет сервер, и
+  /// расходиться с ним на экране незачем. Отклик могли уже рассмотреть с
+  /// другого устройства.
+  Future<void> _setStatus(ResponseModel response, int statusId) async {
+    final id = response.responseId;
+
+    if (id == null) {
+      return;
+    }
+
+    try {
+      final result = await ApiService.updateResponseStatus(
+        responseId: id,
+        statusId: statusId,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (result['success'] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${result['message'] ?? 'Не получилось'}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+
+        return;
+      }
+
+      await _load();
+    } catch (e) {
+      log.d('Не удалось поменять состояние отклика: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не получилось, попробуйте ещё раз'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Списки заполняются из ответа сервера, см. _load(). Придуманные данные
+  // отсюда убраны: экран показывал «Адрей Петров» и «Мариуполь» всем подряд.
   List<ResponseModel> mainResponses = [
     // ResponseModel(
     //   id: '1',
@@ -104,41 +233,38 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
     });
   }
 
-  void _rejectResponse(ResponseModel response) {
-    setState(() {
-      if (mainResponses.contains(response)) {
-        mainResponses.remove(response);
-      } else if (performingResponses.contains(response)) {
-        performingResponses.remove(response);
+  /// Отклонить всё выбранное.
+  ///
+  /// По одному запросу на отклик: пакетной ручки на сервере нет, а делать её
+  /// ради кнопки, которой пользуются редко, незачем. Список перечитывается
+  /// один раз в конце, а не после каждого.
+  Future<void> _rejectSelectedCards() async {
+    final selectedIds = _selectedCards.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+
+    for (final id in selectedIds) {
+      final response = performingResponses.firstWhereOrNull((r) => r.id == id);
+      final responseId = response?.responseId;
+
+      if (responseId == null) {
+        continue;
       }
-      // Add to archived with 'rejected' reason
-      archivedResponses.add(response);
-      archiveReasons[response.id] = 'rejected';
-      _selectedCards.remove(response.id);
-    });
-  }
 
-  void _rejectSelectedCards() {
-    setState(() {
-      final selectedIds = _selectedCards.entries
-          .where((e) => e.value)
-          .map((e) => e.key)
-          .toList();
-
-      for (final id in selectedIds) {
-        final response = performingResponses.firstWhereOrNull(
-          (r) => r.id == id,
+      try {
+        await ApiService.updateResponseStatus(
+          responseId: responseId,
+          statusId: 3,
         );
-        if (response != null) {
-          performingResponses.remove(response);
-          archivedResponses.add(response);
-          archiveReasons[response.id] = 'rejected';
-        }
+      } catch (e) {
+        log.d('Не удалось отклонить отклик $responseId: $e');
       }
+    }
 
-      _selectedCards.clear();
-      _isSelectionMode = false; // Exit selection mode after rejection
-    });
+    if (mounted) {
+      await _load();
+    }
   }
 
   void _enterSelectionMode(String responseId) {
@@ -227,6 +353,43 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
   }
 
   Widget _buildTabContent() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 25),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white54, fontSize: 15),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: _load,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF00B7FF)),
+                ),
+                child: const Text(
+                  'Обновить',
+                  style: TextStyle(color: Color(0xFF00B7FF)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     List<ResponseModel> currentResponses;
     String? status;
 
@@ -414,8 +577,18 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
                   onArchive: _currentTab == 1
                       ? () => _moveToArchive(currentResponses[index])
                       : null,
-                  onReject: (_currentTab == 0 || _currentTab == 1)
-                      ? () => _rejectResponse(currentResponses[index])
+                  // Отклонить может только автор объявления: на своих
+                  // откликах сервер ответит отказом, и кнопку показывать
+                  // незачем.
+                  onReject: _currentTopTab == 0 &&
+                          (_currentTab == 0 || _currentTab == 1)
+                      ? () => _setRejected(currentResponses[index])
+                      : null,
+                  // Принять отклик: только у откликов НА МОИ объявления.
+                  // Свой собственный отклик принимать нельзя, это решение
+                  // автора объявления.
+                  onAccept: _currentTopTab == 0 && _currentTab == 0
+                      ? () => _accept(currentResponses[index])
                       : null,
                 );
               },
@@ -583,7 +756,14 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
                     Row(
                       children: [
                         GestureDetector(
-                          onTap: () => setState(() => _currentTopTab = 0),
+                          onTap: () {
+                            if (_currentTopTab == 0) {
+                              return;
+                            }
+
+                            setState(() => _currentTopTab = 0);
+                            _load();
+                          },
                           child: Text(
                             'Отклики мне',
                             style: TextStyle(
@@ -596,7 +776,14 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
                         ),
                         const SizedBox(width: 20),
                         GestureDetector(
-                          onTap: () => setState(() => _currentTopTab = 1),
+                          onTap: () {
+                            if (_currentTopTab == 1) {
+                              return;
+                            }
+
+                            setState(() => _currentTopTab = 1);
+                            _load();
+                          },
                           child: Text(
                             'Мои отклики',
                             style: TextStyle(

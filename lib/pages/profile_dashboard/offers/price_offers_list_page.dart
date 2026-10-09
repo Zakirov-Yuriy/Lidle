@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/offer_model.dart';
+import 'package:lidle/models/message_model.dart';
+import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/pages/profile_dashboard/offers/incoming_price_offer_page.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
@@ -804,6 +806,38 @@ class _OfferItem extends StatelessWidget {
     required this.onLongPress,
   });
 
+  /// Открыть переписку с покупателем.
+  ///
+  /// Плашку над диалогом собирает сервер по виду и номеру источника: передаём
+  /// `offer` и номер предложения, и в шапке появится объявление с жёлтой
+  /// строкой предложенной цены.
+  void _openChat(BuildContext context) {
+    final message = Message(
+      senderName: offerItem.name,
+      senderAvatar: offerItem.avatarUrl,
+      lastMessageTime: '',
+      unreadCount: 0,
+      isInternal: true,
+      isCompany: false,
+      userId: offerItem.userId,
+      advertTitle: offerItem.listingTitle,
+      advertImage: offerItem.listingImage,
+      advertPrice: offerItem.listingPrice,
+      advertisementId: offerItem.listingId,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatPage(
+          message: message,
+          sourceType: 'offer',
+          sourceId: int.tryParse('${offerItem.offerId ?? ''}'),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -937,6 +971,32 @@ class _OfferItem extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const Spacer(),
+                  // «Написать» (09.10.2026, задача 15). Переписка по этому
+                  // предложению уже существует: сервер заводит сообщение в
+                  // момент предложения цены. Кнопка открывает её, чтобы не
+                  // искать человека в списке чатов.
+                  if (offerItem.userId != null)
+                    GestureDetector(
+                      onTap: () => _openChat(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF00B7FF)),
+                        ),
+                        child: const Text(
+                          'Написать',
+                          style: TextStyle(
+                            color: Color(0xFF00B7FF),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

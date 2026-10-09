@@ -9,6 +9,8 @@ import 'package:lidle/models/bookings/preorder.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/pages/bookings/preorder_catalog_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
+import 'package:lidle/models/message_model.dart';
+import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/preorder_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
@@ -802,6 +804,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   Widget _buildActions(BookingItem item) {
     final buttons = <Widget>[];
 
+    // «Написать» (09.10.2026, задача 15). Бронь уже заводит сообщение
+    // владельцу, и переписка по ней существует; кнопка просто открывает её,
+    // чтобы не искать человека в списке чатов.
+    //
+    // Показываем обеим сторонам: гостю нужно спросить, владельцу ответить.
+    if (item.counterparty != null) {
+      buttons.add(_actionButton(
+        'Написать',
+        activeIconColor,
+        () => _openChat(item),
+      ));
+    }
+
     if (item.canConfirm) {
       buttons.add(_actionButton(
         'Подтвердить',
@@ -973,6 +988,45 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               ),
             const SizedBox(height: 8),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Открыть переписку по этой брони.
+  ///
+  /// Плашку над диалогом собирает сервер по виду и номеру источника: передаём
+  /// `booking` и номер брони, и в шапке появится объявление с датой и
+  /// временем визита.
+  void _openChat(BookingItem item) {
+    final party = item.counterparty;
+
+    if (party == null) {
+      return;
+    }
+
+    final advert = item.advert;
+
+    final message = Message(
+      senderName: party.name.isEmpty ? 'Пользователь' : party.name,
+      lastMessageTime: '',
+      unreadCount: 0,
+      isInternal: true,
+      isCompany: false,
+      userId: '${party.id}',
+      advertTitle: advert?.name,
+      advertImage: advert?.thumbnail,
+      advertPrice: advert?.price,
+      advertisementId: '${item.advertId}',
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatPage(
+          message: message,
+          sourceType: 'booking',
+          sourceId: item.id,
         ),
       ),
     );

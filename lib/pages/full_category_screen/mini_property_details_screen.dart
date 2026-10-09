@@ -25,6 +25,7 @@ import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/widgets/dialogs/offer_price_dialog.dart';
+import 'package:lidle/widgets/dialogs/response_dialog.dart';
 import 'package:lidle/widgets/dialogs/report_advert_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/widgets/dialogs/review_dialog.dart';
@@ -715,6 +716,18 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                                 _OfferPriceButton(
                                   advertId: _listing.id,
                                   advertSlug: _listing.slug ?? _listing.id,
+                                ),
+                                const SizedBox(height: 19),
+                              ],
+                              // Откликнуться (09.10.2026, задача 15).
+                              // Показывается там, где отклики включены
+                              // пометкой характеристики категории в админке:
+                              // решает сервер полем can_respond.
+                              if (_listing.canRespond) ...[
+                                _RespondButton(
+                                  advertId: int.tryParse(_listing.id) ?? 0,
+                                  advertTitle: _listing.title,
+                                  alreadySent: _listing.isResponded,
                                 ),
                                 const SizedBox(height: 19),
                               ],
@@ -2613,6 +2626,88 @@ class _OfferPriceButton extends StatelessWidget {
         child: const Center(
           child: Text(
             "Предложить свою цену",
+            style: TextStyle(
+              color: activeIconColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Кнопка «Откликнуться» (09.10.2026, задача 15).
+///
+/// Своё состояние держит сама: после отправки гаснет, не перезагружая всю
+/// карточку. Второй отклик на то же объявление сервер не примет, и показывать
+/// живую кнопку после отправки значило бы обещать то, чего не будет.
+class _RespondButton extends StatefulWidget {
+  final int advertId;
+  final String advertTitle;
+  final bool alreadySent;
+
+  const _RespondButton({
+    required this.advertId,
+    required this.advertTitle,
+    this.alreadySent = false,
+  });
+
+  @override
+  State<_RespondButton> createState() => _RespondButtonState();
+}
+
+class _RespondButtonState extends State<_RespondButton> {
+  late bool _sent = widget.alreadySent;
+
+  Future<void> _open() async {
+    final sent = await showDialog<bool>(
+      context: context,
+      builder: (_) => ResponseDialog(
+        advertId: widget.advertId,
+        advertTitle: widget.advertTitle,
+      ),
+    );
+
+    if (sent == true && mounted) {
+      setState(() => _sent = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_sent) {
+      return Container(
+        height: 47,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: const Center(
+          child: Text(
+            'Вы уже откликнулись',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: _open,
+      child: Container(
+        height: 47,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: activeIconColor),
+        ),
+        child: const Center(
+          child: Text(
+            'Откликнуться',
             style: TextStyle(
               color: activeIconColor,
               fontSize: 14,

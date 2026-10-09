@@ -3,11 +3,12 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/response_model.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/reject_offer_dialog.dart';
-import 'package:lidle/pages/profile_dashboard/responses/response_chat_page.dart';
 import 'package:lidle/pages/profile_dashboard/responses/accept_response_page.dart';
 import 'package:lidle/pages/profile_dashboard/responses/completion_deal_page.dart';
 import 'package:lidle/pages/profile_dashboard/responses/user_account_page.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/models/message_model.dart';
+import 'package:lidle/pages/messages/chat_page.dart';
 
 class ResponseCard extends StatelessWidget {
   final ResponseModel response;
@@ -20,6 +21,12 @@ class ResponseCard extends StatelessWidget {
   final bool showCheckbox;
   final VoidCallback? onLongPress;
 
+  /// Принять отклик (09.10.2026).
+  ///
+  /// Передан — кнопка «Принять заявку» меняет состояние отклика на сервере,
+  /// а не открывает экран-макет. Не передан — поведение прежнее.
+  final VoidCallback? onAccept;
+
   const ResponseCard({
     super.key,
     required this.response,
@@ -31,10 +38,81 @@ class ResponseCard extends StatelessWidget {
     this.onSelectionChanged,
     this.showCheckbox = false,
     this.onLongPress,
+    this.onAccept,
   });
 
   String get _buttonText =>
       status == 'Выполянется' ? 'Завершить' : 'Принять заявку';
+
+  /// Заголовок с ценой.
+  ///
+  /// Цены может не быть вовсе: в отклике она необязательна, а дописывать
+  /// «0 ₽ за услугу» значит показывать человеку неправду.
+  String get _titleLine {
+    final title = response.title.trim().isEmpty ? 'Объявление' : response.title;
+
+    return response.price > 0
+        ? '$title: ${response.price.toInt()} ₽'
+        : title;
+  }
+
+  /// Аватарка.
+  ///
+  /// Сетевая, если она есть, иначе заглушка. Раньше здесь был безусловный
+  /// `AssetImage(response.userAvatar)`, и с настоящими данными это ссылка
+  /// вида https://..., то есть пустой серый круг или ошибка.
+  Widget _avatar() {
+    final url = response.avatarUrl;
+
+    if (url != null && url.startsWith('http')) {
+      return CircleAvatar(radius: 32, backgroundImage: NetworkImage(url));
+    }
+
+    if (response.userAvatar.isNotEmpty && !response.userAvatar.startsWith('http')) {
+      return CircleAvatar(
+        radius: 32,
+        backgroundImage: AssetImage(response.userAvatar),
+      );
+    }
+
+    return const CircleAvatar(
+      radius: 32,
+      backgroundColor: Color(0xFF374B5C),
+      child: Icon(Icons.person, color: Colors.white54, size: 32),
+    );
+  }
+
+  /// Открыть переписку с этим человеком.
+  ///
+  /// Плашку над диалогом собирает сервер по виду и номеру источника, поэтому
+  /// передаём `response` и номер отклика: в шапке появится то объявление, на
+  /// которое откликнулись.
+  void _openChat(BuildContext context) {
+    final message = Message(
+      senderName: response.userName,
+      senderAvatar: response.avatarUrl,
+      lastMessageTime: '',
+      unreadCount: 0,
+      isInternal: true,
+      isCompany: false,
+      userId: response.userId,
+      advertTitle: response.title,
+      advertImage: response.advertImage,
+      advertPrice: response.price > 0 ? '${response.price.toInt()}' : null,
+      advertisementId: response.advertId?.toString(),
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatPage(
+          message: message,
+          sourceType: 'response',
+          sourceId: response.responseId,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +160,7 @@ class ResponseCard extends StatelessWidget {
 
               const SizedBox(height: 8),
               Text(
-                '${response.title}: ${response.price.toInt()} ₽ за услугу',
+                _titleLine,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -102,10 +180,7 @@ class ResponseCard extends StatelessWidget {
                         ),
                       );
                     },
-                    child: CircleAvatar(
-                      radius: 32,
-                      backgroundImage: AssetImage(response.userAvatar),
-                    ),
+                    child: _avatar(),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -131,24 +206,29 @@ class ResponseCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Рейтинг',
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
-                        ),
-                        Row(
-                          children: List.generate(5, (index) {
-                            return Icon(
-                              index < response.rating.floor()
-                                  ? Icons.star
-                                  : index < response.rating
-                                  ? Icons.star_half
-                                  : Icons.star_border,
-                              color: Colors.orange,
-                              size: 16,
-                            );
-                          }),
-                        ),
+                        // Рейтинг показываем ТОЛЬКО когда он есть. Пустые
+                        // звёзды читаются как «плохой исполнитель», а не как
+                        // «его ещё никто не оценивал».
+                        if (response.rating > 0) ...[
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Рейтинг',
+                            style: TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                          Row(
+                            children: List.generate(5, (index) {
+                              return Icon(
+                                index < response.rating.floor()
+                                    ? Icons.star
+                                    : index < response.rating
+                                    ? Icons.star_half
+                                    : Icons.star_border,
+                                color: Colors.orange,
+                                size: 16,
+                              );
+                            }),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -160,15 +240,7 @@ class ResponseCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ResponseChatPage(response: response),
-                          ),
-                        );
-                      },
+                      onPressed: () => _openChat(context),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFF00B7FF)),
                         shape: RoundedRectangleBorder(
@@ -247,13 +319,24 @@ class ResponseCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${response.title}: ${response.price.toInt()} ₽ за услугу',
+              _titleLine,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
+            // Текст отклика. Это главное в отклике: автор объявления решает
+            // по нему, а не по цене.
+            if ((response.message ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                response.message!,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [
@@ -267,10 +350,7 @@ class ResponseCard extends StatelessWidget {
                       ),
                     );
                   },
-                  child: CircleAvatar(
-                    radius: 32,
-                    backgroundImage: AssetImage(response.userAvatar),
-                  ),
+                  child: _avatar(),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -296,44 +376,60 @@ class ResponseCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Рейтинг',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                      Row(
-                        children: List.generate(5, (index) {
-                          return Icon(
-                            index < response.rating.floor()
-                                ? Icons.star
-                                : index < response.rating
-                                ? Icons.star_half
-                                : Icons.star_border,
-                            color: Colors.orange,
-                            size: 16,
-                          );
-                        }),
-                      ),
+                      if (response.rating > 0) ...[
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Рейтинг',
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                        Row(
+                          children: List.generate(5, (index) {
+                            return Icon(
+                              index < response.rating.floor()
+                                  ? Icons.star
+                                  : index < response.rating
+                                  ? Icons.star_half
+                                  : Icons.star_border,
+                              color: Colors.orange,
+                              size: 16,
+                            );
+                          }),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            if (status == 'Выполняется') ...[
+            // Решать судьбу отклика может только автор объявления. На
+            // вкладке «Мои отклики» экран не передаёт колбэков, и тогда
+            // остаётся одна кнопка «Написать»: принимать собственный отклик
+            // человеку нечего.
+            if (onAccept == null && onReject == null && status != 'Выполняется') ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => _openChat(context),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF00B7FF)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Text(
+                    'Написать',
+                    style: TextStyle(color: Color(0xFF00B7FF)),
+                  ),
+                ),
+              ),
+            ] else if (status == 'Выполняется') ...[
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ResponseChatPage(response: response),
-                          ),
-                        );
-                      },
+                      onPressed: () => _openChat(context),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFF00B7FF)),
                         shape: RoundedRectangleBorder(
@@ -409,15 +505,7 @@ class ResponseCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ResponseChatPage(response: response),
-                          ),
-                        );
-                      },
+                      onPressed: () => _openChat(context),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFF00B7FF)),
                         shape: RoundedRectangleBorder(
@@ -438,6 +526,12 @@ class ResponseCard extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
+                    if (onAccept != null) {
+                      onAccept!.call();
+
+                      return;
+                    }
+
                     Navigator.push(
                       context,
                       MaterialPageRoute(

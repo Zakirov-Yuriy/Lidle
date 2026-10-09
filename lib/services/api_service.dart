@@ -19,6 +19,7 @@ import 'package:lidle/services/api/catalog_api.dart';
 import 'package:lidle/services/api/chat_api.dart';
 import 'package:lidle/services/api/geography_api.dart';
 import 'package:lidle/services/api/offers_api.dart';
+import 'package:lidle/services/api/responses_api.dart';
 import 'package:lidle/services/api/user_api.dart';
 import 'package:lidle/services/api/wishlist_api.dart';
 import 'package:lidle/services/device_info_service.dart';
@@ -2491,6 +2492,51 @@ class ApiService {
   }) =>
       AttributesApi.getListingsFilterAttributes(
         categoryId: categoryId,
+        token: token,
+      );
+
+  // ============================================================
+  // Отклики на объявления (09.10.2026, задача 15).
+  // Разбор: back/api/adverts/responses-api.md
+  // ============================================================
+
+  /// Откликнуться на объявление. Сервер заодно заводит сообщение автору.
+  static Future<Map<String, dynamic>> submitResponse({
+    required int advertId,
+    required String message,
+    double? price,
+    String? token,
+  }) =>
+      ResponsesApi.submitResponse(
+        advertId: advertId,
+        message: message,
+        price: price,
+        token: token,
+      );
+
+  /// Мои отклики: на что откликнулся я.
+  static Future<List<Map<String, dynamic>>> getMyResponses({
+    String? token,
+    int page = 1,
+  }) =>
+      ResponsesApi.getMyResponses(token: token, page: page);
+
+  /// Отклики мне: на мои объявления.
+  static Future<List<Map<String, dynamic>>> getReceivedResponses({
+    String? token,
+    int page = 1,
+  }) =>
+      ResponsesApi.getReceivedResponses(token: token, page: page);
+
+  /// Принять (2) или отклонить (3) отклик.
+  static Future<Map<String, dynamic>> updateResponseStatus({
+    required int responseId,
+    required int statusId,
+    String? token,
+  }) =>
+      ResponsesApi.updateResponseStatus(
+        responseId: responseId,
+        statusId: statusId,
         token: token,
       );
 

@@ -238,6 +238,21 @@ class Listing {
   /// скрывает: у заведения без отзывов они просто не закрашены.
   final bool showsRating;
 
+  /// Можно ли откликнуться на это объявление (09.10.2026, задача 15).
+  ///
+  /// Решает СЕРВЕР: отклики включаются пометкой характеристики категории в
+  /// админке, и приложение не должно знать, в каких разделах они есть.
+  /// Приходит только в карточке объявления, в ленте этого поля нет.
+  final bool canRespond;
+
+  /// Я уже откликался на это объявление. Второй отклик сервер не примет,
+  /// поэтому кнопка гаснет.
+  final bool isResponded;
+
+  /// Сколько откликов пришло. Приходит ТОЛЬКО владельцу объявления, у
+  /// остальных пусто: чужому человеку это знать незачем.
+  final int? responsesCount;
+
   /// Конструктор для создания экземпляра [Listing].
   Listing({
     // Changed to non-const constructor
@@ -276,6 +291,9 @@ class Listing {
     this.hallsCount = 0,
     this.categoryPath,
     this.feedAttributes = const [],
+    this.canRespond = false,
+    this.isResponded = false,
+    this.responsesCount,
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -497,6 +515,13 @@ class Listing {
           ? json['wishlist_id'] as int
           : int.tryParse('${json['wishlist_id'] ?? ''}'),
       isBargain: json['is_bargain'] ?? false,
+      // Отклики (09.10.2026). Полей может не быть вовсе: в ленте их нет, и
+      // у старой сборки сервера тоже. Пусто означает «откликаться нельзя».
+      canRespond: json['can_respond'] == true,
+      isResponded: json['is_responded'] == true,
+      responsesCount: json['responses_count'] is int
+          ? json['responses_count'] as int
+          : int.tryParse('${json['responses_count'] ?? ''}'),
       // API detail endpoint returns seller info under 'user' key,
       // while some responses may use 'seller' key.
       //
