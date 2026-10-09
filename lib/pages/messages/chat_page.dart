@@ -319,7 +319,39 @@ class _ChatPageState extends State<ChatPage> {
   void _openSource(ChatSource source) {
     final targetId = source.targetId;
 
-    if (_isNavigatingToProperty || targetId == null) return;
+    if (targetId == null) return;
+
+    if (source.leadsToProduct) {
+      _openProductById(targetId);
+      return;
+    }
+
+    _openAdvertById(
+      '$targetId',
+      title: source.title,
+      price: source.price,
+      image: source.image,
+    );
+  }
+
+  /// Открыть объявление по номеру.
+  ///
+  /// Ведём на MiniPropertyDetailsScreen, тот же экран, что открывается из
+  /// ленты. Прежний код вёл на PropertyDetailsScreen, и приложение на этом
+  /// падало: тот экран остался от макета, загрузка объявления в нём
+  /// закомментирована, а данные прописаны жёстко (09.10.2026).
+  ///
+  /// Экран докачивает объявление сам, если в переданном мало полей, поэтому
+  /// хватает номера, заголовка, цены и картинки из плашки.
+  void _openAdvertById(
+    String? id, {
+    String? title,
+    String? price,
+    String? image,
+  }) {
+    final advertId = (id ?? '').trim();
+
+    if (_isNavigatingToProperty || advertId.isEmpty) return;
 
     // Переписка открыта с того же экрана, куда ведёт плашка: возвращаемся
     // назад, а не кладём сверху ещё одну копию того же экрана.
@@ -330,12 +362,38 @@ class _ChatPageState extends State<ChatPage> {
 
     _isNavigatingToProperty = true;
 
+    final picture = image ?? _topAdvertImage ?? widget.message.advertImage;
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => source.leadsToProduct
-            ? ProductDetailsScreen(productId: targetId)
-            : PropertyDetailsScreen(advertisementId: '$targetId'),
+        builder: (context) => MiniPropertyDetailsScreen(
+          listing: Listing(
+            id: advertId,
+            imagePath: picture ?? '',
+            images: picture == null ? const [] : [picture],
+            title: title ?? _topAdvertTitle ?? widget.message.advertTitle ?? '',
+            price: price ?? _topAdvertPrice ?? widget.message.advertPrice ?? '',
+            location: '',
+            date: '',
+          ),
+        ),
+      ),
+    ).then((_) {
+      if (mounted) setState(() => _isNavigatingToProperty = false);
+    });
+  }
+
+  /// Открыть товар по номеру.
+  void _openProductById(int productId) {
+    if (_isNavigatingToProperty) return;
+
+    _isNavigatingToProperty = true;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProductDetailsScreen(productId: productId),
       ),
     ).then((_) {
       if (mounted) setState(() => _isNavigatingToProperty = false);
@@ -1010,47 +1068,9 @@ class _ChatPageState extends State<ChatPage> {
                               ),
                               const SizedBox(height: 2),
                               GestureDetector(
-                                onTap: () {
-                                  // 🔗 Переход на объявление по ID с защитой от множественных тапов
-                                  final adId = _topAdvertId ?? widget.message.advertisementId;
-                                  
-                                  if (_isNavigatingToProperty || adId == null) {
-                                    log.d('⚠️ Невозможно перейти: _isNavigatingToProperty=$_isNavigatingToProperty, adId=$adId');
-                                    return;
-                                  }
-
-                                  // Если чат был открыт с экрана объявления — просто возвращаемся назад
-                                  if (widget.openedFromAdvertScreen &&
-                                      Navigator.canPop(context)) {
-                                    Navigator.pop(context);
-                                    return;
-                                  }
-
-                                  _isNavigatingToProperty = true;
-                                  log.d(
-                                    '🔗 Переходим на объявление #$adId',
-                                  );
-
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          PropertyDetailsScreen(
-                                            advertisementId: adId,
-                                          ),
-                                    ),
-                                  ).then((_) {
-                                    // ✅ Возвращаемся из PropertyDetailsScreen
-                                    if (mounted) {
-                                      log.d(
-                                        '✅ Вернулись из PropertyDetailsScreen',
-                                      );
-                                      setState(() {
-                                        _isNavigatingToProperty = false;
-                                      });
-                                    }
-                                  });
-                                },
+                                onTap: () => _openAdvertById(
+                                  _topAdvertId ?? widget.message.advertisementId,
+                                ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -1360,23 +1380,30 @@ class _ChatPageState extends State<ChatPage> {
       children: [
         GestureDetector(
           onTap: () {
-            if (_isNavigatingToProperty || adId == null) return;
+            if (adId == null) return;
 
-            _isNavigatingToProperty = true;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => listing != null
-                    ? MiniPropertyDetailsScreen(listing: listing)
-                    : PropertyDetailsScreen(advertisementId: adId),
-              ),
-            ).then((_) {
-              if (mounted) {
-                setState(() {
-                  _isNavigatingToProperty = false;
-                });
-              }
-            });
+            // Тот же путь, что и у плашки в шапке. Прежний запасной вариант
+            // вёл на PropertyDetailsScreen, экран-макет, и приложение
+            // закрывалось (09.10.2026).
+            if (listing != null) {
+              if (_isNavigatingToProperty) return;
+              _isNavigatingToProperty = true;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MiniPropertyDetailsScreen(listing: listing),
+                ),
+              ).then((_) {
+                if (mounted) {
+                  setState(() {
+                    _isNavigatingToProperty = false;
+                  });
+                }
+              });
+              return;
+            }
+
+            _openAdvertById(adId, title: title, price: price, image: image);
           },
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 4),
