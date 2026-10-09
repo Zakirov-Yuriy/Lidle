@@ -85,6 +85,33 @@ class ResponsesApi {
     return _list(response, 'getReceivedResponses');
   }
 
+  /// Сколько откликов ждут решения.
+  ///
+  /// Спрашиваем ОДНУ запись и читаем общее число из `meta.total`: счётчику
+  /// нужно число, а не двадцать откликов с объявлениями и людьми.
+  static Future<int> getNewResponsesCount({String? token}) async {
+    final effectiveToken = ApiBase.requireToken(token);
+
+    final response = await ApiService.getWithQuery(
+      '/me/responses/received',
+      {'status_id': 1, 'per_page': 1},
+      token: effectiveToken,
+    );
+
+    final meta = response['meta'];
+
+    if (meta is Map && meta['total'] is num) {
+      return (meta['total'] as num).toInt();
+    }
+
+    // Старая сборка сервера про `meta` не знает: тогда считаем по списку.
+    if (response['data'] is List) {
+      return (response['data'] as List).length;
+    }
+
+    return 0;
+  }
+
   /// Принять или отклонить отклик.
   /// PUT /v1/me/responses/{id}
   ///

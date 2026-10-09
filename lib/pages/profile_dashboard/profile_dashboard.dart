@@ -205,6 +205,13 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   int _inactiveListingsCount = 0;
   int _priceOffersCount = 0;
 
+  /// Отклики, ждущие решения (09.10.2026, задача 15).
+  ///
+  /// Считаем ТОЛЬКО новые, как у заказов: число в кружке должно означать
+  /// «столько дел», а не «столько всего было». Принял или отклонил, и отклик
+  /// из счётчика уходит.
+  int _responsesCount = 0;
+
   /// Новые заказы на товары: те, по которым продавец ещё не решил, принять
   /// или отклонить (16.09.2026).
   int _newOrdersCount = 0;
@@ -276,6 +283,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     _loadListingsCounts(useCache: true);
     // 💰 Загружаем количество предложений цен
     _loadPriceOffersCount(useCache: true);
+    // Отклики, ждущие решения
+    _loadResponsesCount(useCache: true);
     // ⭐ Количество отзывов на объявления пользователя
     _loadReviewsCount();
     // 📅 Счётчики броней
@@ -346,6 +355,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     if (state == AppLifecycleState.resumed && mounted) {
       _loadListingsCounts(useCache: true);
       _loadPriceOffersCount(useCache: true);
+      _loadResponsesCount(useCache: true);
       _loadBookingCounts();
       _loadOrdersCount();
     }
@@ -770,6 +780,46 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     }
   }
 
+  /// Сколько откликов на мои объявления ждут решения.
+  ///
+  /// Сервер считает сам: мы просим одну запись с состоянием «новый» и читаем
+  /// общее число. Тащить ради числа весь список незачем.
+  Future<void> _loadResponsesCount({bool useCache = false}) async {
+    try {
+      if (useCache) {
+        final cached = AppCacheService().get<int>(
+          CacheKeys.profileResponsesCount,
+        );
+
+        if (cached != null) {
+          if (mounted) {
+            setState(() => _responsesCount = cached);
+          }
+
+          return;
+        }
+      }
+
+      if (TokenService.currentToken == null) {
+        return;
+      }
+
+      final count = await ApiService.getNewResponsesCount();
+
+      AppCacheService().set<int>(
+        CacheKeys.profileResponsesCount,
+        count,
+        ttl: _cacheTtl,
+      );
+
+      if (mounted) {
+        setState(() => _responsesCount = count);
+      }
+    } catch (e) {
+      log.d('Не удалось посчитать отклики: $e');
+    }
+  }
+
   Future<void> _loadPriceOffersCount({bool useCache = false}) async {
     try {
       // Проверяем AppCacheService (L1 RAM, TTL 60с)
@@ -1119,11 +1169,22 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   ],
                                   _MenuItem(
                                     title: 'Отклики',
-                                    count: 0,
+                                    count: _responsesCount,
+                                    // Подсвечиваем, только когда есть что
+                                    // разбирать: ноль в рамке выглядит как
+                                    // дело, которого нет.
+                                    isHighlight: _responsesCount > 0,
                                     trailingChevron: true,
-                                    onTap: () => Navigator.of(
-                                      context,
-                                    ).pushNamed(ResponsesEmptyPage.routeName),
+                                    onTap: () => Navigator.of(context)
+                                        .pushNamed(
+                                          ResponsesEmptyPage.routeName,
+                                        )
+                                        .then((_) {
+                                          // Вернулись с экрана: отклик могли
+                                          // принять или отклонить, и число
+                                          // должно это учесть.
+                                          _loadResponsesCount(useCache: false);
+                                        }),
                                   ),
                                   const Divider(
                                     color: Color(0xFF474747),

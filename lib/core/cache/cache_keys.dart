@@ -38,6 +38,9 @@ abstract final class CacheKeys {
   /// Ключ счётчика предложений цен в профиле.
   static const String profilePriceOffersCount = 'profile_price_offers_count';
 
+  /// Ключ счётчика откликов, ждущих решения (09.10.2026).
+  static const String profileResponsesCount = 'profile_responses_count';
+
   // ─────────────────────────────────────────────
   // Сообщения
   // ─────────────────────────────────────────────

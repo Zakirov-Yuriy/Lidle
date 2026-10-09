@@ -2528,6 +2528,10 @@ class ApiService {
   }) =>
       ResponsesApi.getReceivedResponses(token: token, page: page);
 
+  /// Сколько откликов на мои объявления ждут решения.
+  static Future<int> getNewResponsesCount({String? token}) =>
+      ResponsesApi.getNewResponsesCount(token: token);
+
   /// Принять (2) или отклонить (3) отклик.
   static Future<Map<String, dynamic>> updateResponseStatus({
     required int responseId,
