@@ -35,7 +35,7 @@ class ResponseModel {
   /// Текст отклика. Это главное в отклике, а не цена.
   final String? message;
 
-  /// Состояние: 1 новый, 2 принят, 3 отклонён.
+  /// Состояние: 1 новый, 2 принят, 3 отклонён, 4 завершён.
   final int? statusId;
 
   /// Название состояния, как его отдал сервер.
@@ -120,6 +120,9 @@ class ResponseModel {
 
   /// Отклонён.
   bool get isRejected => statusId == 3;
+
+  /// Работа по отклику завершена.
+  bool get isCompleted => statusId == 4;
 
   static String? _text(dynamic value) {
     if (value == null) {

@@ -22,10 +22,15 @@ class ResponseDialog extends StatefulWidget {
   final int advertId;
   final String advertTitle;
 
+  /// На что откликаются: 'advert' или 'product'. Адреса на сервере разные,
+  /// форма одна.
+  final String targetType;
+
   const ResponseDialog({
     super.key,
     required this.advertId,
     this.advertTitle = '',
+    this.targetType = 'advert',
   });
 
   @override
@@ -88,6 +93,7 @@ class _ResponseDialogState extends State<ResponseDialog> {
         advertId: widget.advertId,
         message: message,
         price: price,
+        targetType: widget.targetType,
       );
 
       if (!mounted) {

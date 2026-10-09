@@ -4,6 +4,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
+import 'package:lidle/widgets/dialogs/response_dialog.dart';
 import 'package:lidle/models/products/product_item.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/products/cart_screen.dart';
@@ -51,6 +52,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   ProductItem? _product;
   bool _isLoading = true;
   bool _isAdding = false;
+
+  /// Откликнулся ли человек прямо сейчас, в этом открытии карточки
+  /// (09.10.2026). Нужен, чтобы кнопка погасла сразу, без перезагрузки.
+  bool _responded = false;
 
   int _quantity = 1;
   int _currentImage = 0;
@@ -381,6 +386,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
         const SizedBox(height: 12),
         _buildStock(product),
+        // Откликнуться (09.10.2026, задача 15). Показывается там, где
+        // отклики включены пометкой характеристики категории: решает
+        // сервер полем can_respond. У обычных товаров его нет.
+        if (product.canRespond) ...[
+          const SizedBox(height: 12),
+          _buildRespondButton(product),
+        ],
         // Из какой категории товар (30.09.2026).
         if ((product.categoryPath ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -2106,6 +2118,61 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             style: TextStyle(color: textMuted, fontSize: 13),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Кнопка «Откликнуться» (09.10.2026, задача 15).
+  ///
+  /// Своё состояние держим в поле экрана: после отправки кнопка гаснет, и
+  /// перезагружать ради этого всю карточку незачем. Второй отклик на тот же
+  /// товар сервер не примет.
+  Widget _buildRespondButton(ProductItem product) {
+    final sent = _responded || product.isResponded;
+
+    if (sent) {
+      return Container(
+        height: 47,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: const Center(
+          child: Text(
+            'Вы уже откликнулись',
+            style: TextStyle(color: Colors.white54, fontSize: 14),
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () async {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (_) => ResponseDialog(
+            advertId: product.id,
+            advertTitle: product.name,
+            targetType: 'product',
+          ),
+        );
+
+        if (ok == true && mounted) {
+          setState(() => _responded = true);
+        }
+      },
+      child: Container(
+        height: 47,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: activeIconColor),
+        ),
+        child: const Center(
+          child: Text(
+            'Откликнуться',
+            style: TextStyle(color: activeIconColor, fontSize: 14),
+          ),
+        ),
       ),
     );
   }

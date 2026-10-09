@@ -91,6 +91,47 @@ class _ChatPageState extends State<ChatPage> {
   /// номер объявления уже известен самой переписке, собираем привязку из
   /// него. Так плашка появится и с тех экранов, которых правка не
   /// коснулась.
+  /// Плашка для переписок, заведённых до задачи 15 (09.10.2026).
+  ///
+  /// Сервер привязку по ним не отдаёт: её тогда не было. Зато список чатов
+  /// знает объявление, по которому переписка началась, и этого хватает на ту
+  /// же самую плашку.
+  ///
+  /// Когда экран открыт С КАРТОЧКИ объявления, плашки здесь нет: объявление
+  /// и так вставляется в ленту первым сообщением, и показывать его дважды
+  /// на одном экране незачем.
+  ChatSource? get _legacySource {
+    if (widget.openedFromAdvertScreen) {
+      return null;
+    }
+
+    final id = int.tryParse(
+      '${_topAdvertId ?? widget.message.advertisementId ?? ''}',
+    );
+
+    if (id == null) {
+      return null;
+    }
+
+    final title = (_topAdvertTitle?.isNotEmpty == true)
+        ? _topAdvertTitle
+        : widget.message.advertTitle;
+
+    final price = _topAdvertPrice ?? widget.message.advertPrice;
+
+    return ChatSource(
+      type: 'advert',
+      id: id,
+      targetType: 'advert',
+      targetId: id,
+      title: (title ?? '').trim().isEmpty ? 'Объявление' : title,
+      image: _topAdvertImage ?? widget.message.advertImage,
+      // Цена приходит голым числом, рубль дописываем сами: на сервере это
+      // делает ChatSourceService, и выглядеть должно одинаково.
+      price: (price ?? '').toString().trim().isEmpty ? null : '$price ₽',
+    );
+  }
+
   String? get _outgoingSourceType {
     if (widget.sourceType != null && widget.sourceId != null) {
       return widget.sourceType;
@@ -963,148 +1004,18 @@ class _ChatPageState extends State<ChatPage> {
                 onOpen: () => _openSource(_source!),
               ),
 
-            // Старый блок: показывается только когда привязки с сервера нет.
-            // Нужен для переписок, заведённых до задачи 15, и для случая,
-            // когда экран открыт с карточки объявления.
-            if (_source == null && !widget.openedFromAdvertScreen && 
-                (_topAdvertImage != null || 
-                 widget.message.advertImage != null || 
-                 _topAdvertTitle != null || 
-                 widget.message.advertTitle != null ||
-                 widget.message.advertisementId != null)) // Добавляем условие - если есть ID, показываем плашку
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: Container(
-                    decoration: BoxDecoration(color: formBackground),
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        // Image
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child:
-                              (_topAdvertImage ?? widget.message.advertImage) !=
-                                  null
-                              ? ((_topAdvertImage ??
-                                            widget.message.advertImage)!
-                                        .startsWith('http')
-                                    ? Image.network(
-                                        (_topAdvertImage ??
-                                            widget.message.advertImage)!,
-                                        height: 66,
-                                        width: 86,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                              return Container(
-                                                color: const Color(0xFF374B5C),
-                                                height: 66,
-                                                width: 86,
-                                                child: const Icon(
-                                                  Icons.image,
-                                                  color: Colors.white54,
-                                                  size: 30,
-                                                ),
-                                              );
-                                            },
-                                      )
-                                    : Image.asset(
-                                        (_topAdvertImage ??
-                                            widget.message.advertImage)!,
-                                        height: 66,
-                                        width: 86,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                              return Container(
-                                                color: const Color(0xFF374B5C),
-                                                height: 66,
-                                                width: 86,
-                                                child: const Icon(
-                                                  Icons.image,
-                                                  color: Colors.white54,
-                                                  size: 30,
-                                                ),
-                                              );
-                                            },
-                                      ))
-                              : Container(
-                                  height: 66,
-                                  width: 86,
-                                  color: const Color(0xFF374B5C),
-                                  child: const Icon(
-                                    Icons.image,
-                                    color: Colors.white54,
-                                    size: 30,
-                                  ),
-                                ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Content
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                // Показываем превью из состояния, если есть, иначе из переданного сообщения
-                                _topAdvertTitle?.isNotEmpty == true
-                                    ? _topAdvertTitle!
-                                    : (widget.message.advertTitle?.isNotEmpty ==
-                                              true
-                                          ? widget.message.advertTitle!
-                                          : 'Объявление'),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.3,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${_topAdvertPrice ?? widget.message.advertPrice ?? 'Цена не указана'} ₽',
-                                style: const TextStyle(
-                                  color: Color.fromARGB(255, 255, 255, 255),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              GestureDetector(
-                                onTap: () => _openAdvertById(
-                                  _topAdvertId ?? widget.message.advertisementId,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Text(
-                                      'Перейти',
-                                      style: TextStyle(
-                                        color: const Color(0xFF00B7FF),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Icon(
-                                      Icons.arrow_forward_ios,
-                                      color: const Color(0xFF00B7FF),
-                                      size: 14,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+            // Переписка заведена ДО задачи 15: привязки с сервера нет, но
+            // кое-что о предмете разговора известно из списка чатов. Собираем
+            // ту же плашку сами, чтобы вёрстка была одна (09.10.2026).
+            //
+            // Прежде здесь лежала вторая плашка, своя, на сто с лишним строк:
+            // те же картинка, заголовок, цена и «Перейти», только другими
+            // отступами и цветами. Две вёрстки одного и того же расходятся
+            // после первой же правки одной из них.
+            if (_source == null && _legacySource != null)
+              ChatSourceCard(
+                source: _legacySource!,
+                onOpen: () => _openSource(_legacySource!),
               ),
 
             // const SizedBox(height: 10),

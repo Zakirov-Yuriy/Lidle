@@ -2505,12 +2505,14 @@ class ApiService {
     required int advertId,
     required String message,
     double? price,
+    String targetType = 'advert',
     String? token,
   }) =>
       ResponsesApi.submitResponse(
         advertId: advertId,
         message: message,
         price: price,
+        targetType: targetType,
         token: token,
       );
 

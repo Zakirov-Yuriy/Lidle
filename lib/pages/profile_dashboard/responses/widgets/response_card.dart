@@ -27,6 +27,12 @@ class ResponseCard extends StatelessWidget {
   /// а не открывает экран-макет. Не передан — поведение прежнее.
   final VoidCallback? onAccept;
 
+  /// Завершить работу по отклику (09.10.2026).
+  ///
+  /// Передан — кнопка «Завершить» меняет состояние на сервере, а не
+  /// открывает экран-макет.
+  final VoidCallback? onComplete;
+
   const ResponseCard({
     super.key,
     required this.response,
@@ -39,6 +45,7 @@ class ResponseCard extends StatelessWidget {
     this.showCheckbox = false,
     this.onLongPress,
     this.onAccept,
+    this.onComplete,
   });
 
   String get _buttonText =>
@@ -447,6 +454,12 @@ class ResponseCard extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
+                        if (onComplete != null) {
+                          onComplete!.call();
+
+                          return;
+                        }
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(

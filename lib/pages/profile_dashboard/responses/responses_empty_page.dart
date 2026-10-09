@@ -29,7 +29,6 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
   int _currentTab = 0;
   Map<String, bool> _selectedCards = {}; // Track selected cards
   bool _isSelectionMode = false; // Track selection mode for performing tab
-  bool _isArchiveSelectionMode = false; // Track selection mode for archive tab
 
   /// Идёт ли загрузка с сервера.
   bool _isLoading = true;
@@ -76,15 +75,18 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
       setState(() {
         mainResponses = items.where((r) => r.isNew).toList();
         performingResponses = items.where((r) => r.isAccepted).toList();
-        archivedResponses = items.where((r) => r.isRejected).toList();
+        // В архиве два разных исхода: отказ и выполненная работа. Карточка
+        // пишет о них по-разному, и смешивать их в одну кучу нельзя.
+        archivedResponses =
+            items.where((r) => r.isRejected || r.isCompleted).toList();
 
         archiveReasons = {
-          for (final row in archivedResponses) row.id: 'rejected',
+          for (final row in archivedResponses)
+            row.id: row.isCompleted ? 'completed' : 'rejected',
         };
 
         _selectedCards = {};
         _isSelectionMode = false;
-        _isArchiveSelectionMode = false;
         _isLoading = false;
       });
     } catch (e) {
@@ -223,15 +225,11 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
   Map<String, String> archiveReasons =
       {}; // Track archive reasons by response ID
 
-  void _moveToArchive(ResponseModel response) {
-    setState(() {
-      performingResponses.remove(response);
-      // Add to archived with 'completed' reason
-      archivedResponses.add(response);
-      archiveReasons[response.id] = 'completed';
-      _selectedCards.remove(response.id);
-    });
-  }
+  /// Завершить работу по отклику: состояние 4.
+  ///
+  /// Раньше карточка просто переезжала в архив в памяти, и после обновления
+  /// экрана возвращалась обратно. Теперь это решение, и живёт оно на сервере.
+  Future<void> _complete(ResponseModel response) => _setStatus(response, 4);
 
   /// Отклонить всё выбранное.
   ///
@@ -294,61 +292,8 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
 
       // Exit selection mode if deselecting all
       if (!selectAll) {
-        if (_currentTab == 1) {
-          _isSelectionMode = false;
-        } else if (_currentTab == 2) {
-          _isArchiveSelectionMode = false;
-        }
+        _isSelectionMode = false;
       }
-    });
-  }
-
-  void _enterArchiveSelectionMode(String responseId) {
-    setState(() {
-      _isArchiveSelectionMode = true;
-      _selectedCards[responseId] = true;
-    });
-  }
-
-  void _deleteSelectedFromArchive() {
-    setState(() {
-      final selectedIds = _selectedCards.entries
-          .where((e) => e.value)
-          .map((e) => e.key)
-          .toList();
-
-      for (final id in selectedIds) {
-        final response = archivedResponses.firstWhereOrNull((r) => r.id == id);
-        if (response != null) {
-          archivedResponses.remove(response);
-          archiveReasons.remove(response.id);
-        }
-      }
-
-      _selectedCards.clear();
-      _isArchiveSelectionMode = false;
-    });
-  }
-
-  void _unarchiveSelectedCards() {
-    setState(() {
-      final selectedIds = _selectedCards.entries
-          .where((e) => e.value)
-          .map((e) => e.key)
-          .toList();
-
-      for (final id in selectedIds) {
-        final response = archivedResponses.firstWhereOrNull((r) => r.id == id);
-        if (response != null) {
-          archivedResponses.remove(response);
-          archiveReasons.remove(response.id);
-          // Restore to performing tab
-          performingResponses.add(response);
-        }
-      }
-
-      _selectedCards.clear();
-      _isArchiveSelectionMode = false;
     });
   }
 
@@ -459,64 +404,15 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
               ),
             ),
           ],
-          // Show selection header for archive tab
-          if (_currentTab == 2 && _isArchiveSelectionMode) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
-              child: Row(
-                children: [
-                  CustomCheckbox(
-                    value: allSelected,
-                    onChanged: (value) {
-                      _selectAllCards(value);
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Выбрать все',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (anySelected)
-                    GestureDetector(
-                      onTap: _unarchiveSelectedCards,
-                      child: const Text(
-                        'Из архива',
-                        style: TextStyle(
-                          color: Color(0xFF00B7FF),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  if (anySelected) const SizedBox(width: 10),
-                  if (anySelected)
-                    Container(
-                      width: 1,
-                      height: 19,
-                      color: Colors.grey.withOpacity(0.5),
-                    ),
-                  if (anySelected) const SizedBox(width: 10),
-                  if (anySelected)
-                    GestureDetector(
-                      onTap: _deleteSelectedFromArchive,
-                      child: const Text(
-                        'Удалить',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
+          // В архиве выбора НЕТ (09.10.2026).
+          //
+          // Там были «Из архива» и «Удалить» с макета, и обе работали только
+          // в памяти: сервер возвращать отклонённый отклик в работу не умеет
+          // и не должен. После обновления экрана всё возвращалось назад, и
+          // выглядело это как потерянное действие.
+          //
+          // Архив это не папка, а след решения: отклонили, и так оно и
+          // осталось. Нужен человек снова — он откликнется ещё раз.
           Expanded(
             child: ListView.builder(
               itemCount: currentResponses.length,
@@ -540,9 +436,7 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
                   response: currentResponses[index],
                   status: status,
                   archiveReason: archiveReason,
-                  showCheckbox:
-                      (_currentTab == 1 && _isSelectionMode) ||
-                      (_currentTab == 2 && _isArchiveSelectionMode),
+                  showCheckbox: _currentTab == 1 && _isSelectionMode,
                   isSelected:
                       _selectedCards[currentResponses[index].id] ?? false,
                   onSelectionChanged: (selected) {
@@ -551,11 +445,7 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
 
                       // Exit selection mode if no items are checked
                       if (!_selectedCards.values.any((v) => v)) {
-                        if (_currentTab == 1) {
-                          _isSelectionMode = false;
-                        } else if (_currentTab == 2) {
-                          _isArchiveSelectionMode = false;
-                        }
+                        _isSelectionMode = false;
                       }
                     });
                   },
@@ -565,17 +455,11 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
                             _enterSelectionMode(currentResponses[index].id);
                           }
                         }
-                      : _currentTab == 2
-                      ? () {
-                          if (!_isArchiveSelectionMode) {
-                            _enterArchiveSelectionMode(
-                              currentResponses[index].id,
-                            );
-                          }
-                        }
                       : null,
-                  onArchive: _currentTab == 1
-                      ? () => _moveToArchive(currentResponses[index])
+                  // «Завершить» на вкладке «Выполняется»: только у автора
+                  // объявления, он же принимал отклик.
+                  onComplete: _currentTopTab == 0 && _currentTab == 1
+                      ? () => _complete(currentResponses[index])
                       : null,
                   // Отклонить может только автор объявления: на своих
                   // откликах сервер ответит отказом, и кнопку показывать

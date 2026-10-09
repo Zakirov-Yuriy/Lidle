@@ -28,10 +28,13 @@ class ResponsesApi {
   ///
   /// Сервер заодно заводит сообщение автору объявления с этим же текстом и
   /// плашкой объявления в шапке переписки. Отдельно писать в чат не нужно.
+  /// `targetType`: 'advert' или 'product'. Адреса разные, остальное
+  /// одинаковое, поэтому метод один.
   static Future<Map<String, dynamic>> submitResponse({
     required int advertId,
     required String message,
     double? price,
+    String targetType = 'advert',
     String? token,
   }) async {
     final effectiveToken = ApiBase.requireToken(token);
@@ -44,8 +47,10 @@ class ResponsesApi {
       body['price'] = price;
     }
 
+    final path = targetType == 'product' ? 'products' : 'adverts';
+
     return ApiService.post(
-      '/adverts/$advertId/response',
+      '/$path/$advertId/response',
       body,
       token: effectiveToken,
     );

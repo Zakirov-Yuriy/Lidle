@@ -34,6 +34,16 @@ class ProductItem {
   final double? rating;
   final int reviewsCount;
 
+  /// Можно ли откликнуться на товар (09.10.2026, задача 15).
+  ///
+  /// Решает сервер: отклики включаются пометкой характеристики категории в
+  /// админке. В витрине этих полей нет, и тогда они пустые, то есть
+  /// «откликаться нельзя».
+  final bool canRespond;
+
+  /// Я уже откликался на этот товар. Второй отклик сервер не примет.
+  final bool isResponded;
+
   /// Может ли ЭТОТ человек оставить отзыв (15.09.2026).
   ///
   /// Решает сервер: отзыв оставляет только тот, кто купил товар и забрал
@@ -121,6 +131,8 @@ class ProductItem {
     this.date = '',
     this.isWishlisted = false,
     this.wishlistId,
+    this.canRespond = false,
+    this.isResponded = false,
     this.canReview = false,
     this.reviewNotAllowed,
     this.myReview,
@@ -173,6 +185,8 @@ class ProductItem {
           : const [],
       cookingTimeMinutes: _int(data['cooking_time_minutes']),
       canOrder: data['can_order'] != false,
+      canRespond: data['can_respond'] == true,
+      isResponded: data['is_responded'] == true,
       orderNotice: () {
         final notice = '${data['order_notice'] ?? ''}'.trim();
         return notice.isEmpty ? null : notice;
