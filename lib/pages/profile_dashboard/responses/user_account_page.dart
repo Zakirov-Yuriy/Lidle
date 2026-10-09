@@ -7,6 +7,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/token_service.dart';
+import 'package:lidle/core/logger.dart';
 
 class UserAccountPage extends StatefulWidget {
   final ResponseModel response;
@@ -18,6 +22,119 @@ class UserAccountPage extends StatefulWidget {
 }
 
 class _UserAccountPageState extends State<UserAccountPage> {
+  /// Настоящие данные человека (09.10.2026, задача 15).
+  ///
+  /// В самом отклике их нет и быть не должно: список откликов не место для
+  /// телефонов и адресов. Поэтому профиль спрашиваем отдельно, той же
+  /// ручкой, что и экран аккаунта в предложениях цены.
+  ///
+  /// Пока ответ не пришёл, экран показывает то, что известно из отклика:
+  /// имя и аватарку. Это лучше, чем крутилка на весь экран.
+  Map<String, dynamic> _profile = const {};
+
+  double? _rating;
+  String? _city;
+  String? _nickname;
+  List<String> _phones = const [];
+  List<String> _telegrams = const [];
+  List<String> _whatsapps = const [];
+  List<String> _maxes = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final id = int.tryParse('${widget.response.userId ?? ''}');
+    final token = TokenService.currentToken;
+
+    if (id == null || token == null) {
+      return;
+    }
+
+    try {
+      final profile = await ApiService.getUserProfile(userId: id, token: token);
+
+      if (!mounted || profile.isEmpty) {
+        return;
+      }
+
+      List<String> pick(dynamic list, String key) {
+        if (list is! List) return const [];
+
+        return list
+            .whereType<Map>()
+            .map((item) => '${item[key] ?? ''}'.trim())
+            .where((value) => value.isNotEmpty)
+            .toList();
+      }
+
+      final contacts = profile['contacts'] as Map<String, dynamic>?;
+      final address = profile['address'] as Map<String, dynamic>?;
+      final city = address?['city'] as Map<String, dynamic>?;
+      final nick = '${profile['nickname'] ?? ''}'.trim();
+      final rating = profile['rating'];
+
+      var phones = pick(contacts?['phones'], 'phone');
+
+      // Только два последних номера, как на экране предложений цены
+      // (решение заказчика 09.10.2026): у давних пользователей их
+      // накапливается с десяток, и карточка превращается в простыню.
+      if (phones.length > 2) {
+        phones = phones.sublist(phones.length - 2);
+      }
+
+      setState(() {
+        _profile = profile;
+        _rating = rating is num ? rating.toDouble() : null;
+        _city = '${city?['name'] ?? ''}'.trim().isEmpty
+            ? null
+            : '${city!['name']}'.trim();
+        _nickname = nick.isEmpty ? null : (nick.startsWith('@') ? nick : '@$nick');
+        _phones = phones;
+        _telegrams = pick(contacts?['telegrams'], 'username');
+        _whatsapps = pick(contacts?['whatsapps'], 'number');
+        _maxes = pick(contacts?['maxes'], 'username');
+      });
+    } catch (e) {
+      log.d('Не удалось загрузить профиль откликнувшегося: $e');
+    }
+  }
+
+  /// Аватарка из сети, а нет её — общая заглушка приложения.
+  ///
+  /// Прежде здесь стоял безусловный `AssetImage` от пути, которого у
+  /// настоящих данных не бывает: получался пустой фиолетовый круг.
+  Widget _avatar() {
+    final url = widget.response.avatarUrl ?? '${_profile['avatar'] ?? ''}';
+
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF374B5C),
+      ),
+      child: ClipOval(
+        child: url.startsWith('http')
+            ? Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => SvgPicture.asset(
+                  'assets/profile_dashboard/default-photo.svg',
+                  fit: BoxFit.cover,
+                ),
+              )
+            : SvgPicture.asset(
+                'assets/profile_dashboard/default-photo.svg',
+                fit: BoxFit.cover,
+              ),
+      ),
+    );
+  }
+
   bool _spamChecked = false;
   bool _incorrectDataChecked = false;
   bool _inappropriateLanguageChecked = false;
@@ -106,12 +223,7 @@ class _UserAccountPageState extends State<UserAccountPage> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 36,
-                          backgroundImage: AssetImage(
-                            widget.response.userAvatar,
-                          ),
-                        ),
+                        _avatar(),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
@@ -124,26 +236,56 @@ class _UserAccountPageState extends State<UserAccountPage> {
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Рейтинг',
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 12,
+                              if (_nickname != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  _nickname!,
+                                  style: const TextStyle(
+                                    color: accentColor,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                              ),
-                              Row(
-                                children: List.generate(5, (index) {
-                                  return Icon(
-                                    index < widget.response.rating.floor()
-                                        ? Icons.star
-                                        : Icons.star_border,
-                                    color: Colors.orange,
-                                    size: 18,
-                                  );
-                                }),
-                              ),
+                              ],
+                              // Оценка показывается ТОЛЬКО когда она есть.
+                              // Пять пустых звёзд читаются как «плохой
+                              // исполнитель», а не как «его ещё никто не
+                              // оценивал».
+                              if (_rating != null) ...[
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Рейтинг',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    ...List.generate(5, (index) {
+                                      return Icon(
+                                        index < _rating!.floor()
+                                            ? Icons.star
+                                            : index < _rating!
+                                                ? Icons.star_half
+                                                : Icons.star_border,
+                                        color: Colors.orange,
+                                        size: 18,
+                                      );
+                                    }),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _rating!.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -152,14 +294,17 @@ class _UserAccountPageState extends State<UserAccountPage> {
 
                     const SizedBox(height: 24),
 
-                    // Phone numbers
-                    if (widget.response.phoneNumbers != null) ...[
+                    // Контакты человека (09.10.2026). Берутся из его
+                    // профиля, а не из отклика: в отклике их нет и быть не
+                    // должно. Чего у человека не указано, то и не
+                    // показываем, пустых строк на экране не остаётся.
+                    if (_phones.isNotEmpty) ...[
                       const Text(
                         'Номер',
                         style: TextStyle(color: Colors.white54, fontSize: 14),
                       ),
                       const SizedBox(height: 8),
-                      ...widget.response.phoneNumbers!.map(
+                      ..._phones.map(
                         (phone) => Padding(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Text(
@@ -174,52 +319,64 @@ class _UserAccountPageState extends State<UserAccountPage> {
                       const SizedBox(height: 16),
                     ],
 
-                    // Telegram
-                    if (widget.response.telegram != null) ...[
+                    if (_telegrams.isNotEmpty) ...[
                       const Text(
-                        'Телеграмм',
+                        'Телеграм',
                         style: TextStyle(color: Colors.white54, fontSize: 14),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        widget.response.telegram!,
-                        style: const TextStyle(
-                          color: accentColor,
-                          fontSize: 16,
+                      ..._telegrams.map(
+                        (value) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            value,
+                            style: const TextStyle(
+                              color: accentColor,
+                              fontSize: 16,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
                     ],
 
-                    // WhatsApp
-                    if (widget.response.whatsapp != null) ...[
+                    if (_whatsapps.isNotEmpty) ...[
                       const Text(
                         'WhatsApp',
                         style: TextStyle(color: Colors.white54, fontSize: 14),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        widget.response.whatsapp!,
-                        style: const TextStyle(
-                          color: accentColor,
-                          fontSize: 16,
+                      ..._whatsapps.map(
+                        (value) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            value,
+                            style: const TextStyle(
+                              color: accentColor,
+                              fontSize: 16,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
                     ],
 
-                    // VK
-                    if (widget.response.vk != null) ...[
+                    if (_maxes.isNotEmpty) ...[
                       const Text(
-                        'VK',
+                        'MAX',
                         style: TextStyle(color: Colors.white54, fontSize: 14),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        widget.response.vk!,
-                        style: const TextStyle(
-                          color: accentColor,
-                          fontSize: 16,
+                      ..._maxes.map(
+                        (value) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            value,
+                            style: const TextStyle(
+                              color: accentColor,
+                              fontSize: 16,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -236,7 +393,7 @@ class _UserAccountPageState extends State<UserAccountPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      widget.response.city ?? 'Не указан',
+                      _city ?? widget.response.city ?? 'Не указан',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,

@@ -7,6 +7,7 @@ import 'package:lidle/pages/profile_dashboard/responses/accept_response_page.dar
 import 'package:lidle/pages/profile_dashboard/responses/completion_deal_page.dart';
 import 'package:lidle/pages/profile_dashboard/responses/user_account_page.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/models/message_model.dart';
 import 'package:lidle/pages/messages/chat_page.dart';
 
@@ -82,10 +83,21 @@ class ResponseCard extends StatelessWidget {
       );
     }
 
-    return const CircleAvatar(
-      radius: 32,
-      backgroundColor: Color(0xFF374B5C),
-      child: Icon(Icons.person, color: Colors.white54, size: 32),
+    // Общая заглушка приложения, та же, что на экранах предложений цены и
+    // аккаунта: своя иконка в каждом месте смотрится как разные приложения.
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF374B5C),
+      ),
+      child: ClipOval(
+        child: SvgPicture.asset(
+          'assets/profile_dashboard/default-photo.svg',
+          fit: BoxFit.cover,
+        ),
+      ),
     );
   }
 
