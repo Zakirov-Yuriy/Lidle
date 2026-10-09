@@ -47,6 +47,17 @@ class Advert {
   /// Пусто у объявлений, созданных человеком в приложении или на сайте.
   final List<FeedAttribute> feedAttributes;
 
+  /// Отклики (09.10.2026, задача 15).
+  ///
+  /// Можно ли здесь откликаться, откликался ли уже этот человек и сколько
+  /// откликов пришло (последнее приходит только владельцу объявления).
+  /// Решает СЕРВЕР: отклики включаются пометкой характеристики категории в
+  /// админке. Приходит только в карточке объявления, в списках этих полей
+  /// нет, и тогда они пустые, то есть «откликаться нельзя».
+  final bool canRespond;
+  final bool isResponded;
+  final int? responsesCount;
+
   Advert({
     required this.id,
     this.slug,
@@ -74,6 +85,9 @@ class Advert {
     this.hallsCount = 0,
     this.categoryPath,
     this.feedAttributes = const [],
+    this.canRespond = false,
+    this.isResponded = false,
+    this.responsesCount,
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -323,6 +337,10 @@ class Advert {
       // Характеристики из фида CRM (05.10.2026). В списке объявлений этого
       // ключа нет, приходит только в карточке.
       feedAttributes: FeedAttribute.listFrom(json['feed_attributes']),
+      // Отклики (09.10.2026, задача 15).
+      canRespond: json['can_respond'] == true,
+      isResponded: json['is_responded'] == true,
+      responsesCount: (json['responses_count'] as num?)?.toInt(),
     );
   }
 }
@@ -521,6 +539,12 @@ extension AdvertToListingExtension on Advert {
       city: extractedCity, // 🌍 ДОБАВИЛИ ГОРОД ИЗ АДРЕСА
       categoryPath: categoryPath,
       feedAttributes: feedAttributes,
+      // Отклики (09.10.2026). Карточка объявления собирается именно этим
+      // путём, а не разбором в Listing.fromJson: пропустить поля здесь
+      // означает, что кнопки «Откликнуться» не будет вовсе.
+      canRespond: canRespond,
+      isResponded: isResponded,
+      responsesCount: responsesCount,
     );
   }
 }

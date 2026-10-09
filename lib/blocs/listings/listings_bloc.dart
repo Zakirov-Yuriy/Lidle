@@ -1242,7 +1242,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   // в карточке характеристикой. Состав блока изменился, а записи четвёртой
   // версии держат прежний: карточка 3394 на деве показывала «Тип стен» и
   // «Материал стен» одновременно, хотя сервер отдавал одну строку.
-  static const int _advertCacheVersion = 5;
+  // 6 с 09.10.2026: добавились поля откликов (can_respond, is_responded).
+  // Записи пятой версии их не содержат, и у объявления из кеша кнопка
+  // «Откликнуться» не появилась бы, пока кеш не истечёт.
+  static const int _advertCacheVersion = 6;
 
   /// Конвертирует Listing в JSON для кеша.
   Map<String, dynamic> _listingToJson(home.Listing listing) {
@@ -1269,6 +1272,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       'feedAttributes': listing.feedAttributes
           .map((row) => {'key': row.key, 'title': row.title, 'value': row.value})
           .toList(),
+      // Отклики (09.10.2026, задача 15).
+      'canRespond': listing.canRespond,
+      'isResponded': listing.isResponded,
+      'responsesCount': listing.responsesCount,
     };
   }
 
@@ -1320,6 +1327,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       userId: json['userId']?.toString(),
       categoryPath: json['categoryPath'],
       feedAttributes: feedAttributes,
+      canRespond: json['canRespond'] == true,
+      isResponded: json['isResponded'] == true,
+      responsesCount: (json['responsesCount'] as num?)?.toInt(),
     );
   }
 

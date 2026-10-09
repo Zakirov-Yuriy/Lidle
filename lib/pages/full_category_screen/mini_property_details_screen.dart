@@ -619,6 +619,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 // «Дополнительно» исчезал бы у объявлений, пришедших из API
                 // без фотографий (05.10.2026).
                 feedAttributes: state.listing.feedAttributes,
+                // Отклики (09.10.2026). По той же причине, что и поля
+                // фида выше: эта ветка собирает объявление заново, и без
+                // этих строк кнопка «Откликнуться» исчезала бы у
+                // объявлений без фотографий.
+                canRespond: state.listing.canRespond,
+                isResponded: state.listing.isResponded,
+                responsesCount: state.listing.responsesCount,
               );
               log.d('📸 Сохранили изображения из предыдущих данных');
             }
