@@ -235,6 +235,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// TTL кеша объявлений продавца — 5 минут.
   static const _cacheTtl = Duration(minutes: 5);
 
+  /// По сколько страниц витрины запрашивать за раз (12.10.2026).
+  ///
+  /// Четыре это середина между «по одной в очередь», как было, и «все сразу».
+  /// По одной человек ждёт минутами, все сразу у продавца с сотней страниц
+  /// означают сотню одновременных запросов.
+  static const int _advertsPageBatch = 4;
+
   /// TTL кеша карточки продавца (название/описание/адрес/контакты компании).
   /// Данные компании меняются редко, поэтому держим дольше; при изменении
   /// данных компании кеш инвалидируется адресно (см. invalidateInfoCache).
@@ -922,6 +929,42 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
+  /// Ответ сервера в вид, который понимает `Listing.fromJson`.
+  ///
+  /// Вынесено отдельно (12.10.2026): теперь страницы приходят не одной кучей,
+  /// а порциями, и разбирать их надо в нескольких местах.
+  ///
+  /// Берём только активные объявления: на витрине продавца неактивным и
+  /// архивным делать нечего.
+  List<Map<String, dynamic>> _mapAdverts(List<dynamic> data) => data
+      .whereType<Map<String, dynamic>>()
+      .where((item) => (item['status'] as Map<String, dynamic>?)?['id'] == 1)
+      .map((item) {
+        // ВАЖНО: `Listing.fromJson` читает 'image', а не 'imagePath'.
+        final thumbnail = item['thumbnail'] as String?;
+
+        return <String, dynamic>{
+          'id': item['id']?.toString() ?? '',
+          'image': thumbnail ?? '',
+          'images': thumbnail != null && thumbnail.isNotEmpty
+              ? [thumbnail]
+              : <String>[],
+          'title': item['name'] ?? '',
+          'price': item['price']?.toString() ?? '0',
+          'address': item['address'] ?? '',
+          'date': item['date'] ?? '',
+          'characteristics': {},
+          'sellerName': widget.sellerName,
+          'userId': widget.userId,
+          // Аватарку передаём строкой: `MiniPropertyDetailsScreen` читает это
+          // поле через `Listing.fromJson` как `sellerAvatar`.
+          'sellerAvatar': widget.sellerAvatarUrl,
+          'description': null,
+          'isFavorited': item['is_wishlisted'] ?? false,
+        };
+      })
+      .toList();
+
   /// Загружает объявления продавца из API по userId.
   /// При повторном открытии экрана возвращает данные из кэша мгновенно.
   /// [forceRefresh] = true — игнорирует кэш и запрашивает заново (pull-to-refresh).
@@ -979,100 +1022,100 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       // Токен опциональный — API обработает запрос без авторизации
       final token = TokenService.currentToken;
 
-      // API фиксирует per_page=30 и не принимает этот параметр в body.
-      // Запрос принимает только: sort (Array) и page (Integer).
-      // Чтобы получить все объявления — загружаем страницы последовательно.
-
-      final allData = <dynamic>[];
-
-      // Шаг 1: загружаем первую страницу и читаем meta.last_page
-      final firstPageBody = <String, dynamic>{
-        'sort': ['new'],
-        'page': 1,
-        if (query.isNotEmpty) 'search': query,
-        ..._filter.toAdvertsBody(),
-      };
-
-      final firstResponse = await ApiService.getWithBody(
-        '/users/$userId/adverts',
-        firstPageBody,
-        token: token,
-      );
-
-      final firstPageData = firstResponse['data'] as List<dynamic>? ?? [];
-      allData.addAll(firstPageData);
-
-      // Читаем общее количество страниц из meta
-      final meta = firstResponse['meta'] as Map<String, dynamic>?;
-      final lastPage = (meta?['last_page'] as num?)?.toInt() ?? 1;
-
-      // Шаг 2: загружаем остальные страницы, если они есть
-      if (lastPage > 1) {
-        for (int page = 2; page <= lastPage; page++) {
-          final pageBody = <String, dynamic>{
+      // Первую страницу показываем СРАЗУ, остальные догружаем следом
+      // (12.10.2026).
+      //
+      // Раньше экран ждал, пока приедут ВСЕ страницы, и брал их строго по
+      // одной: сервер отдаёт по тридцать объявлений, и у продавца с восемью
+      // сотнями это двадцать семь запросов в очередь. Всё это время человек
+      // смотрел на скелетон и обоснованно считал, что экран завис.
+      //
+      // Теперь витрина появляется после первого ответа, а остальные страницы
+      // дополняют её на глазах. Пачками по несколько штук, а не все разом: у
+      // продавца с сотней страниц сотня одновременных запросов положила бы и
+      // телефон, и сервер.
+      Map<String, dynamic> bodyForPage(int page) => <String, dynamic>{
             'sort': ['new'],
             'page': page,
             if (query.isNotEmpty) 'search': query,
             ..._filter.toAdvertsBody(),
           };
-          final pageResponse = await ApiService.getWithBody(
-            '/users/$userId/adverts',
-            pageBody,
-            token: token,
-          );
-          final pageData = pageResponse['data'] as List<dynamic>? ?? [];
-          allData.addAll(pageData);
-        }
-      }
 
-      final data = allData;
+      final firstResponse = await ApiService.getWithBody(
+        '/users/$userId/adverts',
+        bodyForPage(1),
+        token: token,
+      );
 
-      if (data.isEmpty) {
-        if (!mounted || requestId != _listingsRequest) return;
+      if (!mounted || requestId != _listingsRequest) return;
 
+      final meta = firstResponse['meta'] as Map<String, dynamic>?;
+      final lastPage = (meta?['last_page'] as num?)?.toInt() ?? 1;
+
+      var listings = _mapAdverts(firstResponse['data'] as List<dynamic>? ?? []);
+
+      if (listings.isEmpty && lastPage <= 1) {
         if (query.isEmpty && _filter.isEmpty) {
           _fullListings = const [];
         }
 
         setState(() {
-          _sellerListings = [];
+          _sellerListings = const [];
           _isLoading = false;
         });
+
         return;
       }
 
-      // Трансформируем API ответ в формат для Listing.
-      // Фильтруем до маппинга — берём только активные (status.id == 1).
-      final listings = data
-          .whereType<Map<String, dynamic>>()
-          .where(
-            (item) => (item['status'] as Map<String, dynamic>?)?['id'] == 1,
-          )
-          .map((item) {
-            // Конвертируем API формат в формат для Listing.fromJson()
-            // ВАЖНО: fromJson читает 'image', не 'imagePath'
-            final thumbnail = item['thumbnail'] as String?;
-            return <String, dynamic>{
-              'id': item['id']?.toString() ?? '',
-              'image': thumbnail ?? '', // fromJson использует 'image'
-              'images': thumbnail != null && thumbnail.isNotEmpty
-                  ? [thumbnail]
-                  : <String>[],
-              'title': item['name'] ?? '',
-              'price': item['price']?.toString() ?? '0',
-              'address': item['address'] ?? '',
-              'date': item['date'] ?? '',
-              'characteristics': {},
-              'sellerName': widget.sellerName,
-              'userId': widget.userId,
-              // Передаём URL аватарки строкой — MiniPropertyDetailsScreen
-              // читает это поле через Listing.fromJson() как sellerAvatar
-              'sellerAvatar': widget.sellerAvatarUrl,
-              'description': null,
-              'isFavorited': item['is_wishlisted'] ?? false,
-            };
-          })
-          .toList();
+      // Скелетон снимаем здесь, на первой же странице.
+      if (query.isEmpty && _filter.isEmpty) {
+        _fullListings = listings;
+      }
+
+      setState(() {
+        _sellerListings = listings;
+        _isLoading = false;
+      });
+
+      for (int page = 2; page <= lastPage; page += _advertsPageBatch) {
+        final batch = <Future<Map<String, dynamic>>>[];
+
+        for (int p = page;
+            p < page + _advertsPageBatch && p <= lastPage;
+            p++) {
+          batch.add(
+            ApiService.getWithBody(
+              '/users/$userId/adverts',
+              bodyForPage(p),
+              token: token,
+            ),
+          );
+        }
+
+        final responses = await Future.wait(batch);
+
+        // Пока шла пачка, человек мог набрать слово в поиске или уйти с
+        // экрана. Тогда эти страницы уже не к месту.
+        if (!mounted || requestId != _listingsRequest) return;
+
+        final more = <Map<String, dynamic>>[];
+
+        for (final response in responses) {
+          more.addAll(_mapAdverts(response['data'] as List<dynamic>? ?? []));
+        }
+
+        if (more.isEmpty) {
+          continue;
+        }
+
+        listings = [...listings, ...more];
+
+        if (query.isEmpty && _filter.isEmpty) {
+          _fullListings = listings;
+        }
+
+        setState(() => _sellerListings = listings);
+      }
 
       log.d('✅ Трансформировано ${listings.length} объявлений');
 
@@ -1086,19 +1129,6 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           ttl: _cacheTtl,
         );
       }
-
-      if (!mounted || requestId != _listingsRequest) return;
-
-      // Полную витрину держим под рукой: по крестику она нужна сразу, без
-      // повторной загрузки.
-      if (query.isEmpty && _filter.isEmpty) {
-        _fullListings = listings;
-      }
-
-      setState(() {
-        _sellerListings = listings;
-        _isLoading = false;
-      });
     } catch (e) {
       if (!mounted || requestId != _listingsRequest) return;
 
