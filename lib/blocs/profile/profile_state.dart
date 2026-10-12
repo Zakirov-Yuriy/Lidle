@@ -32,6 +32,14 @@ class ProfileLoaded extends ProfileState {
   final String phone;
   final String? profileImage;
   final String username;
+
+  /// Настоящее короткое имя (12.10.2026, задача 62).
+  ///
+  /// Отдельно от `username`: тот при пустом коротком имени подставляет
+  /// обычное имя с собачкой, и по нему нельзя отличить «имя не задано» от
+  /// «имя задано». Форме ввода нужна именно эта разница.
+  final String? nickname;
+
   final String? about;
   final String? qrCode;
 
@@ -43,6 +51,7 @@ class ProfileLoaded extends ProfileState {
     required this.phone,
     this.profileImage,
     this.username = '@Name',
+    this.nickname,
     this.about,
     this.qrCode,
   });

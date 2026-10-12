@@ -448,6 +448,40 @@ class UserService {
     }
   }
 
+  /// Свободно ли короткое имя (12.10.2026, задача 62).
+  ///
+  /// Спрашиваем по ходу набора, чтобы человек видел занятость сразу, а не
+  /// узнавал о ней отказом при сохранении. Собачку сервер отрезает сам, но
+  /// шлём уже без неё: в базе её нет, мы её только рисуем.
+  ///
+  /// При любой ошибке отвечаем `null`: «не знаем». Красить поле в занятое
+  /// из-за пропавшей сети нельзя.
+  static Future<bool?> isNicknameFree(String nickname, {String? token}) async {
+    final value = nickname.trim().replaceAll(RegExp(r'^@+'), '');
+
+    if (value.isEmpty) return null;
+
+    try {
+      final response = await ApiService.getWithQuery(
+        '/me/settings/nickname-check',
+        {'nickname': value},
+        token: token,
+      );
+
+      final data = response['data'];
+
+      if (data is Map && data['available'] is bool) {
+        return data['available'] as bool;
+      }
+
+      return null;
+    } catch (e) {
+      log.d('⚠️ Не удалось проверить короткое имя: $e');
+
+      return null;
+    }
+  }
+
   /// Обновить имя и фамилию пользователя
   static Future<Map<String, dynamic>> updateName({
     required String name,

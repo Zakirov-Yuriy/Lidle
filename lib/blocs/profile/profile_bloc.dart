@@ -63,6 +63,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
               phone: cachedProfile['phone'] as String? ?? '',
               profileImage: cachedProfile['profileImage'],
               username: cachedProfile['username'] as String? ?? '@User',
+              nickname: cachedProfile['nickname'] as String?,
               about: cachedProfile['about'],
               qrCode: cachedProfile['qrCode'],
             ),
@@ -148,6 +149,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         'phone': profile.phone ?? '',
         'profileImage': profile.avatar,
         'username': profile.nickname ?? '@${profile.name}',
+        'nickname': profile.nickname,
         'about': profile.about,
         'qrCode': qrCodeBase64,
       });
@@ -177,6 +179,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           phone: profile.phone ?? '+7 (999) 123-45-67',
           profileImage: profile.avatar,
           username: profile.nickname ?? '@${profile.name}',
+          nickname: profile.nickname,
           about: profile.about,
           qrCode: qrCodeBase64,
         ),
