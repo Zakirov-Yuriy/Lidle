@@ -1325,41 +1325,43 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                   const SizedBox(height: 8),
                 ],
-                Stack(
-                  children: [
-                    Padding(
-                      // У своих сообщений справа внизу время И галочки,
-                      // поэтому места надо больше.
-                      padding: EdgeInsets.only(right: isMe ? 62 : 45),
-                      child: Text(
-                        text,
-                        style: TextStyle(color: textColor, fontSize: 15),
-                        softWrap: true,
+                // Текст во всю ширину, время и галочки СТРОКОЙ НИЖЕ
+                // (12.10.2026).
+                //
+                // Раньше время лежало поверх текста в правом нижнем углу, а
+                // тексту справа оставляли пустое место. Из-за этого строки
+                // рвались в неожиданных местах, вплоть до переноса посреди
+                // слова, а у коротких сообщений время всё равно налезало на
+                // хвост фразы.
+                Text(
+                  text,
+                  style: TextStyle(color: textColor, fontSize: 15),
+                  softWrap: true,
+                ),
+                const SizedBox(height: 2),
+                // Время прижимаем вправо, а текст выше остаётся слева:
+                // выравнивать по правому краю ещё и фразу нельзя, читается
+                // плохо.
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        timeDisplay,
+                        style: TextStyle(
+                          color: textColor.withOpacity(0.7),
+                          fontSize: 11,
+                        ),
                       ),
-                    ),
-                    Positioned(
-                      right: 2,
-                      bottom: 1,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            timeDisplay,
-                            style: TextStyle(
-                              color: textColor.withOpacity(0.7),
-                              fontSize: 11,
-                            ),
-                          ),
-                          // Галочки только у своих сообщений: чужие читает
-                          // собеседник, и его отметки здесь ни при чём.
-                          if (isMe) ...[
-                            const SizedBox(width: 4),
-                            _tick(isPending: isPending, isRead: isRead),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
+                      // Галочки только у своих сообщений: чужие читает
+                      // собеседник, и его отметки здесь ни при чём.
+                      if (isMe) ...[
+                        const SizedBox(width: 4),
+                        _tick(isPending: isPending, isRead: isRead),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),
