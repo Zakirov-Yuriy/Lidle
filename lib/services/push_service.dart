@@ -205,10 +205,24 @@ class PushService {
       return;
     }
 
+    // Отклик и предложение цены от того, с кем человек прямо сейчас
+    // разговаривает, не показываем (12.10.2026). Оба заводят сообщение в
+    // переписке, и человек увидит его в ленте через секунду. Подсказка
+    // поверх собственного разговора только мешает.
+    final type = '${data['type'] ?? ''}';
+
+    if (type == 'response' || type == 'price_offer') {
+      final fromUserId = int.tryParse('${data['from_user_id'] ?? ''}');
+
+      if (ChatEvents.instance.isTalkingTo(fromUserId)) {
+        return;
+      }
+    }
+
     // Заказ показываем в своём канале: он всплывает и звучит. Продавец
     // может держать приложение открытым весь день, и тихое уведомление в
     // шторке он попросту не заметит.
-    final isOrder = '${data['type'] ?? ''}' == 'order';
+    final isOrder = type == 'order';
 
     await NotificationService().showNotification(
       title: notification.title ?? 'ЛИДЛЕ',

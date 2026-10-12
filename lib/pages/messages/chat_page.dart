@@ -113,6 +113,7 @@ class _ChatPageState extends State<ChatPage> {
     // приходящие сообщения перечитываются сразу, не дожидаясь таймера
     // (12.10.2026).
     ChatEvents.instance.openChatId = _chatId;
+    ChatEvents.instance.openPeerId = int.tryParse('${widget.message.userId}');
 
     _incomingSub = ChatEvents.instance.onIncoming.listen((chatId) {
       if (!mounted || _chatId == null || chatId != _chatId) {
@@ -137,6 +138,12 @@ class _ChatPageState extends State<ChatPage> {
     // Экран закрыт: уведомления об этой переписке снова нужны.
     if (ChatEvents.instance.openChatId == _chatId) {
       ChatEvents.instance.openChatId = null;
+    }
+
+    final peerId = int.tryParse('${widget.message.userId}');
+
+    if (peerId != null && ChatEvents.instance.openPeerId == peerId) {
+      ChatEvents.instance.openPeerId = null;
     }
 
     super.dispose();
