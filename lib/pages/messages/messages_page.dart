@@ -55,6 +55,13 @@ class _MessagesPageState extends State<MessagesPage>
 
   bool _isInitialized = false; // 🔄 Флаг для загрузки только один раз
 
+  /// Список чатов хоть раз доехал в этом запуске приложения (12.10.2026).
+  ///
+  /// Пока нет, пустой экран означает «ещё не знаем», а не «сообщений нет».
+  /// Раньше этой разницы не было, и человеку с десятком переписок каждый
+  /// заход показывали заглушку «У вас нет сообщений».
+  bool _chatsArrived = false;
+
   // Keep track of selected messages for deletion/archive
   Map<int, bool> selectedMessages = {};
 
@@ -64,10 +71,28 @@ class _MessagesPageState extends State<MessagesPage>
     //  Загружаем сообщения только при первом открытии экрана
     if (!_isInitialized) {
       _isInitialized = true;
-      
+
       // 🔴 НЕ очищаем кеш - нужны данные что загрузились при старте приложения!
       // AppCacheService().invalidate(CacheKeys.messagesData);
-      
+
+      // Сохранённый список показываем сразу (12.10.2026).
+      //
+      // Чаты всё это время сохранялись в локальное хранилище, но на экран
+      // попадали только после ответа сервера. Поэтому каждый заход начинался
+      // с заглушки «У вас нет сообщений», и только через секунду список
+      // появлялся. Теперь старый список стоит сразу, а свежий подменяет его,
+      // когда доедет.
+      final saved = MessagesLocalService.getCurrentMessages();
+
+      if (saved.isNotEmpty) {
+        messages = _convertMapsToMessages(saved);
+        _chatsArrived = true;
+
+        for (int i = 0; i < messages.length; i++) {
+          selectedMessages[i] = false;
+        }
+      }
+
       // 🔄 Загружаем реальные данные с API
       _loadMessages();
       // 🔄 Запускаем таймер для автоматического обновления счетчика сообщений
@@ -157,16 +182,26 @@ class _MessagesPageState extends State<MessagesPage>
           isCompany: false,
           userId: userData['id'].toString(),
           chatId: chat['id'] as int?,
+          // В сети ли собеседник (12.10.2026).
+          isOnline: userData['is_online'] == true,
         );
         loadedMessages.add(message);
       }
 
       if (mounted && loadedMessages.isNotEmpty) {
         // только если появились новые непрочитанные сообщения
+        // Сравниваем и по непрочитанным, и по признаку «в сети»
+        // (12.10.2026): без второго надпись под именем не менялась бы, пока
+        // в чат не напишут.
         final hasChanges = loadedMessages.length != messages.length ||
-            loadedMessages.asMap().entries.any((entry) =>
-                entry.value.unreadCount !=
-                (entry.key < messages.length ? messages[entry.key].unreadCount : -1));
+            loadedMessages.asMap().entries.any((entry) {
+              if (entry.key >= messages.length) return true;
+
+              final was = messages[entry.key];
+
+              return entry.value.unreadCount != was.unreadCount ||
+                  entry.value.isOnline != was.isOnline;
+            });
 
         if (hasChanges) {
           // log.d('📨 Счетчик сообщений обновлен');
@@ -280,6 +315,8 @@ class _MessagesPageState extends State<MessagesPage>
           isCompany: false,
           userId: userData['id'].toString(),
           chatId: chat['id'] as int?,
+          // В сети ли собеседник (12.10.2026).
+          isOnline: userData['is_online'] == true,
         );
         loadedMessages.add(message);
       }
@@ -308,6 +345,7 @@ class _MessagesPageState extends State<MessagesPage>
             'advertTitle': msg.advertTitle,
             'advertImage': msg.advertImage,
             'advertisementId': msg.advertisementId,
+            'isOnline': msg.isOnline,
           },
         )
         .toList();
@@ -316,6 +354,11 @@ class _MessagesPageState extends State<MessagesPage>
     for (int i = 0; i < messages.length; i++) {
       selectedMessages[i] = false;
     }
+
+    // Список доехал: теперь пустой экран действительно означает «сообщений
+    // нет», и заглушку показывать можно.
+    _chatsArrived = true;
+
     if (mounted) {
       setState(() {});
     }
@@ -360,6 +403,7 @@ class _MessagesPageState extends State<MessagesPage>
         advertImage: map['advertImage'],
         advertPrice: map['advertPrice'],
         advertisementId: map['advertisementId'],
+        isOnline: map['isOnline'] == true,
       );
     }).toList();
   }
@@ -401,6 +445,7 @@ class _MessagesPageState extends State<MessagesPage>
             'advertTitle': msg.advertTitle,
             'advertImage': msg.advertImage,
             'advertisementId': msg.advertisementId,
+            'isOnline': msg.isOnline,
           },
         )
         .toList();
@@ -685,7 +730,18 @@ class _MessagesPageState extends State<MessagesPage>
               const SizedBox(height: 16),
 
               // Conditional rendering for message list or empty state
-              messages.isEmpty
+              // Пока список чатов не доехал ни разу, показываем ожидание, а
+              // не заглушку «Нет сообщений» (12.10.2026): у человека с
+              // десятком переписок она появлялась при каждом заходе.
+              messages.isEmpty && !_chatsArrived
+                  ? const Expanded(
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF00B7FF),
+                        ),
+                      ),
+                    )
+                  : messages.isEmpty
                   ? Expanded(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,

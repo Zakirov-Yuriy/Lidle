@@ -69,10 +69,15 @@ class MessageCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const Text(
-                    'был(а) недавно',
+                  // Статус собеседника (12.10.2026). «Был(а) недавно» стояло
+                  // здесь жёстко, у всех сразу: признака «в сети» на сервере
+                  // раньше не было вовсе.
+                  Text(
+                    message.isOnline ? 'онлайн' : 'был(а) недавно',
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: message.isOnline
+                          ? const Color(0xFF4CD964)
+                          : Colors.white70,
                       fontSize: 13,
                     ),
                   ),

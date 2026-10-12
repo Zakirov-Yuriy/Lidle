@@ -13,6 +13,13 @@ class Message {
   final String? advertPrice; // Цена объявления
   final String? advertisementId; // ID объявления
 
+  /// В сети ли собеседник прямо сейчас (12.10.2026).
+  ///
+  /// Сервер отдаёт `is_online` в списке чатов: активность за последние две
+  /// минуты. Раньше под каждым именем стояло «был(а) недавно», и это была
+  /// просто надпись, одна на всех.
+  final bool isOnline;
+
   Message({
     required this.senderName,
     this.senderAvatar,
@@ -27,6 +34,7 @@ class Message {
     this.advertImage,
     this.advertPrice,
     this.advertisementId,
+    this.isOnline = false,
   });
 
   /// Копирование с изменениями
@@ -44,6 +52,7 @@ class Message {
     String? advertImage,
     String? advertPrice,
     String? advertisementId,
+    bool? isOnline,
   }) {
     return Message(
       senderName: senderName ?? this.senderName,
@@ -59,6 +68,7 @@ class Message {
       advertImage: advertImage ?? this.advertImage,
       advertPrice: advertPrice ?? this.advertPrice,
       advertisementId: advertisementId ?? this.advertisementId,
+      isOnline: isOnline ?? this.isOnline,
     );
   }
 }
