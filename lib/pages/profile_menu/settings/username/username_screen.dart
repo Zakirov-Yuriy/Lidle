@@ -107,8 +107,8 @@ class _UsernameScreenState extends State<UsernameScreen> {
 
     if (value.length > 50) return 'Слишком длинное, не больше пятидесяти знаков';
 
-    if (!RegExp(r'^[A-Za-z0-9._\-]+$').hasMatch(value)) {
-      return 'Можно латинские буквы, цифры, точку, дефис и подчёркивание';
+    if (!RegExp(r'^[\p{L}\p{N}._\-]+$', unicode: true).hasMatch(value)) {
+      return 'Можно буквы, цифры, точку, дефис и подчёркивание';
     }
 
     return '';
@@ -236,7 +236,13 @@ class _UsernameScreenState extends State<UsernameScreen> {
     }
 
     if (_value.isEmpty || _value == _initial) {
-      return const SizedBox.shrink();
+      // Молчать здесь нельзя: поле само отбрасывает неподходящие знаки, и без
+      // подписи это выглядит поломкой (12.10.2026).
+      return const Text(
+        'Буквы, цифры, точка, дефис и подчёркивание. '
+        'Пробел станет подчёркиванием',
+        style: TextStyle(color: Colors.white54, fontSize: 13),
+      );
     }
 
     if (_free == true) {
@@ -351,8 +357,16 @@ class _UsernameScreenState extends State<UsernameScreen> {
                       // Только то, что примет сервер. Собачку и пробелы в
                       // поле не пускаем вовсе: она закреплена слева.
                       inputFormatters: [
+                        // Пробел превращаем в подчёркивание (12.10.2026):
+                        // компании называются в два и три слова, и ООО
+                        // Авангард должно становиться ООО_Авангард само, а не
+                        // упираться в отказ. Пробел в имени оставить нельзя,
+                        // оно работает как адрес.
+                        _SpaceToUnderscore(),
+                        // Буквы ЛЮБОГО алфавита, не только латиница: компании
+                        // пишутся и по-русски, и по-английски.
                         FilteringTextInputFormatter.allow(
-                          RegExp(r'[A-Za-z0-9._\-]'),
+                          RegExp(r'[\p{L}\p{N}._\-]', unicode: true),
                         ),
                         LengthLimitingTextInputFormatter(50),
                       ],
@@ -424,6 +438,28 @@ class _UsernameScreenState extends State<UsernameScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Пробел в коротком имени превращается в подчёркивание (12.10.2026).
+///
+/// Отдельным форматировщиком, а не заменой в обработчике: так знак меняется
+/// прямо под пальцем, и человек видит, что получилось, ещё до сохранения.
+class _SpaceToUnderscore extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (!newValue.text.contains(RegExp(r'\s'))) {
+      return newValue;
+    }
+
+    return TextEditingValue(
+      text: newValue.text.replaceAll(RegExp(r'\s'), '_'),
+      selection: newValue.selection,
+      composing: TextRange.empty,
     );
   }
 }
