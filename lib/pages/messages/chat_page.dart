@@ -76,13 +76,6 @@ class _ChatPageState extends State<ChatPage> {
   // 🔗 Защита от множественных нажатий на "Перейти"
   bool _isNavigatingToProperty = false;
 
-  /// Откуда покупатель написал (09.10.2026, задача 15).
-  ///
-  /// Приходит с сервера в каждом сообщении. Показываем ПОСЛЕДНИЙ источник,
-  /// так решил заказчик: написал с объявления, потом с предложения цены,
-  /// значит в шапке видно предложение цены.
-  ChatSource? _source;
-
   /// Что отправлять на сервер как привязку.
   ///
   /// Обычно это то, что передал экран, откуда открыли переписку. Но
@@ -91,47 +84,6 @@ class _ChatPageState extends State<ChatPage> {
   /// номер объявления уже известен самой переписке, собираем привязку из
   /// него. Так плашка появится и с тех экранов, которых правка не
   /// коснулась.
-  /// Плашка для переписок, заведённых до задачи 15 (09.10.2026).
-  ///
-  /// Сервер привязку по ним не отдаёт: её тогда не было. Зато список чатов
-  /// знает объявление, по которому переписка началась, и этого хватает на ту
-  /// же самую плашку.
-  ///
-  /// Когда экран открыт С КАРТОЧКИ объявления, плашки здесь нет: объявление
-  /// и так вставляется в ленту первым сообщением, и показывать его дважды
-  /// на одном экране незачем.
-  ChatSource? get _legacySource {
-    if (widget.openedFromAdvertScreen) {
-      return null;
-    }
-
-    final id = int.tryParse(
-      '${_topAdvertId ?? widget.message.advertisementId ?? ''}',
-    );
-
-    if (id == null) {
-      return null;
-    }
-
-    final title = (_topAdvertTitle?.isNotEmpty == true)
-        ? _topAdvertTitle
-        : widget.message.advertTitle;
-
-    final price = _topAdvertPrice ?? widget.message.advertPrice;
-
-    return ChatSource(
-      type: 'advert',
-      id: id,
-      targetType: 'advert',
-      targetId: id,
-      title: (title ?? '').trim().isEmpty ? 'Объявление' : title,
-      image: _topAdvertImage ?? widget.message.advertImage,
-      // Цена приходит голым числом, рубль дописываем сами: на сервере это
-      // делает ChatSourceService, и выглядеть должно одинаково.
-      price: (price ?? '').toString().trim().isEmpty ? null : '$price ₽',
-    );
-  }
-
   String? get _outgoingSourceType {
     if (widget.sourceType != null && widget.sourceId != null) {
       return widget.sourceType;
@@ -343,19 +295,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  /// Последняя привязка в ленте сообщений.
-  ///
-  /// Идём с конца: нужен последний источник, а сообщения без привязки
-  /// прежний не отменяют. Человек написал с объявления, потом дописал ещё
-  /// строку, и плашка должна остаться на месте.
-  ChatSource? _lastSourceOf(List<Map<String, dynamic>> messages) {
-    for (var i = messages.length - 1; i >= 0; i--) {
-      final parsed = ChatSource.fromJson(messages[i]['source']);
-      if (parsed != null) return parsed;
-    }
-    return null;
-  }
-
   /// Переход по кнопке «Перейти» в плашке.
   void _openSource(ChatSource source) {
     final targetId = source.targetId;
@@ -468,7 +407,6 @@ class _ChatPageState extends State<ChatPage> {
         setState(() {
           _messages = messages;
           _isLoading = false;
-          _source = _lastSourceOf(messages) ?? _source;
         });
 
         // После загрузки сообщений — попробуем найти связанное объявление
@@ -996,27 +934,16 @@ class _ChatPageState extends State<ChatPage> {
               child: const Divider(color: Color(0xFF474747), height: 0),
             ),
 
-            // Плашка «откуда написал» (09.10.2026, задача 15). Данные с
-            // сервера, одна вёрстка на пять видов источника.
-            if (_source != null)
-              ChatSourceCard(
-                source: _source!,
-                onOpen: () => _openSource(_source!),
-              ),
-
-            // Переписка заведена ДО задачи 15: привязки с сервера нет, но
-            // кое-что о предмете разговора известно из списка чатов. Собираем
-            // ту же плашку сами, чтобы вёрстка была одна (09.10.2026).
+            // Плашки «откуда написал» здесь больше нет (12.10.2026).
             //
-            // Прежде здесь лежала вторая плашка, своя, на сто с лишним строк:
-            // те же картинка, заголовок, цена и «Перейти», только другими
-            // отступами и цветами. Две вёрстки одного и того же расходятся
-            // после первой же правки одной из них.
-            if (_source == null && _legacySource != null)
-              ChatSourceCard(
-                source: _legacySource!,
-                onOpen: () => _openSource(_legacySource!),
-              ),
+            // Она показывала ПОСЛЕДНИЙ источник и перерисовывалась, как
+            // только человек писал с другого объявления. Из-за этого по
+            // переписке нельзя было понять, к чему относится тот или иной
+            // вопрос: текст один, а плашка сверху уже про другой товар.
+            //
+            // Теперь карточка источника встаёт прямо в ленту, внутрь того
+            // сообщения, с которого начался разговор о нём, и остаётся там
+            // навсегда. Разговоры о разных объявлениях видно глазами.
 
             // const SizedBox(height: 10),
 
@@ -1034,10 +961,22 @@ class _ChatPageState extends State<ChatPage> {
                         final List<Map<String, dynamic>> messagesToDisplay =
                             List.from(_messages);
                         
-                        // ✅ Если открыт с экрана объявления и передано объявление
-                        // добавляем его как первое "сообщение" типа advert
-                        if (widget.openedFromAdvertScreen && 
+                        // Объявление, с которого открыли переписку, пока
+                        // человек ещё ничего не написал.
+                        //
+                        // Как только первое сообщение уйдёт, его же
+                        // объявление приедет с сервера привязкой и встанет
+                        // карточкой внутри пузыря. Показывать его тогда ещё
+                        // и сверху значит показать одно и то же дважды,
+                        // поэтому предпросмотр ставим, только если ни у
+                        // одного сообщения привязки нет (12.10.2026).
+                        final hasSourceInMessages = messagesToDisplay.any(
+                          (m) => ChatSource.fromJson(m['source']) != null,
+                        );
+
+                        if (widget.openedFromAdvertScreen &&
                             widget.initialListing != null &&
+                            !hasSourceInMessages &&
                             !messagesToDisplay.any((m) => m['is_advert_preview'] == true)) {
                           
                           final advertMessage = {
@@ -1070,6 +1009,30 @@ class _ChatPageState extends State<ChatPage> {
                           itemCount: messagesToDisplay.length,
                           itemBuilder: (context, index) {
                             final msg = messagesToDisplay[index];
+
+                            // Карточку источника рисуем только у сообщения, с
+                            // которого начался разговор о нём (12.10.2026).
+                            //
+                            // Привязку сервер кладёт в КАЖДОЕ сообщение, пока
+                            // экран открыт с объявления, поэтому карточка у
+                            // каждого означала бы десять одинаковых карточек
+                            // подряд. Сравниваем с предыдущим сообщением: та
+                            // же привязка, значит разговор продолжается.
+                            final source = ChatSource.fromJson(msg['source']);
+                            final prevSource = index > 0
+                                ? ChatSource.fromJson(
+                                    messagesToDisplay[index - 1]['source'],
+                                  )
+                                : null;
+
+                            // Сравниваем по виду и номеру САМОГО источника:
+                            // `targetId` у предложения цены и отклика может
+                            // совпадать (одно объявление, два разных
+                            // обращения), а `id` уникален всегда.
+                            final startsNewSource = source != null &&
+                                (prevSource == null ||
+                                    prevSource.type != source.type ||
+                                    prevSource.id != source.id);
 
                             // 📅 Проверяем показывать ли разделитель даты
                             bool showDateSeparator = true;
@@ -1123,6 +1086,7 @@ class _ChatPageState extends State<ChatPage> {
                                     msg['message'] as String,
                                     isMe: msg['is_me'] as bool? ?? false,
                                     createdAt: msg['created_at'] as String?,
+                                    source: startsNewSource ? source : null,
                                   ),
                                 ]
                               ],
@@ -1202,10 +1166,17 @@ class _ChatPageState extends State<ChatPage> {
   );
 }
 
+  /// Пузырь сообщения.
+  ///
+  /// [source] не пусто у сообщения, с которого начался разговор о конкретном
+  /// объявлении, товаре, брони, отклике или предложении цены (12.10.2026).
+  /// Тогда карточка источника рисуется прямо внутри пузыря, над текстом, и
+  /// остаётся в ленте навсегда.
   Widget _buildMessageBubble(
     String text, {
     required bool isMe,
     String? createdAt,
+    ChatSource? source,
   }) {
     // Парсим время из createdAt если оно есть
     String timeDisplay = '20:21';
@@ -1242,32 +1213,49 @@ class _ChatPageState extends State<ChatPage> {
             margin: const EdgeInsets.symmetric(vertical: 8),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.7,
+              // С карточкой пузырь шире: картинка и заголовок в семидесяти
+              // процентах ширины экрана не помещаются.
+              maxWidth: MediaQuery.of(context).size.width *
+                  (source != null ? 0.82 : 0.7),
             ),
             decoration: BoxDecoration(
               color: bubbleColor,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Stack(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 45),
-                  child: Text(
-                    text,
-                    style: TextStyle(color: textColor, fontSize: 15),
-                    softWrap: true,
+                if (source != null) ...[
+                  ChatSourceCard(
+                    source: source,
+                    onOpen: () => _openSource(source),
+                    inBubble: true,
                   ),
-                ),
-                Positioned(
-                  right: 2,
-                  bottom: 1,
-                  child: Text(
-                    timeDisplay,
-                    style: TextStyle(
-                      color: textColor.withOpacity(0.7),
-                      fontSize: 11,
+                  const SizedBox(height: 8),
+                ],
+                Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 45),
+                      child: Text(
+                        text,
+                        style: TextStyle(color: textColor, fontSize: 15),
+                        softWrap: true,
+                      ),
                     ),
-                  ),
+                    Positioned(
+                      right: 2,
+                      bottom: 1,
+                      child: Text(
+                        timeDisplay,
+                        style: TextStyle(
+                          color: textColor.withOpacity(0.7),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

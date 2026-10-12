@@ -2,42 +2,69 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/chat_source.dart';
 
-/// Плашка «откуда покупатель написал» (09.10.2026, задача 15).
+/// Карточка «откуда покупатель написал» (09.10.2026, задача 15).
 ///
-/// Стоит под серой чертой в шапке переписки. Одна вёрстка на все пять
-/// видов: объявление, товар, предложение цены, отклик, бронь. Отличия
-/// только в двух необязательных строках.
+/// Одна вёрстка на все пять видов: объявление, товар, предложение цены,
+/// отклик, бронь. Отличия только в двух необязательных строках.
 ///
 ///   note       жёлтая строка, предложенная цена
 ///   startsAt   дата и время брони
 ///
-/// Переход наружу делает не плашка, а тот, кто её поставил: экран знает,
+/// Переход наружу делает не карточка, а тот, кто её поставил: экран знает,
 /// куда идти и что делать с навигацией.
+///
+/// С 12.10.2026 у карточки два вида.
+///
+/// Обычный это прежняя плашка в шапке переписки, со своими отступами и
+/// фоном. Сейчас в чате она не используется, но остаётся: вёрстка может
+/// понадобиться на других экранах.
+///
+/// `inBubble` это карточка ВНУТРИ пузыря сообщения. Она появляется у того
+/// сообщения, с которого начался разговор о конкретном объявлении, товаре
+/// или брони, и остаётся в ленте навсегда. У неё нет внешних отступов, а фон
+/// полупрозрачный тёмный: пузырь бывает и синим, и серым, и карточка обязана
+/// читаться на обоих.
 class ChatSourceCard extends StatelessWidget {
   final ChatSource source;
   final VoidCallback? onOpen;
 
-  const ChatSourceCard({super.key, required this.source, this.onOpen});
+  /// Карточка рисуется внутри пузыря сообщения, а не в шапке переписки.
+  final bool inBubble;
+
+  const ChatSourceCard({
+    super.key,
+    required this.source,
+    this.onOpen,
+    this.inBubble = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(3),
-        child: Container(
-          decoration: BoxDecoration(color: formBackground),
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _image(),
-              const SizedBox(width: 12),
-              Expanded(child: _texts()),
-            ],
-          ),
+    final card = ClipRRect(
+      borderRadius: BorderRadius.circular(inBubble ? 8 : 3),
+      child: Container(
+        decoration: BoxDecoration(
+          color: inBubble ? const Color(0x33000000) : formBackground,
+        ),
+        padding: EdgeInsets.all(inBubble ? 8 : 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _image(),
+            const SizedBox(width: 12),
+            Expanded(child: _texts()),
+          ],
         ),
       ),
+    );
+
+    if (inBubble) {
+      return card;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+      child: card,
     );
   }
 
