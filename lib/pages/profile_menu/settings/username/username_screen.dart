@@ -198,7 +198,11 @@ class _UsernameScreenState extends State<UsernameScreen> {
       // в личной информации, и на самом профиле: все три экрана берут его из
       // одного места.
       await UserService.saveLocal('username', '@$value');
-      context.read<ProfileBloc>().add(LoadProfileEvent());
+
+      // ОБЯЗАТЕЛЬНО forceRefresh (12.10.2026). Обычная загрузка профиля при
+      // живом кеше отдаёт то, что в нём лежит, и вовсе не ходит на сервер:
+      // после сохранения экраны показывали бы прежнее имя ещё пять минут.
+      context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
 
       if (!mounted) return;
 

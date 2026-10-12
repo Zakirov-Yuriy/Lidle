@@ -124,7 +124,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       await UserService.saveLocal('profileImage', profile.avatar);
       await UserService.saveLocal(
         'username',
-        profile.nickname ?? '@${profile.name}',
+        '@${profile.nickname ?? profile.name}',
       );
       await UserService.saveLocal('about', profile.about ?? '');
 
@@ -148,7 +148,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         'userId': 'ID: $userIdString',
         'phone': profile.phone ?? '',
         'profileImage': profile.avatar,
-        'username': profile.nickname ?? '@${profile.name}',
+        'username': '@${profile.nickname ?? profile.name}',
         'nickname': profile.nickname,
         'about': profile.about,
         'qrCode': qrCodeBase64,
@@ -178,7 +178,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           userId: userIdDisplay,
           phone: profile.phone ?? '+7 (999) 123-45-67',
           profileImage: profile.avatar,
-          username: profile.nickname ?? '@${profile.name}',
+          username: '@${profile.nickname ?? profile.name}',
           nickname: profile.nickname,
           about: profile.about,
           qrCode: qrCodeBase64,
