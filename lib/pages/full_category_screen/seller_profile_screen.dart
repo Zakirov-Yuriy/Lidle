@@ -232,8 +232,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   // Блок «Поделиться компанией» по умолчанию свёрнут (как остальные секции).
   bool _shareExpanded = false;
 
-  /// TTL кеша объявлений продавца — 5 минут.
-  static const _cacheTtl = Duration(minutes: 5);
+  /// TTL кеша объявлений и товаров продавца (12.10.2026: было 5 минут).
+  ///
+  /// Полчаса, потому что кэш больше не единственный источник: показав его,
+  /// экран тут же тихо идёт за свежим и обновляется сам. Короткий срок при
+  /// такой схеме только заставляет человека смотреть на скелетон там, где
+  /// показывать было что.
+  static const _cacheTtl = Duration(minutes: 30);
 
   /// По сколько страниц витрины запрашивать за раз (12.10.2026).
   ///
@@ -929,6 +934,26 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
+  /// Запомнить витрину продавца.
+  ///
+  /// Выдачу поиска НЕ запоминаем: это ответ на одно слово, а не витрина, и
+  /// при следующем заходе он показался бы вместо неё.
+  void _cacheListings(
+    String userId,
+    String query,
+    List<Map<String, dynamic>> listings,
+  ) {
+    if (query.isNotEmpty) {
+      return;
+    }
+
+    AppCacheService().set<List<Map<String, dynamic>>>(
+      CacheKeys.sellerProfileKey(userId),
+      listings,
+      ttl: _cacheTtl,
+    );
+  }
+
   /// Ответ сервера в вид, который понимает `Listing.fromJson`.
   ///
   /// Вынесено отдельно (12.10.2026): теперь страницы приходят не одной кучей,
@@ -1003,6 +1028,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           _sellerListings = cachedList;
           _isLoading = false;
         });
+
+        // Кэш показываем мгновенно, но он мог устареть: объявление добавили,
+        // сняли, поменяли цену. Поэтому следом тихо идём за свежим, БЕЗ
+        // скелетона, и витрина обновляется сама, когда ответ придёт
+        // (12.10.2026).
+        _loadSellerListings(forceRefresh: true, silent: true);
+
         return;
       }
     }
@@ -1068,14 +1100,22 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       }
 
       // Скелетон снимаем здесь, на первой же странице.
-      if (query.isEmpty && _filter.isEmpty) {
-        _fullListings = listings;
-      }
+      //
+      // В ТИХОМ режиме этого не делаем: на экране уже лежит витрина из кэша,
+      // и подменять её тридцатью объявлениями первой страницы значит показать
+      // человеку, как список сначала съёжился, а потом вырос обратно. Тихое
+      // обновление заменяет витрину один раз, когда соберёт все страницы.
+      if (!silent) {
+        if (query.isEmpty && _filter.isEmpty) {
+          _fullListings = listings;
+          _cacheListings(userId, query, listings);
+        }
 
-      setState(() {
-        _sellerListings = listings;
-        _isLoading = false;
-      });
+        setState(() {
+          _sellerListings = listings;
+          _isLoading = false;
+        });
+      }
 
       for (int page = 2; page <= lastPage; page += _advertsPageBatch) {
         final batch = <Future<Map<String, dynamic>>>[];
@@ -1110,25 +1150,26 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
         listings = [...listings, ...more];
 
-        if (query.isEmpty && _filter.isEmpty) {
-          _fullListings = listings;
-        }
+        if (!silent) {
+          if (query.isEmpty && _filter.isEmpty) {
+            _fullListings = listings;
 
-        setState(() => _sellerListings = listings);
+            // Кэш пишем по ходу, а не только в конце (12.10.2026). Человек
+            // часто уходит с экрана раньше, чем догрузятся все страницы, и
+            // при записи только в конце кэша не оставалось вовсе: при
+            // следующем заходе снова скелетон. Половина витрины в кэше лучше,
+            // чем ничего, тем более что следующий заход всё равно тихо
+            // обновит её целиком.
+            _cacheListings(userId, query, listings);
+          }
+
+          setState(() => _sellerListings = listings);
+        }
       }
 
       log.d('✅ Трансформировано ${listings.length} объявлений');
 
-      // 💾 Сохраняем в AppCacheService (TTL 5 мин) — следующее открытие экрана
-      // отдаст данные мгновенно без обращения к API. Выдачу поиска не
-      // запоминаем: это ответ на одно слово, а не витрина продавца.
-      if (query.isEmpty) {
-        AppCacheService().set<List<Map<String, dynamic>>>(
-          CacheKeys.sellerProfileKey(userId),
-          listings,
-          ttl: _cacheTtl,
-        );
-      }
+      _cacheListings(userId, query, listings);
     } catch (e) {
       if (!mounted || requestId != _listingsRequest) return;
 
