@@ -2828,6 +2828,13 @@ class ApiService {
   }) =>
       ChatApi.getChatMessages(chatId, page: page, token: token);
 
+  /// Карточка одного чата: собеседник, его статус «в сети», привязка.
+  static Future<Map<String, dynamic>?> getChat(
+    int chatId, {
+    String? token,
+  }) =>
+      ChatApi.getChat(chatId, token: token);
+
   static Future<Map<String, dynamic>> sendMessage(
     int chatId,
     String messageText, {

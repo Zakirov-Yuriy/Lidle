@@ -98,6 +98,17 @@ class _ChatPageState extends State<ChatPage> {
 
   bool _isLoadingHistory = false;
 
+  /// В сети ли собеседник прямо сейчас (12.10.2026).
+  ///
+  /// Шапка переписки писала «был(а) недавно» всегда: это был заполнитель, на
+  /// сервере такого признака вовсе не было. Теперь сервер отмечает каждое
+  /// обращение к API, и «в сети» означает активность за последние две
+  /// минуты.
+  bool _peerOnline = false;
+
+  /// Отдельный таймер статуса. Реже ленты: статус не горит.
+  Timer? _peerStatusTimer;
+
   // 🔗 Защита от множественных нажатий на "Перейти"
   bool _isNavigatingToProperty = false;
 
@@ -157,6 +168,7 @@ class _ChatPageState extends State<ChatPage> {
     _scrollController.dispose();
     _updateTimer?.cancel(); // 🔴 Отменяем таймер при закрытии экрана
     _rateLimitTimer?.cancel(); // 🔴 Отменяем таймер rate limit
+    _peerStatusTimer?.cancel();
 
     _incomingSub?.cancel();
 
@@ -360,6 +372,42 @@ class _ChatPageState extends State<ChatPage> {
     await _loadMessages();
     // 🔄 Запускаем таймер для автоматического обновления сообщений
     _startAutoUpdate();
+
+    // Статус собеседника: сразу и дальше раз в минуту (12.10.2026).
+    _loadPeerStatus();
+
+    _peerStatusTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      _loadPeerStatus();
+    });
+  }
+
+  /// Узнать, в сети ли собеседник.
+  ///
+  /// Отдельным запросом, а не вместе с сообщениями: лента ходит на сервер
+  /// каждые десять секунд, и таскать с ней ещё и карточку чата значит
+  /// упереться в ограничение на число запросов ради надписи в шапке.
+  Future<void> _loadPeerStatus() async {
+    if (_chatId == null) return;
+
+    try {
+      final chat = await ApiService.getChat(_chatId!);
+
+      if (!mounted || chat == null) return;
+
+      final user = chat['user'];
+
+      if (user is! Map) return;
+
+      final online = user['is_online'] == true;
+
+      if (online == _peerOnline) return;
+
+      setState(() {
+        _peerOnline = online;
+      });
+    } catch (e) {
+      log.d('⚠️ Не удалось узнать статус собеседника: $e');
+    }
   }
 
   /// 📦 Предварительная загрузка данных объявления (перед загрузкой сообщений)
@@ -1190,10 +1238,14 @@ class _ChatPageState extends State<ChatPage> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      // Статус собеседника (12.10.2026). «Был(а) недавно»
+                      // раньше стояло всегда: это был заполнитель.
                       Text(
-                        'был(а) недавно', // Заполнитель статуса
-                        style: const TextStyle(
-                          color: Colors.white70,
+                        _peerOnline ? 'онлайн' : 'был(а) недавно',
+                        style: TextStyle(
+                          color: _peerOnline
+                              ? const Color(0xFF4CD964)
+                              : Colors.white70,
                           fontSize: 12,
                         ),
                       ),
@@ -1562,7 +1614,16 @@ class _ChatPageState extends State<ChatPage> {
               color: bubbleColor,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Column(
+            // Пузырь по длине текста, а не во всю разрешённую ширину
+            // (12.10.2026).
+            //
+            // Виновата была строка времени: `Align` внутри колонки занимает
+            // всю доступную ширину, и короткое «ок» растягивало пузырь до
+            // предела, оставляя справа пустоту. `IntrinsicWidth` заставляет
+            // колонку взять ширину самого широкого ребёнка, то есть ширину
+            // текста, а ограничение сверху по-прежнему держит `maxWidth`.
+            child: IntrinsicWidth(
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1613,6 +1674,7 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                 ),
               ],
+              ),
             ),
           ),
         ),
