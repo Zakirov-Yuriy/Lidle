@@ -25,6 +25,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/chat_events.dart';
 import 'package:lidle/services/notification_service.dart';
 import 'package:lidle/services/push_router.dart';
 import 'package:lidle/services/token_service.dart';
@@ -177,6 +178,20 @@ class PushService {
 
     final data = message.data;
     final chatId = int.tryParse('${data['chat_id'] ?? ''}');
+
+    if (chatId != null) {
+      // Открытую переписку обновляем сразу (12.10.2026). Раньше экран ждал
+      // своего таймера, и человек видел уведомление о сообщении, которого в
+      // ленте ещё нет. Выглядело как поломка чата.
+      ChatEvents.instance.notifyIncoming(chatId);
+
+      // Если человек смотрит ровно на этот чат, уведомление не показываем:
+      // сообщение он и так сейчас увидит, а подсказка поверх собственного
+      // разговора только мешает. Так ведут себя все мессенджеры.
+      if (ChatEvents.instance.isOpen(chatId)) {
+        return;
+      }
+    }
 
     // Сообщение в чате показываем отдельным видом уведомления: у него есть
     // имя отправителя и переход в нужный чат по нажатию.

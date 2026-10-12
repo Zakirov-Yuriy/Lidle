@@ -10,6 +10,7 @@ import 'package:lidle/blocs/messages/messages_event.dart';
 import 'package:lidle/models/message_model.dart';
 import 'package:lidle/models/chat_message_model.dart';
 import 'package:lidle/models/chat_source.dart';
+import 'package:lidle/services/chat_events.dart';
 import 'package:lidle/widgets/chat/chat_source_card.dart';
 import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/models/home_models.dart';
@@ -58,6 +59,9 @@ class _ChatPageState extends State<ChatPage> {
   bool _isLoading = true;
   Timer? _updateTimer; // 🔄 Таймер для автоматического обновления сообщений
   late int? _chatId; // 💾 ID чата (может быть получен из startChat)
+
+  /// Подписка на сообщения, пришедшие уведомлением в открытую переписку.
+  StreamSubscription<int>? _incomingSub;
   // Контакт по объявлению регистрируем один раз за сессию экрана (первое
   // отправленное сообщение). Дедуп по дню — на бэке.
   bool _contactRegistered = false;
@@ -104,6 +108,20 @@ class _ChatPageState extends State<ChatPage> {
     _messageController = TextEditingController();
     _scrollController = ScrollController();
     _chatId = widget.message.chatId; // Инициализируем из message
+
+    // Пока экран открыт, уведомления об этой переписке не показываются, а
+    // приходящие сообщения перечитываются сразу, не дожидаясь таймера
+    // (12.10.2026).
+    ChatEvents.instance.openChatId = _chatId;
+
+    _incomingSub = ChatEvents.instance.onIncoming.listen((chatId) {
+      if (!mounted || _chatId == null || chatId != _chatId) {
+        return;
+      }
+
+      _loadMessagesBackground();
+    });
+
     _initializeChat();
   }
 
@@ -113,6 +131,14 @@ class _ChatPageState extends State<ChatPage> {
     _scrollController.dispose();
     _updateTimer?.cancel(); // 🔴 Отменяем таймер при закрытии экрана
     _rateLimitTimer?.cancel(); // 🔴 Отменяем таймер rate limit
+
+    _incomingSub?.cancel();
+
+    // Экран закрыт: уведомления об этой переписке снова нужны.
+    if (ChatEvents.instance.openChatId == _chatId) {
+      ChatEvents.instance.openChatId = null;
+    }
+
     super.dispose();
   }
 
@@ -145,6 +171,7 @@ class _ChatPageState extends State<ChatPage> {
           final userData = chat['user'] as Map<String, dynamic>?;
           if (userData != null && userData['id'] == userId) {
             _chatId = chat['id'] as int?;
+            ChatEvents.instance.openChatId = _chatId;
             log.d('✅ Найден существующий чат с ID #$_chatId');
             break;
           }
@@ -214,13 +241,18 @@ class _ChatPageState extends State<ChatPage> {
 
   /// 🔄 Запустить периодическое обновление сообщений
   void _startAutoUpdate() {
-    _updateTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    // Пять секунд, а не пятнадцать (12.10.2026): пятнадцать в разговоре это
+    // очень долго, человек успевает решить, что чат не работает. Основной
+    // способ обновления теперь другой, по уведомлению, а таймер остаётся
+    // подстраховкой на случай, когда уведомления запрещены в настройках
+    // телефона.
+    _updateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (mounted && _chatId != null) {
         // Загружаем новые сообщения без показа лоадера
         _loadMessagesBackground();
       }
     });
-    log.d('✅ Таймер обновления сообщений запущен (интервал 15 сек)');
+    log.d('✅ Таймер обновления сообщений запущен (интервал 5 сек)');
   }
 
   /// 💬 Загрузить сообщения в фоне (без показа лоадера)
@@ -598,6 +630,27 @@ class _ChatPageState extends State<ChatPage> {
     final messageText = _messageController.text;
     _messageController.clear();
 
+    // Своё сообщение показываем сразу, не дожидаясь сервера (12.10.2026).
+    // Пока ответ не пришёл, у него одна галочка: «отправляется». Без этого
+    // между нажатием и ответом сервера лента стояла пустой, и человек жал
+    // отправку второй раз.
+    final pendingId = -DateTime.now().millisecondsSinceEpoch;
+
+    setState(() {
+      _messages = [
+        ..._messages,
+        {
+          'id': pendingId,
+          'is_me': true,
+          'message': messageText,
+          'created_at': _nowStamp(),
+          'is_pending': true,
+        },
+      ];
+    });
+
+    _scrollToBottom();
+
     try {
       int? chatId = _chatId;
 
@@ -682,6 +735,17 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     }
+  }
+
+  /// Текущее время в том же виде, в каком его отдаёт сервер: «12.10.2026
+  /// 14:05:09». Нужен оптимистичному сообщению, иначе разделитель даты и
+  /// время под пузырём посчитались бы неправильно.
+  String _nowStamp() {
+    final now = DateTime.now();
+    String two(int v) => v.toString().padLeft(2, '0');
+
+    return '${two(now.day)}.${two(now.month)}.${now.year} '
+        '${two(now.hour)}:${two(now.minute)}:${two(now.second)}';
   }
 
   /// 📅 Вытянуть дату из created_at в формате "yyyy-MM-dd"
@@ -991,6 +1055,26 @@ class _ChatPageState extends State<ChatPage> {
                           messagesToDisplay.insert(0, advertMessage);
                         }
 
+                        // Галочки прочтения (12.10.2026).
+                        //
+                        // Сервер помечает `read_at` только у ОДНОГО
+                        // сообщения: того, на котором собеседник остановился
+                        // последний раз. Все мои сообщения до него тоже
+                        // прочитаны, просто пометки у них нет. Поэтому ищем
+                        // самый большой номер своего прочитанного сообщения,
+                        // и всё, что не новее, считаем прочитанным.
+                        int lastReadMine = 0;
+
+                        for (final m in messagesToDisplay) {
+                          final mine = m['is_me'] as bool? ?? false;
+                          final readAt = m['read_at'];
+                          final id = m['id'] as int? ?? 0;
+
+                          if (mine && readAt != null && id > lastReadMine) {
+                            lastReadMine = id;
+                          }
+                        }
+
                         if (messagesToDisplay.isEmpty) {
                           return Center(
                             child: Text(
@@ -1087,6 +1171,11 @@ class _ChatPageState extends State<ChatPage> {
                                     isMe: msg['is_me'] as bool? ?? false,
                                     createdAt: msg['created_at'] as String?,
                                     source: startsNewSource ? source : null,
+                                    isPending: msg['is_pending'] == true,
+                                    isRead: lastReadMine > 0 &&
+                                        (msg['id'] as int? ?? 0) > 0 &&
+                                        (msg['id'] as int? ?? 0) <=
+                                            lastReadMine,
                                   ),
                                 ]
                               ],
@@ -1177,6 +1266,8 @@ class _ChatPageState extends State<ChatPage> {
     required bool isMe,
     String? createdAt,
     ChatSource? source,
+    bool isPending = false,
+    bool isRead = false,
   }) {
     // Парсим время из createdAt если оно есть
     String timeDisplay = '20:21';
@@ -1237,7 +1328,9 @@ class _ChatPageState extends State<ChatPage> {
                 Stack(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(right: 45),
+                      // У своих сообщений справа внизу время И галочки,
+                      // поэтому места надо больше.
+                      padding: EdgeInsets.only(right: isMe ? 62 : 45),
                       child: Text(
                         text,
                         style: TextStyle(color: textColor, fontSize: 15),
@@ -1247,12 +1340,23 @@ class _ChatPageState extends State<ChatPage> {
                     Positioned(
                       right: 2,
                       bottom: 1,
-                      child: Text(
-                        timeDisplay,
-                        style: TextStyle(
-                          color: textColor.withOpacity(0.7),
-                          fontSize: 11,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            timeDisplay,
+                            style: TextStyle(
+                              color: textColor.withOpacity(0.7),
+                              fontSize: 11,
+                            ),
+                          ),
+                          // Галочки только у своих сообщений: чужие читает
+                          // собеседник, и его отметки здесь ни при чём.
+                          if (isMe) ...[
+                            const SizedBox(width: 4),
+                            _tick(isPending: isPending, isRead: isRead),
+                          ],
+                        ],
                       ),
                     ),
                   ],
@@ -1262,6 +1366,32 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Галочки доставки и прочтения, как в привычных мессенджерах
+  /// (12.10.2026).
+  ///
+  ///   одна серая    сообщение ещё уходит на сервер
+  ///   две серые     сервер его принял
+  ///   две синие     собеседник открыл переписку и дочитал до него
+  ///
+  /// Честно про «две серые»: это «сервер принял», а не «доставлено на
+  /// телефон собеседника». Доставку до устройства мы не знаем, её не
+  /// сообщает ни Firebase, ни наш сервер, и выдавать одно за другое нельзя.
+  Widget _tick({required bool isPending, required bool isRead}) {
+    if (isPending) {
+      return Icon(
+        Icons.check,
+        size: 13,
+        color: Colors.white.withOpacity(0.55),
+      );
+    }
+
+    return Icon(
+      Icons.done_all,
+      size: 13,
+      color: isRead ? const Color(0xFF7FE0FF) : Colors.white.withOpacity(0.55),
     );
   }
 
