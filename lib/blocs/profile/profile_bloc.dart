@@ -48,7 +48,13 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         // 🔄 ВАЖНО: Инвалидируем кеш объявлений при обновлении профиля
         // Это предотвращает показ неправильных объявлений после изменения контактных данных
         AppCacheService().invalidate(CacheKeys.listingsData);
-        emit(const ProfileLoading());
+
+        // Заглушку показываем, ТОЛЬКО если показывать нечего (12.10.2026).
+        // Принудительное обновление зовут после правки профиля, и гасить ради
+        // него уже нарисованный экран незачем: данные просто подменятся.
+        if (state is! ProfileLoaded) {
+          emit(const ProfileLoading());
+        }
       } else {
         // 📖 Сначала проверяем L1-кеш (быстрее, чем читать из Hive)
         final cachedProfile = AppCacheService().get<Map<String, dynamic>>(
@@ -69,7 +75,11 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
               qrCode: cachedProfile['qrCode'],
             ),
           );
-          return;
+
+          // НЕ выходим (12.10.2026). Раньше здесь стоял `return`, и при живом
+          // кеше профиль вовсе не перечитывался: экраны показывали прежние
+          // данные, пока кеш не протухнет. Теперь показываем сохранённое
+          // сразу, а свежее подменяет его, когда доедет.
         }
         // L1 пуст — читаем из Hive (fallback).
         // Иначе показываем данные из Hive (если есть)
@@ -99,6 +109,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
               phone: cachedPhone,
               profileImage: cachedProfileImage,
               username: cachedUsername,
+              nickname: UserService.getLocal('nickname'),
               about: cachedAbout,
             ),
           );
@@ -128,6 +139,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         nicknameForDisplay(profile.nickname, fallbackName: profile.name),
       );
       await UserService.saveLocal('about', profile.about ?? '');
+      // Настоящее короткое имя, без собачки: его подставляет форма правки.
+      await UserService.saveLocal('nickname', profile.nickname ?? '');
 
       // Извлекаем base64 QR код из ответа API
       String? qrCodeBase64;
@@ -142,6 +155,10 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       // log.d('💾 Данные сохранены в Hive');
 
       // 💾 Сохраняем свежие данные в L1-кеш профиля (TTL 5 мин)
+      // Кладём и на диск, на полчаса (12.10.2026): профиль должен стоять на
+      // экране сразу даже после перезапуска приложения. Устареть он не
+      // успеет, потому что перечитывается при каждом заходе, а показанное из
+      // кеша лишь закрывает те секунды, пока идёт запрос.
       AppCacheService().set<Map<String, dynamic>>(CacheKeys.profileData, {
         'name': profile.name,
         'lastName': profile.lastName,
@@ -153,7 +170,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         'nickname': profile.nickname,
         'about': profile.about,
         'qrCode': qrCodeBase64,
-      });
+      }, ttl: const Duration(minutes: 30), persist: true);
 
       // Показываем свежие данные
       final userIdDisplay = 'ID: $userIdString';
