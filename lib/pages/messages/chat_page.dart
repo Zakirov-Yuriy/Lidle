@@ -241,18 +241,22 @@ class _ChatPageState extends State<ChatPage> {
 
   /// 🔄 Запустить периодическое обновление сообщений
   void _startAutoUpdate() {
-    // Пять секунд, а не пятнадцать (12.10.2026): пятнадцать в разговоре это
-    // очень долго, человек успевает решить, что чат не работает. Основной
-    // способ обновления теперь другой, по уведомлению, а таймер остаётся
-    // подстраховкой на случай, когда уведомления запрещены в настройках
-    // телефона.
-    _updateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    // Десять секунд, а не пятнадцать (12.10.2026). Чаще не делаем
+    // намеренно: по всем чатам одновременно ходит ещё и опрос из
+    // `MessagePollingService`, и вдвоём они легко упираются в ограничение
+    // сервера на число запросов. Поймав отказ, экран замолкает на полминуты
+    // и дальше дольше, а это ровно та беда, которую мы чиним.
+    //
+    // Основной способ обновления теперь другой: сообщение приходит через
+    // `ChatEvents` сразу, и от уведомления, и от опроса. Таймер остался
+    // подстраховкой.
+    _updateTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (mounted && _chatId != null) {
         // Загружаем новые сообщения без показа лоадера
         _loadMessagesBackground();
       }
     });
-    log.d('✅ Таймер обновления сообщений запущен (интервал 5 сек)');
+    log.d('✅ Таймер обновления сообщений запущен (интервал 10 сек)');
   }
 
   /// 💬 Загрузить сообщения в фоне (без показа лоадера)
@@ -278,20 +282,53 @@ class _ChatPageState extends State<ChatPage> {
           return idA.compareTo(idB);
         });
 
-        // Проверяем есть ли новые сообщения
-        final newMessagesCount = messages.length;
-        final oldMessagesCount = _messages.length;
+        // Сравниваем не по КОЛИЧЕСТВУ, а по последнему номеру и по отметке
+        // прочтения (12.10.2026).
+        //
+        // Счёт сообщений обманывает дважды. Первое: пока своё сообщение
+        // висит в ленте неотправленным, количество уже выросло, и настоящий
+        // ответ сервера лента отвергала как «ничего нового». Второе:
+        // прочтение собеседником количество не меняет вовсе, поэтому
+        // галочки никогда не синели, пока не придёт следующее сообщение.
+        int lastIdOf(List<Map<String, dynamic>> list) {
+          var id = 0;
 
-        // Если появились новые сообщения - обновляем и прокручиваем вниз
-        if (newMessagesCount > oldMessagesCount) {
-          log.d(
-            '📨 Получены новые сообщения: $newMessagesCount (было: $oldMessagesCount)',
-          );
+          for (final m in list) {
+            final value = m['id'] as int? ?? 0;
+            if (value > id) id = value;
+          }
+
+          return id;
+        }
+
+        String readStampOf(List<Map<String, dynamic>> list) {
+          final parts = <String>[];
+
+          for (final m in list) {
+            final readAt = m['read_at'];
+            if (readAt != null) parts.add('${m['id']}:$readAt');
+          }
+
+          return parts.join(',');
+        }
+
+        final hasNewMessage = lastIdOf(messages) > lastIdOf(_messages);
+        final readChanged =
+            readStampOf(messages) != readStampOf(_messages);
+
+        if (hasNewMessage || readChanged) {
+          log.d('📨 Лента обновилась: новых ${hasNewMessage ? "да" : "нет"}, '
+              'прочтение ${readChanged ? "изменилось" : "то же"}');
+
           setState(() {
             _messages = messages;
           });
-          // Автоскролл вниз при появлении новых сообщений
-          _scrollToBottom();
+
+          // Прокручиваем только к НОВОМУ сообщению. Из-за посиневшей галочки
+          // дёргать ленту вниз нельзя: человек мог читать старое.
+          if (hasNewMessage) {
+            _scrollToBottom();
+          }
         }
 
         // 🛡️ Сброс счетчика попыток при успехе

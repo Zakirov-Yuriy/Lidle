@@ -5,6 +5,7 @@
 // for incoming messages from other users (not own messages)
 
 import 'dart:async';
+import 'package:lidle/services/chat_events.dart';
 import 'package:lidle/services/notification_service.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/hive_service.dart';
@@ -93,7 +94,8 @@ class MessagePollingService {
       }
 
       // Get sender info from chat data
-      final senderName = chat['participant_name'] ?? chat['name'] ?? 'New message';
+      final senderName =
+          chat['participant_name'] ?? chat['name'] ?? 'Новое сообщение';
       final senderImage = chat['participant_avatar'];
       
       // _logger.d('[CHAT#$chatId] senderName=$senderName, hasAvatar=${senderImage != null}');
@@ -210,6 +212,23 @@ class MessagePollingService {
         // _logger.i('✅ INCOMING MESSAGE - SENDING NOTIFICATION');
         // _logger.i('   senderId=$senderIdStr DIFFERS FROM currentUserId=$currentUserIdStr');
         
+        // Открытой переписке сообщаем сразу (12.10.2026).
+        //
+        // Этот опрос ходит по ВСЕМ чатам и рисует уведомления сам, помимо
+        // Firebase. Про открытый экран он не знал ничего, поэтому человек,
+        // стоя в переписке, получал подсказку о сообщении, которого в ленте
+        // ещё нет. Выглядело как сломанный чат.
+        ChatEvents.instance.notifyIncoming(chatId);
+
+        // Уведомление о переписке, которая сейчас открыта, не показываем:
+        // человек и так на неё смотрит.
+        if (ChatEvents.instance.isOpen(chatId)) {
+          _lastMessageIds[chatId] = lastMessageId;
+          await _saveLastMessageId(chatId, lastMessageId);
+
+          return;
+        }
+
         // Send push notification
         await NotificationService().showChatMessageNotification(
           senderName: senderName,
