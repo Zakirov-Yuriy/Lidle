@@ -77,6 +77,27 @@ class _ChatPageState extends State<ChatPage> {
   int _rateLimitRetryCount = 0; // Счетчик попыток при rate limit
   Timer? _rateLimitTimer; // Таймер для восстановления после rate limit
 
+  /// История переписки, догруженная прокруткой вверх (12.10.2026).
+  ///
+  /// Сервер отдаёт сообщения страницами по пятнадцать, начиная с самых
+  /// новых, а приложение спрашивало только первую страницу и больше никогда
+  /// ничего. Поэтому в переписке было видно последние пятнадцать сообщений,
+  /// а прокрутка вверх ничего не подгружала: остальная история всё это время
+  /// лежала на сервере, просто её никто не просил.
+  ///
+  /// Лежит ОТДЕЛЬНО от `_messages`, а не вливается в них, потому что первую
+  /// страницу фоновое обновление перечитывает целиком и подменяет: история в
+  /// ней не удержалась бы.
+  List<Map<String, dynamic>> _history = [];
+
+  /// Какая страница истории уже доехала. Первая это сами `_messages`.
+  int _historyPage = 1;
+
+  /// История кончилась: сервер отдал пустую страницу. Дальше не спрашиваем.
+  bool _historyEnded = false;
+
+  bool _isLoadingHistory = false;
+
   // 🔗 Защита от множественных нажатий на "Перейти"
   bool _isNavigatingToProperty = false;
 
@@ -109,6 +130,9 @@ class _ChatPageState extends State<ChatPage> {
     _scrollController = ScrollController();
     _chatId = widget.message.chatId; // Инициализируем из message
 
+    // Дошли до верха переписки: догружаем, что было раньше (12.10.2026).
+    _scrollController.addListener(_onScroll);
+
     // Пока экран открыт, уведомления об этой переписке не показываются, а
     // приходящие сообщения перечитываются сразу, не дожидаясь таймера
     // (12.10.2026).
@@ -129,6 +153,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void dispose() {
     _messageController.dispose();
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _updateTimer?.cancel(); // 🔴 Отменяем таймер при закрытии экрана
     _rateLimitTimer?.cancel(); // 🔴 Отменяем таймер rate limit
@@ -160,6 +185,145 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     });
+  }
+
+  /// Человек подобрался к началу переписки: пора догрузить, что было раньше.
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    // Двести точек запаса, чтобы история успела приехать до того, как
+    // человек упрётся в пустоту.
+    if (_scrollController.position.pixels <= 200) {
+      _loadOlderMessages();
+    }
+  }
+
+  /// Добрать историю, если прокручивать нечего.
+  ///
+  /// Первая страница может целиком влезть на экран: короткие сообщения,
+  /// большой телефон. Тогда прокрутки нет, слушатель не сработает никогда, и
+  /// до истории человек не доберётся. В этом случае зовём её сами.
+  void _fillScreenIfNeeded() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      if (_scrollController.position.maxScrollExtent > 0) return;
+
+      _loadOlderMessages();
+    });
+  }
+
+  /// Догрузить страницу истории переписки (12.10.2026).
+  Future<void> _loadOlderMessages() async {
+    if (_isLoadingHistory || _historyEnded || _isLoading || _chatId == null) {
+      return;
+    }
+
+    _isLoadingHistory = true;
+
+    if (mounted) setState(() {});
+
+    try {
+      final page = _historyPage + 1;
+      final older = await ApiService.getChatMessages(_chatId!, page: page);
+
+      if (!mounted) return;
+
+      if (older.isEmpty) {
+        // Страниц больше нет: начало переписки найдено.
+        _historyEnded = true;
+        return;
+      }
+
+      _historyPage = page;
+
+      // Что уже на экране. Пока человек читал, в переписку могли написать,
+      // страницы сдвинулись, и те же сообщения приезжают второй раз.
+      final known = <int>{
+        for (final m in _history) m['id'] as int? ?? 0,
+        for (final m in _messages) m['id'] as int? ?? 0,
+      };
+
+      final fresh = older
+          .where((m) => !known.contains(m['id'] as int? ?? 0))
+          .toList();
+
+      // Страница целиком из уже показанных сообщений: это не конец истории,
+      // а именно сдвиг. Следующую возьмём при следующей прокрутке.
+      if (fresh.isEmpty) return;
+
+      // Сколько прокрутки оставалось ниже текущего места. Вставка сверху
+      // сдвигает содержимое, и без поправки экран прыгнет к новым
+      // сообщениям, то есть ровно туда, откуда человек уходил.
+      final tail = _scrollController.hasClients
+          ? _scrollController.position.maxScrollExtent -
+              _scrollController.position.pixels
+          : null;
+
+      setState(() {
+        _history = [..._history, ...fresh]
+          ..sort((a, b) =>
+              (a['id'] as int? ?? 0).compareTo(b['id'] as int? ?? 0));
+      });
+
+      if (tail != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !_scrollController.hasClients) return;
+
+          _scrollController.jumpTo(
+            _scrollController.position.maxScrollExtent - tail,
+          );
+        });
+      }
+
+      _fillScreenIfNeeded();
+    } catch (e) {
+      log.d('⚠️ Не удалось догрузить историю переписки: $e');
+    } finally {
+      _isLoadingHistory = false;
+
+      if (mounted) setState(() {});
+    }
+  }
+
+  /// Переложить в историю то, что выпало из первой страницы (12.10.2026).
+  ///
+  /// Сервер отдаёт пятнадцать САМЫХ НОВЫХ сообщений. Написали три новых, и
+  /// три самых старых с первой страницы в ней больше не приедут. Если просто
+  /// подменить ленту свежей страницей, эти три пропадут из середины
+  /// переписки у человека на глазах.
+  void _keepFallenOut(List<Map<String, dynamic>> fresh) {
+    if (_messages.isEmpty || fresh.isEmpty) return;
+
+    final freshIds = <int>{for (final m in fresh) m['id'] as int? ?? 0};
+
+    var lowest = 0;
+
+    for (final m in fresh) {
+      final id = m['id'] as int? ?? 0;
+      if (id > 0 && (lowest == 0 || id < lowest)) lowest = id;
+    }
+
+    if (lowest == 0) return;
+
+    // Отрицательные номера это свои неотправленные сообщения, их в историю
+    // не кладём: они живут только до ответа сервера.
+    final fallen = _messages.where((m) {
+      final id = m['id'] as int? ?? 0;
+      return id > 0 && id < lowest && !freshIds.contains(id);
+    }).toList();
+
+    if (fallen.isEmpty) return;
+
+    final knownInHistory = <int>{
+      for (final m in _history) m['id'] as int? ?? 0,
+    };
+
+    _history = [
+      ..._history,
+      ...fallen.where((m) => !knownInHistory.contains(m['id'] as int? ?? 0)),
+    ]..sort(
+        (a, b) => (a['id'] as int? ?? 0).compareTo(b['id'] as int? ?? 0),
+      );
   }
 
   /// 💬 Инициализировать чат: сохранить, загрузить сообщения и запустить обновление
@@ -328,6 +492,8 @@ class _ChatPageState extends State<ChatPage> {
               'прочтение ${readChanged ? "изменилось" : "то же"}');
 
           setState(() {
+            // Сначала спасаем выпавшее с первой страницы, потом подменяем.
+            _keepFallenOut(messages);
             _messages = messages;
           });
 
@@ -481,6 +647,9 @@ class _ChatPageState extends State<ChatPage> {
         // ✅ Просто сохраняем сообщения как есть (без добавления превью)
         // Превью объявления будет добавлено при рендере если это необходимо
         setState(() {
+          // Сначала спасаем выпавшее с первой страницы, потом подменяем:
+          // иначе отправка своего сообщения стирала бы догруженную историю.
+          _keepFallenOut(messages);
           _messages = messages;
           _isLoading = false;
         });
@@ -559,6 +728,8 @@ class _ChatPageState extends State<ChatPage> {
 
         // Прокручиваем вниз к последнему сообщению
         _scrollToBottom();
+
+        _fillScreenIfNeeded();
       }
     } catch (e) {
       log.d('❌ Ошибка загрузки сообщений: $e');
@@ -1065,10 +1236,21 @@ class _ChatPageState extends State<ChatPage> {
                     )
                   : Builder(
                       builder: (context) {
-                        // Формируем список для отображения
-                        final List<Map<String, dynamic>> messagesToDisplay =
-                            List.from(_messages);
-                        
+                        // Лента это догруженная история плюс первая страница
+                        // (12.10.2026). Повторы по номеру отбрасываем: после
+                        // сдвига страниц одно и то же сообщение может
+                        // оказаться в обоих списках.
+                        final List<Map<String, dynamic>> messagesToDisplay = [];
+                        final shown = <int>{};
+
+                        for (final m in [..._history, ..._messages]) {
+                          final id = m['id'] as int? ?? 0;
+
+                          if (id > 0 && !shown.add(id)) continue;
+
+                          messagesToDisplay.add(m);
+                        }
+
                         // Объявление, с которого открыли переписку, пока
                         // человек ещё ничего не написал.
                         //
@@ -1131,7 +1313,9 @@ class _ChatPageState extends State<ChatPage> {
                           );
                         }
 
-                        return ListView.builder(
+                        return Stack(
+                          children: [
+                            ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.symmetric(horizontal: 25),
                           itemCount: messagesToDisplay.length,
@@ -1225,6 +1409,27 @@ class _ChatPageState extends State<ChatPage> {
                               ],
                             );
                           },
+                            ),
+
+                            // Подгрузка истории: кружок у верхнего края, чтобы
+                            // человек видел, что старые сообщения едут.
+                            if (_isLoadingHistory)
+                              const Positioned(
+                                top: 8,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFF00B7FF),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         );
                       },
                     ),
