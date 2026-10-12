@@ -22,14 +22,11 @@
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
 
 import 'package:lidle/core/logger.dart';
-import 'package:lidle/main.dart' show navigatorKey;
-import 'package:lidle/pages/bookings/my_bookings_screen.dart';
-import 'package:lidle/pages/products/my_orders_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/notification_service.dart';
+import 'package:lidle/services/push_router.dart';
 import 'package:lidle/services/token_service.dart';
 
 class PushService {
@@ -163,42 +160,12 @@ class PushService {
 
   /// Куда вести человека, нажавшего на уведомление.
   ///
-  /// Пока разбираем только брони: у остальных уведомлений своего экрана
-  /// назначения нет, и открывать что попало хуже, чем не открывать ничего.
-  ///
-  /// Вкладку выбираем по событию, а не по роли из ответа сервера: уведомление
-  /// приходит тому, кто ничего не решал, и этого достаточно, чтобы понять,
-  /// какой список он ждёт увидеть. Заявку и её отмену гостем видит владелец,
-  /// значит ему нужны «Заявки ко мне». Решение владельца видит гость, значит
-  /// ему нужны «Мои брони».
+  /// Весь разбор живёт в `PushRouter`: он один на все три состояния
+  /// приложения и на оба источника нажатия, системное уведомление и
+  /// нарисованное самим приложением. Раньше разбор был здесь, понимал только
+  /// брони и заказы, а сообщения не вели никуда.
   void _openFromMessage(RemoteMessage message) {
-    final data = message.data;
-
-    // Заказы: продавцу «Заказы ко мне», покупателю «Мои покупки». Правило
-    // то же, что у броней: уведомление приходит тому, кто ничего не решал.
-    if ('${data['type'] ?? ''}' == 'order') {
-      final event = '${data['event'] ?? ''}';
-
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(
-          builder: (_) => MyOrdersScreen(startWithIncoming: event == 'created'),
-        ),
-      );
-
-      return;
-    }
-
-    if ('${data['type'] ?? ''}' != 'booking') {
-      return;
-    }
-
-    const ownerEvents = {'created', 'cancelled_by_guest'};
-    final event = '${data['event'] ?? ''}';
-    final tab = ownerEvents.contains(event) ? 1 : 0;
-
-    navigatorKey.currentState?.push(
-      MaterialPageRoute(builder: (_) => MyBookingsScreen(initialTab: tab)),
-    );
+    PushRouter.handle(Map<String, dynamic>.from(message.data));
   }
 
   /// Показать уведомление, пришедшее при открытом приложении.
@@ -232,7 +199,10 @@ class PushService {
       title: notification.title ?? 'ЛИДЛЕ',
       body: notification.body ?? '',
       id: message.hashCode,
-      payload: data['url'] as String?,
+      // Подпись уведомления это привязка: вид события и номер. По ней
+      // `PushRouter` откроет тот же экран, что и при нажатии на системное
+      // уведомление. Раньше сюда клали адрес, и нажатие не делало ничего.
+      payload: PushRouter.encode(Map<String, dynamic>.from(data)),
       channelId: isOrder ? 'orders_channel' : 'general_channel',
     );
   }

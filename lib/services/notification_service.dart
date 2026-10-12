@@ -13,6 +13,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:lidle/services/push_router.dart';
 import 'badge_service.dart';
 
 class NotificationService {
@@ -344,16 +345,10 @@ class NotificationService {
   void _onNotificationTapped(NotificationResponse response) {
     _logger.i('👆 Пользователь нажал на уведомление: ${response.payload}');
 
-    // Обработка payload - можно использовать для навигации
-    final payload = response.payload;
-    if (payload != null && payload.startsWith('chat_')) {
-      final chatId = int.tryParse(payload.replaceFirst('chat_', ''));
-      if (chatId != null) {
-        _logger.i('📱 Переход в чат #$chatId');
-        // TODO: Навигация в чат через go_router
-        // Это обычно обрабатывается в main.dart через callback
-      }
-    }
+    // Переход делает `PushRouter`: он понимает и старую подпись `chat_42`,
+    // и новую, где привязка едет целиком. Раньше здесь стояло TODO, и
+    // нажатие на уведомление при открытом приложении не вело никуда.
+    PushRouter.handlePayload(response.payload);
   }
 
   /// Загружает изображение с URL и кеширует в временную папку

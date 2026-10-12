@@ -42,6 +42,44 @@ class ChatApi {
     }
   }
 
+  /// 💬 Одна переписка по её номеру (12.10.2026).
+  /// GET /v1/chats/{chatId}
+  ///
+  /// Нужна переходу по пуш-уведомлению: в уведомлении о сообщении приходит
+  /// только номер чата, а экран переписки просит собеседника целиком. Тянуть
+  /// ради этого весь список чатов постранично было бы расточительно и всё
+  /// равно ненадёжно: нужный чат может оказаться не на первой странице.
+  static Future<Map<String, dynamic>?> getChat(
+    int chatId, {
+    String? token,
+  }) async {
+    try {
+      final effectiveToken = ApiBase.requireToken(token);
+
+      final response = await ApiService.get(
+        '/chats/$chatId',
+        token: effectiveToken,
+      );
+
+      final data = response['data'];
+
+      // Ручка отдаёт коллекцию из одного элемента, как и остальные в проекте.
+      if (data is List && data.isNotEmpty && data.first is Map) {
+        return Map<String, dynamic>.from(data.first as Map);
+      }
+
+      if (data is Map) {
+        return Map<String, dynamic>.from(data);
+      }
+
+      return null;
+    } catch (e) {
+      log.d('❌ Не удалось загрузить чат #$chatId: $e');
+
+      return null;
+    }
+  }
+
   /// 💬 Получить сообщения из конкретного чата
   /// GET /v1/chats/{chatId}/messages
   static Future<List<Map<String, dynamic>>> getChatMessages(

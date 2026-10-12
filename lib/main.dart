@@ -23,6 +23,7 @@ import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
+import 'package:lidle/services/push_router.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/pages/home_page.dart';
@@ -286,6 +287,11 @@ class _AppWrapperState extends State<AppWrapper> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (TokenService.currentToken != null) {
         PushService.instance.init();
+
+        // Приложение построено и сессия прочитана: можно открывать экран по
+        // уведомлению, которым приложение и запустили. До этой секунды
+        // переход некуда делать, поэтому `PushRouter` его откладывает.
+        PushRouter.markReady();
       }
     });
 
@@ -413,6 +419,11 @@ class LidleApp extends StatelessWidget {
             // авторизации отправлять его некуда.
             PushService.instance.init();
 
+            // Теперь переход по уведомлению есть кому принять: если человек
+            // открыл приложение нажатием на пуш и попал на вход, нужный экран
+            // откроется сразу после входа.
+            PushRouter.markReady();
+
             // �🔔 Запускаем систему мониторинга новых сообщений (FOREGROUND timer)
             sl<MessagePollingService>().startPolling(
               interval: const Duration(seconds: 15),
@@ -465,6 +476,10 @@ class LidleApp extends StatelessWidget {
             // 🔕 Отвязываем устройство от уведомлений, чтобы следующему
             // пользователю этого телефона не приходили чужие сообщения.
             PushService.instance.unregister();
+
+            // Отложенный переход больше не его: следующий вход начнётся с
+            // чистого листа.
+            PushRouter.reset();
 
             // 🤖 Останавливаем наблюдатель за ИИ-обработкой.
             AiCompletionService.instance.stop();
