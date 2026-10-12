@@ -11,6 +11,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/utils/nickname.dart';
 
 class UserAccountPage extends StatefulWidget {
   final ResponseModel response;
@@ -92,7 +93,9 @@ class _UserAccountPageState extends State<UserAccountPage> {
         _city = '${city?['name'] ?? ''}'.trim().isEmpty
             ? null
             : '${city!['name']}'.trim();
-        _nickname = nick.isEmpty ? null : (nick.startsWith('@') ? nick : '@$nick');
+        // Подчёркивания показываем пробелами (12.10.2026): в базе имя
+        // хранится как адрес, а на экране должно читаться.
+        _nickname = nick.isEmpty ? null : nicknameForDisplay(nick);
         _phones = phones;
         _telegrams = pick(contacts?['telegrams'], 'username');
         _whatsapps = pick(contacts?['whatsapps'], 'number');

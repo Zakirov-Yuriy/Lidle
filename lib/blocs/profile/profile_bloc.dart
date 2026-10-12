@@ -7,6 +7,7 @@ import '../../services/user_service.dart';
 import '../../core/cache/cache_service.dart';
 import '../../core/cache/cache_keys.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/utils/nickname.dart';
 
 /// Bloc для управления состоянием профиля пользователя.
 /// Обрабатывает события загрузки, обновления и выхода из профиля.
@@ -124,7 +125,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       await UserService.saveLocal('profileImage', profile.avatar);
       await UserService.saveLocal(
         'username',
-        '@${profile.nickname ?? profile.name}',
+        nicknameForDisplay(profile.nickname, fallbackName: profile.name),
       );
       await UserService.saveLocal('about', profile.about ?? '');
 
@@ -148,7 +149,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         'userId': 'ID: $userIdString',
         'phone': profile.phone ?? '',
         'profileImage': profile.avatar,
-        'username': '@${profile.nickname ?? profile.name}',
+        'username': nicknameForDisplay(profile.nickname, fallbackName: profile.name),
         'nickname': profile.nickname,
         'about': profile.about,
         'qrCode': qrCodeBase64,
@@ -178,7 +179,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           userId: userIdDisplay,
           phone: profile.phone ?? '+7 (999) 123-45-67',
           profileImage: profile.avatar,
-          username: '@${profile.nickname ?? profile.name}',
+          username: nicknameForDisplay(profile.nickname, fallbackName: profile.name),
           nickname: profile.nickname,
           about: profile.about,
           qrCode: qrCodeBase64,

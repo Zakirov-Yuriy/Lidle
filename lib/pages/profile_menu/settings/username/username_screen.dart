@@ -12,6 +12,7 @@ import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/utils/nickname.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/user_service.dart';
 
@@ -197,7 +198,7 @@ class _UsernameScreenState extends State<UsernameScreen> {
       // Профиль перечитываем, чтобы новое имя сразу встало и в настройках, и
       // в личной информации, и на самом профиле: все три экрана берут его из
       // одного места.
-      await UserService.saveLocal('username', '@$value');
+      await UserService.saveLocal('username', nicknameForDisplay(value));
 
       // ОБЯЗАТЕЛЬНО forceRefresh (12.10.2026). Обычная загрузка профиля при
       // живом кеше отдаёт то, что в нём лежит, и вовсе не ходит на сервер:

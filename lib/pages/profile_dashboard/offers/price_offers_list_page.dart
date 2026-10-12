@@ -20,6 +20,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/api_request_queue.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/utils/nickname.dart';
 
 class PriceOffersListPage extends StatefulWidget {
   final Offer offer;
@@ -313,9 +314,8 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
 
         if (userProfile.isNotEmpty) {
           final nick = text(userProfile['nickname']);
-          userNickname = nick == null
-              ? null
-              : (nick.startsWith('@') ? nick : '@$nick');
+          // Подчёркивания показываем пробелами (12.10.2026).
+          userNickname = nick == null ? null : nicknameForDisplay(nick);
 
           final contacts = userProfile['contacts'] as Map<String, dynamic>?;
 

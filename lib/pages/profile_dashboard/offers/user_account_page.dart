@@ -8,6 +8,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/widgets/dialogs/reject_offer_dialog.dart';
+import 'package:lidle/core/utils/nickname.dart';
 
 class UserAccountPage extends StatelessWidget {
   final PriceOfferItem? offerItem;
@@ -231,7 +232,7 @@ class _UserCard extends StatelessWidget {
           if (offerItem?.nickname != null)
             _InfoRow(
               label: 'Ник в Lidle',
-              value: offerItem!.nickname!,
+              value: nicknameForDisplay(offerItem!.nickname),
               isLink: true,
             ),
 
