@@ -262,6 +262,19 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// TTL кэша счётчиков — 60 секунд.
   static const Duration _cacheTtl = Duration(seconds: 60);
 
+  /// Покупки, показанные в прошлый раз (12.10.2026).
+  ///
+  /// Экран создаётся заново при каждом заходе в профиль, поэтому обычное
+  /// поле состояния не помогает: лента покупок каждый раз начиналась с
+  /// кружка, хотя человек только что её видел. Статическое поле живёт,
+  /// пока живёт приложение.
+  ///
+  /// Держим в памяти, а не в `AppCacheService`: это объекты заказов, а не
+  /// простые карты, и класть их в хранилище пришлось бы с разбором туда и
+  /// обратно ради ленты, которая всё равно обновляется при каждом заходе.
+  static List<_PurchaseEntry> _purchasesMemo = const [];
+  static int _purchasesCountMemo = 0;
+
   /// Инвалидировать кэш счётчиков объявлений (например, после удаления объявления).
   // ignore: unused_element
   static void invalidateListingsCache() =>
@@ -291,7 +304,13 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     _loadBookingCounts();
     // 🧾 Новые заказы на товары
     _loadOrdersCount();
-    // 🛍 Покупки, которые ждут получения
+    // 🛍 Покупки, которые ждут получения. Прошлый список показываем сразу,
+    // свежий подменит его, когда доедет (12.10.2026).
+    if (_purchasesMemo.isNotEmpty) {
+      _activePurchases = _purchasesMemo;
+      _activePurchasesCount = _purchasesCountMemo;
+    }
+
     _loadActivePurchases();
     // 🏪 Подтягиваем актуальное название компании (магазина) с сервера
     _loadCompanyName();
@@ -371,7 +390,11 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
     if (token == null || token.isEmpty) return;
 
-    if (mounted) setState(() => _purchasesLoading = true);
+    // Кружок показываем, только когда показывать больше нечего. Если прошлый
+    // список на экране, обновляемся молча.
+    if (mounted && _activePurchases.isEmpty) {
+      setState(() => _purchasesLoading = true);
+    }
 
     try {
       final orders = await OrdersService.myOrders(all: true);
@@ -394,6 +417,10 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       }
 
       if (!mounted) return;
+
+      // Запоминаем для следующего захода на экран.
+      _purchasesMemo = entries;
+      _purchasesCountMemo = waitingOrders.length;
 
       setState(() {
         _activePurchases = entries;
