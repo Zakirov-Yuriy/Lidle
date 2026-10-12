@@ -21,6 +21,8 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/pages/full_category_screen/property_details_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'dart:async';
+import 'package:lidle/core/cache/cache_keys.dart';
+import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/logger.dart';
 
 class ChatPage extends StatefulWidget {
@@ -109,6 +111,14 @@ class _ChatPageState extends State<ChatPage> {
   /// Отдельный таймер статуса. Реже ленты: статус не горит.
   Timer? _peerStatusTimer;
 
+  /// Лента уже рисовалась хотя бы раз.
+  ///
+  /// По нему выбирается способ прокрутки вниз: при первом показе мгновенно,
+  /// дальше плавно. Раньше прокрутка всегда была плавной, и вход в чат
+  /// выглядел как рывок: сначала показывалось начало ленты, потом она сама
+  /// уезжала вниз.
+  bool _firstPaintDone = false;
+
   // 🔗 Защита от множественных нажатий на "Перейти"
   bool _isNavigatingToProperty = false;
 
@@ -143,6 +153,26 @@ class _ChatPageState extends State<ChatPage> {
 
     // Дошли до верха переписки: догружаем, что было раньше (12.10.2026).
     _scrollController.addListener(_onScroll);
+
+    // Сохранённую переписку показываем сразу (12.10.2026).
+    //
+    // Раньше каждый вход в знакомый чат начинался с пустого экрана и
+    // кружка: лента ждала ответа сервера. Теперь на экране сразу стоит то,
+    // что было в прошлый раз, прокрученное вниз, а свежие сообщения
+    // подменяют его, когда доедут.
+    final cached = _chatId == null
+        ? null
+        : AppCacheService().get<List<Map<String, dynamic>>>(
+            CacheKeys.chatMessagesKey(_chatId!),
+          );
+
+    if (cached != null && cached.isNotEmpty) {
+      _messages = List<Map<String, dynamic>>.from(cached);
+      _isLoading = false;
+
+      _scrollToBottom(animate: false);
+      _firstPaintDone = true;
+    }
 
     // Пока экран открыт, уведомления об этой переписке не показываются, а
     // приходящие сообщения перечитываются сразу, не дожидаясь таймера
@@ -187,7 +217,21 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   /// 💬 Прокрутить вниз к последнему сообщению
-  void _scrollToBottom() {
+  ///
+  /// При ПЕРВОМ показе ленты прокручиваем мгновенно: человек должен сразу
+  /// увидеть последние сообщения, а не смотреть, как лента уезжает вниз
+  /// сама (12.10.2026).
+  void _scrollToBottom({bool animate = true}) {
+    if (!animate) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_scrollController.hasClients) return;
+
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      });
+
+      return;
+    }
+
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -197,6 +241,20 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     });
+  }
+
+  /// Сохранить последнюю страницу переписки.
+  ///
+  /// Только серверную ленту: свои неотправленные сообщения в кеш не кладём,
+  /// иначе при следующем входе они повисли бы с одной галочкой навсегда.
+  void _cacheMessages(List<Map<String, dynamic>> list) {
+    if (_chatId == null || list.isEmpty) return;
+
+    AppCacheService().set<List<Map<String, dynamic>>>(
+      CacheKeys.chatMessagesKey(_chatId!),
+      list,
+      ttl: const Duration(minutes: 30),
+    );
   }
 
   /// Человек подобрался к началу переписки: пора догрузить, что было раньше.
@@ -545,6 +603,8 @@ class _ChatPageState extends State<ChatPage> {
             _messages = messages;
           });
 
+          _cacheMessages(messages);
+
           // Прокручиваем только к НОВОМУ сообщению. Из-за посиневшей галочки
           // дёргать ленту вниз нельзя: человек мог читать старое.
           if (hasNewMessage) {
@@ -702,6 +762,8 @@ class _ChatPageState extends State<ChatPage> {
           _isLoading = false;
         });
 
+        _cacheMessages(messages);
+
         // После загрузки сообщений — попробуем найти связанное объявление
         // (только если данные еще не загружены)
         try {
@@ -774,8 +836,10 @@ class _ChatPageState extends State<ChatPage> {
         // ✅ Отмечаем все входящие сообщения как прочитанные
         _markIncomingMessagesAsRead(messages);
 
-        // Прокручиваем вниз к последнему сообщению
-        _scrollToBottom();
+        // Прокручиваем вниз к последнему сообщению. Первый показ мгновенно,
+        // дальше плавно.
+        _scrollToBottom(animate: _firstPaintDone);
+        _firstPaintDone = true;
 
         _fillScreenIfNeeded();
       }

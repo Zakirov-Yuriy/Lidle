@@ -51,6 +51,19 @@ abstract final class CacheKeys {
   /// Ключ сообщений компании.
   static const String companyMessagesData = 'company_messages_data';
 
+  /// Префикс кеша одной переписки. Используйте [chatMessagesKey].
+  static const String _chatMessagesPrefix = 'chat_messages_';
+
+  /// Строит ключ кеша последней страницы переписки (12.10.2026).
+  ///
+  /// Нужен, чтобы вход в знакомый чат не начинался с пустого экрана и
+  /// загрузки: сохранённые сообщения показываются сразу, свежие подменяют их
+  /// в фоне.
+  static String chatMessagesKey(int chatId) => '$_chatMessagesPrefix$chatId';
+
+  /// Префикс для массовой инвалидации переписок.
+  static const String chatMessagesPrefix = _chatMessagesPrefix;
+
   // ─────────────────────────────────────────────
   // Каталог / категории
   // ─────────────────────────────────────────────
