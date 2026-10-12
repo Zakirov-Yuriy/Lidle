@@ -412,6 +412,19 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
+  /// Вкладки, на которых фильтр по каталогу и категории НЕ применяется
+  /// (12.10.2026, решение заказчика).
+  ///
+  /// CRM и «Все» показывают всё, что есть у человека, одной лентой: в CRM
+  /// это объявления из фида, в «Все» заведённые руками. Раньше оба списка
+  /// фильтровались выбранным каталогом, и человек, выбравший «Недвижимость»,
+  /// видел в CRM только её, хотя вкладка называется CRM, а не
+  /// «CRM по выбранному каталогу».
+  ///
+  /// Сами чипсы каталогов и категорий на этих вкладках остаются видимыми, так
+  /// решил заказчик, но на содержимое не влияют.
+  static bool _unfilteredTab(int tab) => tab == 4 || tab == 5;
+
   /// Категории каталога, доступные в текущей вкладке.
   List<AdvertMetaCategory> _categoriesInCatalogForTab(
     AdvertMetaCatalog catalog,
@@ -428,7 +441,12 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   /// первый. Меняет ТОЛЬКО поля состояния — вызывать внутри setState, без
   /// сетевых загрузок.
   void _recomputeVisibleForTab(int tab) {
-    final catalogs = _catalogsForTab(tab);
+    // На вкладках без фильтра сужать список чипсов незачем: показываем все
+    // каталоги человека, иначе выбор скакал бы при каждом переходе между
+    // вкладками, а влиять ему всё равно не на что.
+    final catalogs = _unfilteredTab(tab)
+        ? _advertMetaCatalogs
+        : _catalogsForTab(tab);
     _visibleCatalogs = catalogs;
 
     if (catalogs.isEmpty) {
@@ -449,7 +467,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     _selectedCatalogIndex = catalogIdx;
     _selectedCatalogId = catalogs[catalogIdx].catalogId;
 
-    final categories = _categoriesInCatalogForTab(catalogs[catalogIdx], tab);
+    final categories = _unfilteredTab(tab)
+        ? catalogs[catalogIdx].categories
+        : _categoriesInCatalogForTab(catalogs[catalogIdx], tab);
     _advertMetaCategories = categories;
 
     if (categories.isEmpty) {
@@ -477,10 +497,56 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     setState(() {
       _currentTab = tab;
       _recomputeVisibleForTab(tab);
+
+      // На «Активных» первым показываем каталог недвижимости (12.10.2026,
+      // решение заказчика): это основной раздел площадки, и открывать вкладку
+      // на случайном каталоге незачем.
+      if (tab == 0) {
+        _preferRealEstate(tab);
+      }
     });
     if (_selectedCategoryId != null && _selectedCategoryId != prevCategoryId) {
       _loadListingsByCategory(_selectedCategoryId!);
     }
+  }
+
+  /// Поставить первым каталог недвижимости, если он есть в этой вкладке.
+  ///
+  /// Ищем ПО НАЗВАНИЮ, а не по номеру: номера каталогов на деве и на проде
+  /// разные, захардкоженный id зацепил бы на проде чужой раздел. Это уже
+  /// обжигало в командах для фидов.
+  ///
+  /// Если недвижимости в этой вкладке нет, оставляем то, что выбрал
+  /// `_recomputeVisibleForTab`. Меняет только поля состояния, вызывать внутри
+  /// setState.
+  void _preferRealEstate(int tab) {
+    if (_visibleCatalogs.isEmpty) {
+      return;
+    }
+
+    final idx = _visibleCatalogs.indexWhere(
+      (c) => c.name.toLowerCase().contains('недвиж'),
+    );
+
+    if (idx < 0 || idx == _selectedCatalogIndex) {
+      return;
+    }
+
+    _selectedCatalogIndex = idx;
+    _selectedCatalogId = _visibleCatalogs[idx].catalogId;
+
+    final categories = _categoriesInCatalogForTab(_visibleCatalogs[idx], tab);
+    _advertMetaCategories = categories;
+
+    if (categories.isEmpty) {
+      _selectedCategoryIndex = 0;
+      _selectedCategoryId = null;
+
+      return;
+    }
+
+    _selectedCategoryIndex = 0;
+    _selectedCategoryId = categories.first.categoryId;
   }
 
   Future<void> _loadCrmListings() async {
@@ -490,33 +556,21 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       if (mounted) setState(() => _crmLoading = true);
 
-      // По выбранной категории, как и остальные вкладки (30.09.2026).
-      // Фильтр здесь однажды убрали из-за рассинхрона: список приходил по
-      // категории, а число в подписи общее, и получалось «CRM 810» при
-      // шестидесяти объявлениях. Лечится не отключением фильтра, а тем, что
-      // счётчик считается по тому же запросу, что и список.
+      // БЕЗ фильтра по каталогу и категории (12.10.2026): вкладка показывает
+      // все объявления из фида одной лентой. Прежний рассинхрон, из-за
+      // которого фильтр сюда вернули 30.09.2026 («CRM 810» над списком из
+      // шестидесяти), здесь невозможен: счётчик берётся из этого же ответа, а
+      // запрос теперь один и тот же везде.
       final response = await MyAdvertsService.getCrmPublishedList(
         token: token,
         page: 1,
         limit: _pageSize,
-        categoryId: _selectedCategoryId,
-        catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
       );
 
-      // Пока шёл запрос, мог прийти каталог с категорией и загрузить свои,
-      // уже отфильтрованные списки. Тогда ответ без фильтра не нужен: он
-      // вернул бы в список чужие объявления (30.09.2026).
-      //
-      // Выходя отсюда, обязательно снимаем признак загрузки (05.10.2026).
-      // Без этого вкладка оставалась под скелетоном навсегда: данные пришли,
-      // мы их осознанно выбросили, а экран так и не узнал, что ждать больше
-      // нечего. Видно это было только с выбранной категорией, поэтому долго
-      // не замечали.
-      if (_selectedCatalogId != null || _selectedCategoryId != null) {
-        if (mounted) setState(() => _crmLoading = false);
-
-        return;
-      }
+      // Прежде здесь стоял отказ от ответа, если к этому моменту выбрались
+      // каталог или категория: список тогда грузился дважды, с фильтром и
+      // без, и побеждать должен был отфильтрованный. Теперь фильтра у этой
+      // вкладки нет вовсе, и выбрасывать ответ не из-за чего (12.10.2026).
 
       if (mounted) {
         setState(() {
@@ -544,24 +598,15 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       if (mounted) setState(() => _manualLoading = true);
 
+      // БЕЗ фильтра по каталогу и категории (12.10.2026), как и в CRM:
+      // вкладка показывает все активные объявления, заведённые руками.
       final response = await MyAdvertsService.getMyAdverts(
         token: token,
         statusId: 1, // active
         manualOnly: true,
-        categoryId: _selectedCategoryId,
-        catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
         page: 1,
         limit: _pageSize,
       );
-
-      // То же, что и в CRM: не затираем уже отфильтрованный список и так же
-      // снимаем признак загрузки, иначе вкладка висит под скелетоном
-      // (05.10.2026).
-      if (_selectedCatalogId != null || _selectedCategoryId != null) {
-        if (mounted) setState(() => _manualLoading = false);
-
-        return;
-      }
 
       if (mounted) {
         setState(() {
@@ -590,18 +635,17 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       final results = await Future.wait([
         // CRM.
+        // Оба запроса БЕЗ фильтра (12.10.2026): числа у этих двух вкладок
+        // общие и не зависят от выбранного каталога, поэтому они видны и
+        // верны всегда, даже когда вкладка не нажата.
         MyAdvertsService.getCrmPublishedList(
             token: token,
             page: 1,
-            limit: _pageSize,
-            categoryId: _selectedCategoryId,
-            catalogId: _selectedCategoryId == null ? _selectedCatalogId : null),
+            limit: _pageSize),
         // «Все» — созданные вручную активные (statusId 1 + manual_only).
         MyAdvertsService.getMyAdverts(
             statusId: 1,
             manualOnly: true,
-            categoryId: _selectedCategoryId,
-            catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
             token: token,
             page: 1,
             limit: _pageSize),
@@ -648,6 +692,12 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             // категории показываем только те, что реально есть в этой вкладке.
             _recomputeVisibleForTab(_currentTab);
 
+            // То же правило, что и при переключении вкладки вручную: на
+            // «Активных» первым идёт каталог недвижимости (12.10.2026).
+            if (_currentTab == 0) {
+              _preferRealEstate(_currentTab);
+            }
+
             _isLoadingMetadata = false;
             _metadataLoaded = true;
           });
@@ -663,6 +713,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                 setState(() {
                   _currentTab = t;
                   _recomputeVisibleForTab(t);
+
+                  if (t == 0) {
+                    _preferRealEstate(t);
+                  }
                 });
                 break;
               }
@@ -722,12 +776,12 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             statusId: 3, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
             statusId: 8, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
-        // «CRM» и «Все» — по выбранному каталогу, как остальные вкладки
-        // (30.09.2026).
+        // «CRM» и «Все» — БЕЗ фильтра по каталогу (12.10.2026): выбор
+        // каталога на эти две вкладки не влияет.
         MyAdvertsService.getCrmPublishedList(
-            token: token, catalogId: catalogId, page: 1, limit: _pageSize),
+            token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
-            statusId: 1, manualOnly: true, catalogId: catalogId,
+            statusId: 1, manualOnly: true,
             token: token, page: 1, limit: _pageSize),
       ]);
 
@@ -838,10 +892,11 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             statusId: 3, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
             statusId: 8, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
+        // «CRM» и «Все» — БЕЗ фильтра по категории (12.10.2026).
         MyAdvertsService.getCrmPublishedList(
-            token: token, categoryId: categoryId, page: 1, limit: _pageSize),
+            token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
-            statusId: 1, manualOnly: true, categoryId: categoryId,
+            statusId: 1, manualOnly: true,
             token: token, page: 1, limit: _pageSize),
       ]);
 
@@ -1009,22 +1064,19 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       final MyAdvertsResponse response;
 
       if (tab == 4) {
-        // CRM — отдельный эндпоинт, тот же фильтр, что и у списка первой
-        // страницы: иначе вторая страница придёт из другой выборки.
+        // CRM — отдельный эндпоинт, и, как первая страница, БЕЗ фильтра
+        // (12.10.2026): выборка должна быть той же, иначе вторая страница
+        // придёт из другого набора.
         response = await MyAdvertsService.getCrmPublishedList(
           token: token,
           page: nextPage,
           limit: _pageSize,
-          categoryId: _selectedCategoryId,
-          catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
         );
       } else if (tab == 5) {
         response = await MyAdvertsService.getMyAdverts(
           token: token,
           statusId: 1,
           manualOnly: true,
-          categoryId: _selectedCategoryId,
-          catalogId: _selectedCategoryId == null ? _selectedCatalogId : null,
           page: nextPage,
           limit: _pageSize,
         );
