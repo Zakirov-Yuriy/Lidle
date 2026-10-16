@@ -112,21 +112,42 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
   }
 
   /// Узнать общее число объявлений в фиде (M) для индикатора «N из M».
-  /// Суммируем total_offers активных фидов пользователя.
+  ///
+  /// Считаем ТОЛЬКО то, что относится к открытому экрану (16.10.2026).
+  /// Раньше суммировались все активные фиды человека, и выходило «186 из
+  /// 214»: сто восемьдесят шесть объявлений этого раздела против всех
+  /// офферов по всем разделам сразу. Человек читал это как «двадцать восемь
+  /// где-то потерялись».
+  ///
+  /// Теперь: открыт конкретный фид, берём его число; открыт раздел, берём
+  /// фиды этого раздела; не задано ни то ни другое, считаем как раньше.
   Future<void> _loadFeedTotal() async {
     try {
-      final resp = await ApiService.get('/me/crm-feeds');
+      // Раздел сервер умеет отбирать сам, этот же параметр использует экран
+      // списка подключённых фидов.
+      final query = widget.catalogId != null
+          ? '/me/crm-feeds?catalog_id=${widget.catalogId}'
+          : '/me/crm-feeds';
+
+      final resp = await ApiService.get(query);
       final feeds = (resp['data'] as List?) ?? [];
       int sum = 0;
       bool any = false;
+
       for (final f in feeds) {
+        // Открыт один фид: остальные к этому экрану отношения не имеют,
+        // даже если они в том же разделе.
+        if (widget.feedId != null && f['id'] != widget.feedId) continue;
+
         final bool active = f['is_active'] == true;
         final total = f['total_offers'];
+
         if (active && total != null) {
           sum += (total as num).toInt();
           any = true;
         }
       }
+
       if (mounted && any) setState(() => _feedTotal = sum);
     } catch (_) {
       // Молча: индикатор просто покажет «N объявлений» без «из M».
@@ -734,112 +755,152 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
         child: Column(
           children: [
             const Header(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      // Раздел в заголовке: список отфильтрован по нему, и
-                      // без подписи человек решит, что часть объявлений
-                      // пропала (07.10.2026).
-                      widget.catalogName != null
-                          ? 'Объявления из фида: ${widget.catalogName}'
-                          : 'Объявления из фида',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Индикатор прогресса загрузки из фида («Загрузка… N из M»).
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-              child: Row(
-                children: [
-                  if (_importing) ...[
-                    const SizedBox(
-                      width: 13,
-                      height: 13,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: accentColor,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
-                    child: Text(
-                      _progressText,
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Индикатор обработки ИИ («Обработано ИИ: N из M»).
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-              child: Row(
-                children: [
-                  const Text(
-                    'ИИ',
-                    style: TextStyle(
-                      color: accentColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      _aiProgressText,
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Панель массового выбора — показана всегда.
-            _selectionBar(),
             Expanded(
               child: _loading
                   ? const Center(
                       child: CircularProgressIndicator(color: accentColor),
                     )
-                  : _listings.isEmpty
-                      ? _emptyState()
-                      : RefreshIndicator(
-                          onRefresh: _loadListings,
-                          child: ListView.separated(
-                            padding: EdgeInsets.only(
-                              left: 16,
-                              right: 16,
-                              top: 16,
-                              bottom: bottomNavHeight +
-                                  bottomNavPaddingBottom +
-                                  36,
+                  : RefreshIndicator(
+                      onRefresh: _loadListings,
+                      // Заголовок, счётчики и «Выбрать все» уезжают вместе со
+                      // списком (16.10.2026).
+                      //
+                      // Раньше они стояли НАД списком и занимали четверть
+                      // экрана всегда: человек листает объявления, а место
+                      // держит подпись, которую он уже прочитал. Теперь они
+                      // внутри прокрутки, и на экране остаётся только шапка
+                      // с логотипом.
+                      child: CustomScrollView(
+                        slivers: [
+                          SliverToBoxAdapter(child: _feedHeader()),
+                          if (_listings.isEmpty)
+                            SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: _emptyState(),
+                            )
+                          else
+                            SliverPadding(
+                              padding: EdgeInsets.only(
+                                left: 16,
+                                right: 16,
+                                top: 16,
+                                bottom: bottomNavHeight +
+                                    bottomNavPaddingBottom +
+                                    36,
+                              ),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, i) => Padding(
+                                    // Отступ снизу у каждой карточки, кроме
+                                    // последней: у списка внутри прокрутки
+                                    // разделителей нет.
+                                    padding: EdgeInsets.only(
+                                      bottom:
+                                          i == _listings.length - 1 ? 0 : 10,
+                                    ),
+                                    child: _card(_listings[i]),
+                                  ),
+                                  childCount: _listings.length,
+                                ),
+                              ),
                             ),
-                            itemCount: _listings.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 10),
-                            itemBuilder: (context, i) => _card(_listings[i]),
-                          ),
-                        ),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Заголовок раздела, счётчики загрузки и обработки, панель выбора.
+  ///
+  /// Вынесено из разметки экрана, чтобы положить одним куском внутрь
+  /// прокрутки (16.10.2026).
+  Widget _feedHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  // Раздел в заголовке: список отфильтрован по нему, и
+                  // без подписи человек решит, что часть объявлений
+                  // пропала (07.10.2026).
+                  widget.catalogName != null
+                      ? 'Объявления из фида: ${widget.catalogName}'
+                      : 'Объявления из фида',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Индикатор прогресса загрузки из фида («Загрузка… N из M»).
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+          child: Row(
+            children: [
+              if (_importing) ...[
+                const SizedBox(
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: accentColor,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  _progressText,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Индикатор обработки ИИ («Обработано ИИ: N из M»).
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+          child: Row(
+            children: [
+              const Text(
+                'ИИ',
+                style: TextStyle(
+                  color: accentColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _aiProgressText,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Панель массового выбора — показана всегда.
+        _selectionBar(),
+      ],
     );
   }
 
