@@ -46,6 +46,7 @@
 // сам, чтобы «123 445 123» и «123445123» не оказались разными реквизитами.
 
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/forms/phone_prefix.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
@@ -91,6 +92,9 @@ class _ProductPaymentCompanyScreenState
 
   late final _link = TextEditingController(text: widget.setting?.paymentLink);
   late final _phone = TextEditingController(text: widget.setting?.phone);
+
+  /// Узел фокуса телефона: по нему подставляется код +7 (16.10.2026).
+  late final FocusNode _phoneFocus = PhonePrefix.node(_phone);
 
   late String? _account = widget.setting?.account;
   late bool _selfEmployed = widget.setting?.selfEmployed ?? false;
@@ -366,6 +370,9 @@ class _ProductPaymentCompanyScreenState
                         'Телефон для СБП',
                         _phone,
                         keyboard: TextInputType.phone,
+                        // Код +7 подставляется при входе в пустое поле
+                        // (16.10.2026).
+                        focusNode: _phoneFocus,
                         hint: 'Если ссылки нет, покупатель переведёт по этому '
                             'номеру в своём банке.',
                       ),
@@ -523,6 +530,7 @@ class _ProductPaymentCompanyScreenState
     bool digits = false,
     TextInputType? keyboard,
     String? hint,
+    FocusNode? focusNode,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -546,6 +554,7 @@ class _ProductPaymentCompanyScreenState
             ),
             child: TextField(
               controller: controller,
+              focusNode: focusNode,
               keyboardType: keyboard ??
                   (digits ? TextInputType.number : TextInputType.text),
               style: const TextStyle(color: textPrimary, fontSize: 15),

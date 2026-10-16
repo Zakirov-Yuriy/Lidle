@@ -3,6 +3,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/forms/phone_prefix.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
@@ -88,6 +89,10 @@ class _ContactDataScreenState extends State<ContactDataScreen>
   late TextEditingController _emailController;
   late TextEditingController _phone1Controller;
   late TextEditingController _phone2Controller;
+
+  /// Узлы фокуса телефонов: по ним подставляется код +7 (16.10.2026).
+  late FocusNode _phone1Focus;
+  late FocusNode _phone2Focus;
   late TextEditingController _telegramController;
   late TextEditingController _whatsappController;
   late TextEditingController _maxController;
@@ -153,6 +158,10 @@ class _ContactDataScreenState extends State<ContactDataScreen>
     _emailController = TextEditingController();
     _phone1Controller = TextEditingController();
     _phone2Controller = TextEditingController();
+
+    // Код +7 в пустом поле телефона (16.10.2026).
+    _phone1Focus = PhonePrefix.node(_phone1Controller);
+    _phone2Focus = PhonePrefix.node(_phone2Controller);
     _telegramController = TextEditingController();
     _whatsappController = TextEditingController();
     _maxController = TextEditingController();
@@ -1259,6 +1268,8 @@ class _ContactDataScreenState extends State<ContactDataScreen>
     _nameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
+    _phone1Focus.dispose();
+    _phone2Focus.dispose();
     _phone1Controller.dispose();
     _phone2Controller.dispose();
     _telegramController.dispose();
@@ -1490,11 +1501,21 @@ class _ContactDataScreenState extends State<ContactDataScreen>
                         name: 'phone1',
                         filled: _phone1Controller.text.trim().isNotEmpty,
                         child:
-                            _field(_phone1Controller, 'Введите номер телефона'),
+                            _field(
+                              _phone1Controller,
+                              'Введите номер телефона',
+                              // Код +7 подставляется при входе в пустое поле
+                              // (16.10.2026).
+                              focusNode: _phone1Focus,
+                            ),
                       ),
 
                       _label('Номер телефона 2'),
-                      _field(_phone2Controller, 'Введите'),
+                      _field(
+                        _phone2Controller,
+                        'Введите',
+                        focusNode: _phone2Focus,
+                      ),
 
                       _label('Ссылка на ваш чат в Telegram'),
                       _field(_telegramController, '@username или t.me/username'),
@@ -1586,6 +1607,7 @@ class _ContactDataScreenState extends State<ContactDataScreen>
     TextEditingController controller,
     String hint, {
     List<TextInputFormatter>? inputFormatters,
+    FocusNode? focusNode,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -1599,6 +1621,7 @@ class _ContactDataScreenState extends State<ContactDataScreen>
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: TextField(
           controller: controller,
+          focusNode: focusNode,
           inputFormatters: inputFormatters,
           style: const TextStyle(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(

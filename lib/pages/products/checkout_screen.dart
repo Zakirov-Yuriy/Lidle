@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:lidle/core/config/app_config.dart';
+import 'package:lidle/widgets/forms/phone_prefix.dart';
 import 'package:flutter/services.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
@@ -48,7 +50,11 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   /// Пользовательское соглашение: та же ссылка, что при регистрации.
-  static const _agreementUrl = 'https://lidle.ru/documents/user-agreement.pdf';
+  ///
+  /// Адрес берём из настроек приложения, а не пишем здесь (16.10.2026):
+  /// зашитые адреса разъехались с настоящими, и ссылка на оферту вела на
+  /// несуществующий файл.
+  static String get _agreementUrl => AppConfig().userAgreementUrl;
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -135,14 +141,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _emailController.addListener(_onEmailChanged);
   }
 
-  void _onPhoneFocus() {
-    if (!_phoneFocus.hasFocus || _phoneController.text.isNotEmpty) return;
-
-    _phoneController.text = '+7';
-    _phoneController.selection = TextSelection.fromPosition(
-      TextPosition(offset: _phoneController.text.length),
-    );
-  }
+  /// Код +7 в пустом поле телефона. Правило общее на всё приложение,
+  /// см. `PhonePrefix` (16.10.2026).
+  void _onPhoneFocus() => PhonePrefix.applyTo(_phoneFocus, _phoneController);
 
   void _onEmailChanged() {
     final email = _emailController.text.trim().toLowerCase();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/forms/phone_prefix.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -62,14 +63,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _onPhoneFocusChange() {
-    if (_phoneFocusNode.hasFocus && _phoneController.text.isEmpty) {
-      _phoneController.text = '+7';
-      _phoneController.selection = TextSelection.fromPosition(
-        TextPosition(offset: _phoneController.text.length),
+  /// Код +7 в пустом поле телефона.
+  ///
+  /// С 16.10.2026 правило живёт в `PhonePrefix` и применяется на всех
+  /// экранах, где вводят номер. Здесь остался только вызов: раньше каждый
+  /// экран нёс свою копию этого обработчика, и вели они себя по-разному.
+  void _onPhoneFocusChange() => PhonePrefix.applyTo(
+        _phoneFocusNode,
+        _phoneController,
       );
-    }
-  }
 
   /// Удаляет форматирование из номера телефона для отправки в API
   String _removePhoneFormatting(String phone) {
@@ -286,7 +288,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.ru/documents/user-agreement.pdf'),
+                                ..onTap = () => _openURL(AppConfig().userAgreementUrl),
                             ),
                             const TextSpan(
                               text: ', ',
@@ -299,7 +301,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.ru/documents/offer.pdf'),
+                                ..onTap = () => _openURL(AppConfig().publicOfferUrl),
                             ),
                             const TextSpan(
                               text: ' и даю ',
@@ -312,7 +314,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.ru/documents/consent.pdf'),
+                                ..onTap = () => _openURL(AppConfig().consentUrl),
                             ),
                             const TextSpan(
                               text: ' на обработку персональных данных на условиях ',
@@ -347,7 +349,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.ru/documents/mailing.pdf'),
+                                ..onTap = () => _openURL(AppConfig().mailingUrl),
                             ),
                             const TextSpan(
                               text: 'и ',
@@ -360,7 +362,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.ru/documents/mailing.pdf'),
+                                ..onTap = () => _openURL(AppConfig().mailingUrl),
                             ),
                           ],
                         ),

@@ -22,6 +22,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/forms/phone_prefix.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_staff.dart';
@@ -76,6 +77,10 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
   // вписать их можно было только командой на сервере.
   final _phone = TextEditingController();
   final _phoneExtra = TextEditingController();
+
+  /// Узлы фокуса телефонов: по ним подставляется код +7 (16.10.2026).
+  late final FocusNode _phoneFocus = PhonePrefix.node(_phone);
+  late final FocusNode _phoneExtraFocus = PhonePrefix.node(_phoneExtra);
   final _telegram = TextEditingController();
   final _whatsapp = TextEditingController();
   final _vk = TextEditingController();
@@ -145,6 +150,8 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
     _salary.dispose();
     _description.dispose();
     _phone.dispose();
+    _phoneFocus.dispose();
+    _phoneExtraFocus.dispose();
     _phoneExtra.dispose();
     _telegram.dispose();
     _whatsapp.dispose();
@@ -628,14 +635,18 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
                   ),
 
                   const SizedBox(height: 16),
+                  // Код +7 подставляется при входе в пустое поле
+                  // (16.10.2026).
                   _text('Телефон', _phone,
                       hint: 'Например, +7 949 123 45 67',
-                      keyboard: TextInputType.phone),
+                      keyboard: TextInputType.phone,
+                      focusNode: _phoneFocus),
 
                   const SizedBox(height: 20),
                   _text('Дополнительный телефон', _phoneExtra,
                       hint: 'Второй номер, если есть',
-                      keyboard: TextInputType.phone),
+                      keyboard: TextInputType.phone,
+                      focusNode: _phoneExtraFocus),
 
                   const SizedBox(height: 20),
                   _text('Телеграмм', _telegram, hint: 'Например, @petrov'),
@@ -991,6 +1002,7 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
     int lines = 1,
     TextInputType? keyboard,
     String? error,
+    FocusNode? focusNode,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1008,6 +1020,7 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
           ),
           child: TextField(
             controller: controller,
+            focusNode: focusNode,
             maxLines: lines,
             keyboardType: keyboard,
             style: const TextStyle(color: textPrimary, fontSize: 15),

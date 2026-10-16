@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/forms/phone_prefix.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/models/bookings/booking_labels.dart';
@@ -121,6 +122,9 @@ class BookingConfirmScreen extends StatefulWidget {
 class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+
+  /// Узел фокуса телефона: по нему подставляется код +7 (16.10.2026).
+  late final FocusNode _phoneFocus = PhonePrefix.node(_phoneController);
   final _commentController = TextEditingController();
 
   int _guests = 1;
@@ -163,6 +167,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneFocus.dispose();
     _phoneController.dispose();
     _commentController.dispose();
     super.dispose();
@@ -364,6 +369,9 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                     controller: _phoneController,
                     hint: 'Введите',
                     keyboardType: TextInputType.phone,
+                    // Код +7 подставляется при входе в пустое поле
+                    // (16.10.2026).
+                    focusNode: _phoneFocus,
                   ),
                   const SizedBox(height: 12),
                   _buildField(
@@ -726,6 +734,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
     required String hint,
     TextInputType? keyboardType,
     int maxLines = 1,
+    FocusNode? focusNode,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -734,6 +743,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
         const SizedBox(height: 6),
         TextField(
           controller: controller,
+          focusNode: focusNode,
           keyboardType: keyboardType,
           maxLines: maxLines,
           style: const TextStyle(color: Colors.white, fontSize: 15),
@@ -937,7 +947,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                 decorationColor: Color(0xFF38BDF8),
               ),
               recognizer: TapGestureRecognizer()
-                ..onTap = () => _openURL('https://lidle.ru/documents/user-agreement.pdf'),
+                ..onTap = () => _openURL(AppConfig().userAgreementUrl),
             ),
           ],
         ),

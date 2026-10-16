@@ -35,6 +35,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/forms/phone_prefix.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
@@ -115,6 +116,10 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
   late TextEditingController _emailController;
   late TextEditingController _phone1Controller;
   late TextEditingController _phone2Controller;
+
+  /// Узлы фокуса телефонов: по ним подставляется код +7 (16.10.2026).
+  late FocusNode _phone1Focus;
+  late FocusNode _phone2Focus;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -256,6 +261,10 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
     _emailController = TextEditingController();
     _phone1Controller = TextEditingController();
     _phone2Controller = TextEditingController();
+
+    // Код +7 в пустом поле телефона (16.10.2026).
+    _phone1Focus = PhonePrefix.node(_phone1Controller);
+    _phone2Focus = PhonePrefix.node(_phone2Controller);
     _aboutController.addListener(() {
       if (_aboutLength != _aboutController.text.length) {
         setState(() => _aboutLength = _aboutController.text.length);
@@ -287,6 +296,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
     _nameController.dispose();
     _aboutController.dispose();
     _emailController.dispose();
+    _phone1Focus.dispose();
+    _phone2Focus.dispose();
     _phone1Controller.dispose();
     _phone2Controller.dispose();
     super.dispose();
@@ -1356,6 +1367,7 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
     TextEditingController controller,
     String hint, {
     List<TextInputFormatter>? inputFormatters,
+    FocusNode? focusNode,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -1369,6 +1381,7 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: TextField(
           controller: controller,
+          focusNode: focusNode,
           inputFormatters: inputFormatters,
           style: const TextStyle(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
@@ -2546,11 +2559,21 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
                 requiredBox(
                   name: 'phone1',
                   filled: _phone1Controller.text.trim().isNotEmpty,
-                  child: _field(_phone1Controller, 'Введите номер телефона'),
+                  child: _field(
+                    _phone1Controller,
+                    'Введите номер телефона',
+                    // Код +7 подставляется при входе в пустое поле
+                    // (16.10.2026).
+                    focusNode: _phone1Focus,
+                  ),
                 ),
 
                 _label('Номер телефона 2'),
-                _field(_phone2Controller, 'Введите'),
+                _field(
+                  _phone2Controller,
+                  'Введите',
+                  focusNode: _phone2Focus,
+                ),
 
                 // Telegram и Max отдельными полями больше нет: они переехали
                 // в «Ссылки» вместе с сайтом и соцсетями. Два места для

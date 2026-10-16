@@ -3,6 +3,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/forms/phone_prefix.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -552,6 +553,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool isLoading = false;
     // Предзаполняем контроллер текущим основным телефоном если есть
     if (_mainPhoneValue != null) phoneController.text = _mainPhoneValue!;
+
+    // Номера ещё нет: ставим код +7 сразу (16.10.2026). Окно открывают,
+    // чтобы ввести номер, и набирать код руками незачем. Стереть его и
+    // набрать любой другой можно, поле обычное.
+    if (phoneController.text.trim().isEmpty) {
+      phoneController.text = PhonePrefix.code;
+      phoneController.selection = TextSelection.fromPosition(
+        TextPosition(offset: phoneController.text.length),
+      );
+    }
 
     showDialog(
       context: context,
