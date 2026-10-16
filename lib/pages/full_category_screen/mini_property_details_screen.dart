@@ -15,6 +15,7 @@ import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/bookings/booking_section.dart';
 import 'package:lidle/widgets/cards/advert_reviews_card.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
+import 'package:lidle/widgets/common/share_action_button.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
@@ -2019,6 +2020,14 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 12),
+          // Поделиться объявлением (16.10.2026). Та же работа, что у значка
+          // в шапке: собирает ссылку, считает «поделились» и открывает
+          // обычное окно телефона, где человек сам выбирает, куда отправить.
+          //
+          // Внизу она нужна потому, что значок в шапке уезжает вверх при
+          // прокрутке, а этот ряд закреплён и виден всегда.
+          ShareActionButton(onTap: _shareAdvert),
         ],
       ),
     );

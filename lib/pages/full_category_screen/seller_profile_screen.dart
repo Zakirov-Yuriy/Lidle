@@ -7,6 +7,7 @@ import 'package:lidle/widgets/skeletons/listing_card_skeleton.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
+import 'package:lidle/widgets/common/share_action_button.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/store_menu_service.dart';
@@ -1471,15 +1472,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             height: 23,
             colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
           ),
-          onPressed: () {
-            final profileUrl = _generateSellerProfileUrl();
-            Share.share(
-              'Профиль продавца: ${widget.sellerName}\n\n'
-              'Присоединяйся к LIDLE! 🚀\n\n'
-              'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
-              '$profileUrl',
-            );
-          },
+          onPressed: _shareSellerProfile,
         ),
       ],
     );
@@ -2006,7 +1999,22 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  /// Кнопки «Позвонить» (зелёная) и «Написать» (синяя).
+  /// Поделиться профилем продавца (16.10.2026).
+  ///
+  /// Один метод на значок в шапке и на кнопку в ряду действий: текст и
+  /// ссылка должны быть одни и те же, где бы человек ни нажал.
+  void _shareSellerProfile() {
+    final profileUrl = _generateSellerProfileUrl();
+
+    Share.share(
+      'Профиль продавца: ${widget.sellerName}\n\n'
+      'Присоединяйся к LIDLE! 🚀\n\n'
+      'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
+      '$profileUrl',
+    );
+  }
+
+  /// Кнопки «Позвонить» (зелёная), «Написать» (синяя) и «Поделиться».
   Widget _buildCallWriteButtons() {
     return Row(
       children: [
@@ -2046,6 +2054,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),
+        ),
+        const SizedBox(width: 12),
+        // Поделиться продавцом (16.10.2026). Высота 48 — под соседние
+        // кнопки: у них вертикальные поля по 14 плюс строка текста.
+        ShareActionButton(
+          onTap: _shareSellerProfile,
+          color: activeIconColor,
+          size: 48,
         ),
       ],
     );
