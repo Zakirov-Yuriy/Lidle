@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/forms/required_check_hint.dart';
 import 'package:lidle/widgets/forms/phone_prefix.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:flutter/gestures.dart';
@@ -35,6 +36,10 @@ class RegisterScreen extends StatefulWidget {
 // ============================================================
 class _RegisterScreenState extends State<RegisterScreen> {
   bool agreeTerms = false;
+
+  /// Человек пытался продолжить, не поставив обязательную галочку
+  /// (16.10.2026). По нему под галочкой показывается объяснение.
+  bool _termsMissing = false;
 
   bool agreeMarketing = false;
 
@@ -84,6 +89,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _trySubmit() {
     final formState = _formKey.currentState;
     final isValid = formState?.validate() ?? false;
+
+    // Показываем, чего не хватает, а не молчим (16.10.2026).
+    setState(() => _termsMissing = !agreeTerms);
+
     if (!isValid || !agreeTerms) return;
 
     formState?.save();
@@ -332,8 +341,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ],
                         ),
                       ),
-                      onChanged: (v) => setState(() => agreeTerms = v ?? false),
+                      onChanged: (v) => setState(() {
+                        agreeTerms = v ?? false;
+
+                        // Галочку поставили: объяснение больше не нужно.
+                        if (agreeTerms) _termsMissing = false;
+                      }),
                     ),
+                    RequiredCheckHint(visible: _termsMissing),
                     const SizedBox(height: 16),
                     _buildCheckBox(
                       value: agreeMarketing,
@@ -375,9 +390,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       width: double.infinity,
                       height: 53,
                       child: ElevatedButton(
-                        onPressed: (agreeTerms && state is! AuthLoading)
-                          ? _trySubmit
-                          : null,
+                        // Кнопка нажимается и без галочки (16.10.2026):
+                        // иначе человек жмёт в мёртвую кнопку и не понимает,
+                        // чего от него хотят. Проверка переехала в
+                        // `_trySubmit`, он же покажет объяснение.
+                        onPressed: state is AuthLoading ? null : _trySubmit,
                         style: ElevatedButton.styleFrom(
                           // Активный цвет кнопки
                           backgroundColor: primaryBlue,

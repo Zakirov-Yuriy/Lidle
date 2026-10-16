@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/forms/required_check_hint.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/widgets/forms/phone_prefix.dart';
 import 'package:flutter/services.dart';
@@ -73,6 +74,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   /// Требование заказчика от 08.09.2026. Заранее её НЕ ставим: галочка,
   /// проставленная за человека, ничего не подтверждает.
   bool _paymentAcknowledged = false;
+
+  /// Человек пытался оформить, не подтвердив перевод (16.10.2026).
+  bool _acknowledgeMissing = false;
 
   /// Чем человек платит в каждой точке: номер точки — ключ способа.
   final Map<int, String> _paymentMethods = {};
@@ -188,10 +192,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   bool get _isVerified => !_isGuest || _emailToken != null;
 
-  bool get _canSubmit =>
-      !_isSending &&
-      _isVerified &&
-      !(_needsAcknowledgement && !_paymentAcknowledged);
+  /// Галочку подтверждения перевода здесь НЕ проверяем (16.10.2026).
+  ///
+  /// Раньше она гасила кнопку, и человек жал в мёртвую кнопку, не понимая,
+  /// чего не хватает. Теперь кнопка живая, а `_submit` показывает
+  /// объяснение прямо под пропущенной галочкой.
+  bool get _canSubmit => !_isSending && _isVerified;
 
   /// Требует ли оформление подтверждения перевода: решает выбранный способ.
   bool get _needsAcknowledgement {
@@ -404,6 +410,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
 
     if (_needsAcknowledgement && !_paymentAcknowledged) {
+      // И подсказка у самой галочки, и всплывающее сообщение: галочка может
+      // быть выше края экрана, а сообщение само по себе не показывает,
+      // ЧТО именно отметить.
+      setState(() => _acknowledgeMissing = true);
+
       SnackBarHelper.showWarning(
         context,
         'Подтвердите, что вы поняли, кому и куда отправляете деньги',
@@ -654,16 +665,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           const SizedBox(height: 6),
           InkWell(
-            onTap: () =>
-                setState(() => _paymentAcknowledged = !_paymentAcknowledged),
+            onTap: () => setState(() {
+              _paymentAcknowledged = !_paymentAcknowledged;
+
+              if (_paymentAcknowledged) _acknowledgeMissing = false;
+            }),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Checkbox(
                   value: _paymentAcknowledged,
                   activeColor: activeIconColor,
-                  onChanged: (value) =>
-                      setState(() => _paymentAcknowledged = value ?? false),
+                  onChanged: (value) => setState(() {
+                    _paymentAcknowledged = value ?? false;
+
+                    if (_paymentAcknowledged) _acknowledgeMissing = false;
+                  }),
                 ),
                 Expanded(
                   child: Padding(
@@ -677,6 +694,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ],
             ),
           ),
+          RequiredCheckHint(visible: _acknowledgeMissing),
         ],
       ),
     );
