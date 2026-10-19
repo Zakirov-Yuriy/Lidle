@@ -2,6 +2,7 @@
 /// Включает определения классов `Category` и `Listing`.
 import 'package:flutter/material.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/models/video_review.dart';
 
 /// Модель данных для категории.
 /// Используется для отображения различных категорий предложений на главной странице.
@@ -243,6 +244,16 @@ class Listing {
   /// Решает СЕРВЕР: отклики включаются пометкой характеристики категории в
   /// админке, и приложение не должно знать, в каких разделах они есть.
   /// Приходит только в карточке объявления, в ленте этого поля нет.
+  /// Сам видеообзор: приходит в КАРТОЧКЕ, в ленте его нет (19.10.2026).
+  final VideoReview? video;
+
+  /// Есть ли у карточки видеообзор (19.10.2026, задача 10).
+  ///
+  /// Признак приходит с сервера отдельным полем: лента намеренно не грузит
+  /// характеристики, и узнать это иначе она не может. По нему на обложке
+  /// рисуется значок запуска.
+  final bool hasVideo;
+
   final bool canRespond;
 
   /// Я уже откликался на это объявление. Второй отклик сервер не примет,
@@ -291,6 +302,8 @@ class Listing {
     this.hallsCount = 0,
     this.categoryPath,
     this.feedAttributes = const [],
+    this.video,
+    this.hasVideo = false,
     this.canRespond = false,
     this.isResponded = false,
     this.responsesCount,
@@ -517,6 +530,9 @@ class Listing {
       isBargain: json['is_bargain'] ?? false,
       // Отклики (09.10.2026). Полей может не быть вовсе: в ленте их нет, и
       // у старой сборки сервера тоже. Пусто означает «откликаться нельзя».
+      video: VideoReview.tryParse(json['video_review']),
+      // В карточке признака `has_video` нет, зато есть само видео.
+      hasVideo: json['has_video'] == true || json['video_review'] is Map,
       canRespond: json['can_respond'] == true,
       isResponded: json['is_responded'] == true,
       responsesCount: json['responses_count'] is int

@@ -126,6 +126,19 @@ FilterFieldPlan resolveFilterField(Attribute attr) {
     return FilterFieldPlan(FilterFieldKind.timeRange, attr);
   }
 
+  // Ссылка на видеообзор (19.10.2026, задача 10).
+  //
+  // Это обычное текстовое поле: человек вставляет адрес ролика, а разбирает
+  // его сервер. Своего вида поля не заводим намеренно, проверять ссылку в
+  // приложении значит держать правила площадок в двух местах.
+  //
+  // Правило стоит ВЫШЕ общих: у такой характеристики нет значений, и без
+  // него она ушла бы в «пустой список значений», то есть тоже в текстовое
+  // поле, но уже случайно, а не осознанно.
+  if (attr.style == 'V' || attr.styleSingle == 'V1') {
+    return FilterFieldPlan(FilterFieldKind.textInput, attr);
+  }
+
   // Скрытые чекбоксы (is_title_hidden + values):
   // приходят ко всем подобным атрибутам, независимо от isMultiple.
   if (attr.isTitleHidden && attr.values.isNotEmpty) {

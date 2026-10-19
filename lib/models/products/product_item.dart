@@ -1,3 +1,5 @@
+import 'package:lidle/models/video_review.dart';
+
 /// Товар в витрине и в карточке.
 ///
 /// Одна модель на оба случая намеренно. Список приходит короче карточки, и
@@ -67,6 +69,12 @@ class ProductItem {
   /// Номер записи избранного: по нему сердечко снимается одним запросом.
   final int? wishlistId;
 
+  /// Видеообзор товара (19.10.2026, задача 10).
+  ///
+  /// Разбирает ссылку сервер и отдаёт полем `video_review`. Пусто, если
+  /// продавец видео не прикладывал.
+  final VideoReview? video;
+
   /// Когда товар появился на витрине, строкой «дд.мм.гггг» (15.09.2026).
   ///
   /// Приходит готовой с сервера, как у объявления: считается она по дате
@@ -107,6 +115,7 @@ class ProductItem {
   bool get hasVariants => variants.isNotEmpty;
 
   const ProductItem({
+    this.video,
     required this.id,
     required this.name,
     required this.price,
@@ -143,6 +152,7 @@ class ProductItem {
     return ProductItem(
       id: _int(data['id']) ?? 0,
       name: '${data['name'] ?? ''}',
+      video: VideoReview.tryParse(data['video_review']),
       slug: data['slug']?.toString(),
       sku: data['sku']?.toString(),
       price: '${data['price'] ?? '0'}',

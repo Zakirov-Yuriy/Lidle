@@ -20,6 +20,7 @@ import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/report_product_dialog.dart';
+import 'package:lidle/widgets/common/video_review_slide.dart';
 
 /// Карточка товара.
 class ProductDetailsScreen extends StatefulWidget {
@@ -1618,6 +1619,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   Widget _buildGallery(List<String> images) {
+    // Видео первым слайдом (19.10.2026, задача 10). Решение заказчика:
+    // ролик человек должен увидеть сразу, не листая фотографии.
+    final video = _product?.video;
+    final hasVideo = video != null;
+
+    // Всего слайдов: фотографии плюс видео, если оно есть.
+    final total = images.length + (hasVideo ? 1 : 0);
+
     return Column(
       children: [
         ClipRRect(
@@ -1627,26 +1636,39 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             child: PageView.builder(
               controller: _pageController,
               onPageChanged: (index) => setState(() => _currentImage = index),
-              itemCount: images.length,
-              itemBuilder: (context, index) => Image.network(
-                images[index],
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stack) => Container(
-                  color: secondaryBackground,
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.image_not_supported_outlined,
-                      color: textMuted, size: 40),
-                ),
-              ),
+              itemCount: total,
+              itemBuilder: (context, index) {
+                if (hasVideo && index == 0) {
+                  return VideoReviewSlide(
+                    video: video,
+                    // Чем закрыть место, пока плеер грузится, и что показать
+                    // там, где встроить нельзя.
+                    fallbackImage: images.isEmpty ? null : images.first,
+                  );
+                }
+
+                final image = images[hasVideo ? index - 1 : index];
+
+                return Image.network(
+                  image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stack) => Container(
+                    color: secondaryBackground,
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.image_not_supported_outlined,
+                        color: textMuted, size: 40),
+                  ),
+                );
+              },
             ),
           ),
         ),
-        if (images.length > 1) ...[
+        if (total > 1) ...[
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              images.length,
+              total,
               (index) => Container(
                 width: 8,
                 height: 8,

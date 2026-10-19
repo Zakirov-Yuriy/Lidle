@@ -31,6 +31,10 @@ dependencies:
  
   url_launcher: ^6.3.0 # Добавлен для совершения телефонных звонков
   webview_flutter: ^4.7.0 # WebView для авторизации через соцсети (VK ID) - fallback
+  # Нужен ЯВНО, хотя и так приходит вместе с webview_flutter (19.10.2026):
+  # автозапуск видео без звука включается только через настройку платформы
+  # Android, `setMediaPlaybackRequiresUserGesture(false)`.
+  webview_flutter_android: ^4.14.1
   crypto: ^3.0.3 # PKCE (sha256) для VK ID OAuth 2.1
   vkid_flutter_sdk: ^1.0.3 # Нативный VK ID SDK (one tap / app-to-app), confidential flow
   share_plus: ^10.0.2 # Добавлен для шаринга

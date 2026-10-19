@@ -36,6 +36,7 @@ import 'package:lidle/pages/profile_dashboard/my_listings/advert_qr_screen.dart'
 import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
+import 'package:lidle/widgets/common/video_review_slide.dart';
 
 // ============================================================
 // "Утилиты для форматирования"
@@ -881,6 +882,12 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       );
     }
 
+    // Видео первым слайдом (19.10.2026, задача 10). Решение заказчика:
+    // ролик человек должен увидеть сразу, не листая фотографии.
+    final video = _listing.video;
+    final hasVideo = video != null;
+    final total = images.length + (hasVideo ? 1 : 0);
+
     return Column(
       children: [
         ClipRRect(
@@ -888,31 +895,43 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           child: Container(
             height: 260,
             color: const Color(0xFF374B5C),
-            child: PageView(
+            child: PageView.builder(
               controller: _pageController,
               onPageChanged: (index) {
                 setState(() {
                   _currentPage = index;
                 });
               },
-              children: List.generate(
-                images.length,
-                (index) => GestureDetector(
+              itemCount: total,
+              itemBuilder: (context, index) {
+                if (hasVideo && index == 0) {
+                  return VideoReviewSlide(
+                    video: video,
+                    fallbackImage: images.isEmpty ? null : images.first,
+                  );
+                }
+
+                final imageIndex = hasVideo ? index - 1 : index;
+
+                return GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => PropertyGalleryScreen(
                           images: images,
-                          initialIndex: _currentPage,
+                          // В полноэкранной галерее видео нет, поэтому
+                          // отсчёт свой: иначе первая фотография открывалась
+                          // бы второй.
+                          initialIndex: imageIndex,
                           listingId: widget.listing.id,
                         ),
                       ),
                     );
                   },
-                  child: _buildImageWidget(images[index]),
-                ),
-              ),
+                  child: _buildImageWidget(images[imageIndex]),
+                );
+              },
             ),
           ),
         ),
@@ -920,7 +939,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
-            images.length,
+            total,
             (index) => _buildPageIndicator(index == _currentPage),
           ),
         ),

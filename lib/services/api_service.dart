@@ -919,6 +919,9 @@ class ApiService {
           ? item['id'] as int
           : int.tryParse('${item['id']}'),
       isProduct: true,
+      // Значок видео в ленте (19.10.2026, задача 10): у товара признак
+      // приходит так же, как у объявления.
+      hasVideo: item['has_video'] == true,
       imagePath: '${item['image'] ?? ''}',
 
       // Весь набор фотографий: карточка в ленте листается пальцем

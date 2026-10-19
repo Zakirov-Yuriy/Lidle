@@ -267,6 +267,30 @@ class _ListingCardState extends State<ListingCard> {
                         ),
                       ),
                     ),
+
+                    // Значок видео ПОД сердечком (19.10.2026, задача 10).
+                    //
+                    // Человек должен видеть прямо в ленте, что у карточки
+                    // есть ролик. Тёмный кружок под значком обязателен: на
+                    // светлой фотографии белая иконка без него теряется.
+                    if (widget.listing.hasVideo)
+                      Positioned(
+                        right: 6,
+                        top: 34,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
