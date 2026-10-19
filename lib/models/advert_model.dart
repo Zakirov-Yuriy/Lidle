@@ -1,4 +1,5 @@
 import 'package:lidle/models/home_models.dart';
+import 'package:lidle/models/video_review.dart';
 import 'package:lidle/core/logger.dart';
 
 class Advert {
@@ -58,6 +59,13 @@ class Advert {
   final bool isResponded;
   final int? responsesCount;
 
+  /// Видеообзор (19.10.2026, задача 10).
+  ///
+  /// `hasVideo` приходит и в списке: по нему на обложке рисуется значок
+  /// запуска. Само разобранное видео бывает и в списке, и в карточке.
+  final bool hasVideo;
+  final VideoReview? video;
+
   Advert({
     required this.id,
     this.slug,
@@ -88,6 +96,8 @@ class Advert {
     this.canRespond = false,
     this.isResponded = false,
     this.responsesCount,
+    this.hasVideo = false,
+    this.video,
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
@@ -341,6 +351,9 @@ class Advert {
       canRespond: json['can_respond'] == true,
       isResponded: json['is_responded'] == true,
       responsesCount: (json['responses_count'] as num?)?.toInt(),
+      // Видеообзор (19.10.2026, задача 10).
+      video: VideoReview.tryParse(json['video_review']),
+      hasVideo: json['has_video'] == true || json['video_review'] is Map,
     );
   }
 }
@@ -545,6 +558,11 @@ extension AdvertToListingExtension on Advert {
       canRespond: canRespond,
       isResponded: isResponded,
       responsesCount: responsesCount,
+      // Значок видео на обложке (19.10.2026). Карточка объявления в ленте
+      // собирается ИМЕННО здесь, а не разбором в `Listing.fromJson`:
+      // пропустить поля тут означает, что значка не будет вовсе.
+      hasVideo: hasVideo,
+      video: video,
     );
   }
 }
