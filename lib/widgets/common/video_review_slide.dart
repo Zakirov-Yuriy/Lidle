@@ -56,7 +56,16 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
       // Фон под плеером тёмный: пока страница грузится, белый прямоугольник
       // на тёмной карточке бьёт по глазам.
       ..setBackgroundColor(const Color(0xFF1F2C3A))
-      ..loadRequest(Uri.parse(url));
+      // Грузим СВОЮ страницу с рамкой плеера, а не адрес плеера напрямую
+      // (19.10.2026).
+      //
+      // Напрямую Ютуб отвечает «Video player configuration error»: открытый
+      // в голом окне плеер не видит, с какого сайта его встроили, и считает
+      // встраивание недопустимым. Своя страница решает это сразу двумя
+      // способами: у неё есть адрес-основание, то есть источник, и в самой
+      // рамке стоит разрешение `allow="autoplay"`, без которого звук и
+      // автозапуск запрещены независимо от настроек приложения.
+      ..loadHtmlString(_page(url), baseUrl: _origin(url));
 
     // БЕЗ ЭТОГО АВТОЗАПУСКА НЕ БУДЕТ. Android по умолчанию требует, чтобы
     // воспроизведение начинал человек, и `autoplay=1` в адресе ничего не
@@ -68,6 +77,39 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
     }
 
     return controller;
+  }
+
+  /// Страница-обёртка: плеер во всю площадь, без полей и прокрутки.
+  String _page(String url) => '''
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #1F2C3A; overflow: hidden; }
+      iframe { border: 0; width: 100%; height: 100%; display: block; }
+    </style>
+  </head>
+  <body>
+    <iframe src="$url"
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowfullscreen></iframe>
+  </body>
+</html>
+''';
+
+  /// Источник страницы: тот же домен, что у плеера.
+  ///
+  /// Площадки сверяют его со списком разрешённых и по нему же решают, можно
+  /// ли вообще показывать ролик.
+  String _origin(String url) {
+    final uri = Uri.tryParse(url);
+
+    if (uri == null || uri.host.isEmpty) {
+      return 'https://www.youtube.com';
+    }
+
+    return '${uri.scheme}://${uri.host}';
   }
 
   void _toggleSound() {

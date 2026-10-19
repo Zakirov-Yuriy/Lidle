@@ -280,14 +280,17 @@ class _ListingCardState extends State<ListingCard> {
                         child: Container(
                           width: 24,
                           height: 24,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.45),
+                          decoration: const BoxDecoration(
+                            // Тот же зелёный, что у кнопки «Позвонить»
+                            // (19.10.2026): значок должен читаться как часть
+                            // приложения, а не спорить с ним.
+                            color: Color(0xFF19D849),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
                             Icons.play_arrow_rounded,
                             color: Colors.white,
-                            size: 18,
+                            size: 16,
                           ),
                         ),
                       ),
