@@ -36,10 +36,19 @@ class VideoReviewSlide extends StatefulWidget {
   /// встроить нельзя. Обычно первая фотография карточки.
   final String? fallbackImage;
 
+  /// Слайд открыт человеком.
+  ///
+  /// Галерея строит соседнюю страницу ЗАРАНЕЕ, чтобы плеер успел
+  /// подгрузиться, пока человек смотрит первый снимок (19.10.2026). Но
+  /// играть в этот момент ролик не должен: человек его ещё не видит, а
+  /// трафик уже идёт. Поэтому запуск отложен до открытия слайда.
+  final bool active;
+
   const VideoReviewSlide({
     super.key,
     required this.video,
     this.fallbackImage,
+    this.active = true,
   });
 
   @override
@@ -68,7 +77,31 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
   void initState() {
     super.initState();
 
-    if (_canPlayInside) {
+    // Ютуб грузим сразу, даже у закрытого слайда: его плеером мы управляем
+    // сами, и ролик будет молчать, пока человек до него не долистает. У
+    // остальных площадок такой власти над плеером нет, их рамка начала бы
+    // играть сама собой, поэтому они ждут открытия слайда.
+    if (_isYoutube || (widget.active && widget.video.canEmbed)) {
+      _start();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant VideoReviewSlide oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!widget.active || oldWidget.active) return;
+
+    final controller = _controller;
+
+    // Слайд открыли. Ютуб уже загружен, его достаточно попросить играть.
+    if (_isYoutube && controller != null) {
+      controller.runJavaScript('lidlePlay()');
+
+      return;
+    }
+
+    if (controller == null && widget.video.canEmbed) {
       _start();
     }
   }
@@ -116,7 +149,7 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
     );
 
     final page = _isYoutube
-        ? _youtubePage(widget.video.videoId!)
+        ? _youtubePage(widget.video.videoId!, autoplay: widget.active)
         : _framePage(
             sound
                 ? widget.video.embedUrlWithSound ?? widget.video.embedUrl!
@@ -155,7 +188,7 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
   /// можем ЗАПУСТИТЬ ролик сами, а не надеяться на `autoplay` в адресе: в
   /// приложении автозапуск по адресу срабатывает через раз. И так же сами
   /// включаем звук по значку, не перезагружая ролик с начала.
-  String _youtubePage(String videoId) => '''
+  String _youtubePage(String videoId, {required bool autoplay}) => '''
 <!doctype html>
 <html>
   <head>
@@ -171,6 +204,8 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
     <script>
       var player = null;
       var tries = 0;
+      // Открыт ли слайд. Пока нет, плеер только грузится и молчит.
+      var play = $autoplay;
 
       function send(text) {
         try { LidleVideo.postMessage(text); } catch (e) {}
@@ -204,7 +239,7 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
           width: '100%',
           height: '100%',
           playerVars: {
-            autoplay: 1,
+            autoplay: play ? 1 : 0,
             mute: 1,
             // Без этого телефон разворачивает ролик на весь экран, едва он
             // начался.
@@ -214,7 +249,7 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
             origin: '$_siteOrigin'
           },
           events: {
-            onReady: function () { send('ready'); kick(); },
+            onReady: function () { send('ready'); if (play) kick(); },
             onStateChange: function (e) { if (e.data === 1) send('playing'); },
             onError: function (e) { send('error:' + e.data); }
           }
@@ -224,6 +259,13 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
       // Скрипт площадки не доехал: сети нет или её режут. Слайд уйдёт на
       // обложку с переходом наружу.
       setTimeout(function () { if (player === null) send('error:api'); }, 9000);
+
+      // Слайд открыли: пора играть.
+      function lidlePlay() {
+        play = true;
+        tries = 0;
+        kick();
+      }
 
       function lidleSound(on) {
         try {

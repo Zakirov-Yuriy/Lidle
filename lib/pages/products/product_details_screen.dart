@@ -1619,13 +1619,20 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   Widget _buildGallery(List<String> images) {
-    // Видео первым слайдом (19.10.2026, задача 10). Решение заказчика:
-    // ролик человек должен увидеть сразу, не листая фотографии.
+    // Видео ВТОРЫМ слайдом (19.10.2026, задача 10).
+    //
+    // Первой остаётся та же фотография, что человек видел в ленте, а ролик
+    // идёт сразу следом: соседняя страница строится заранее, поэтому плеер
+    // успевает подгрузиться, пока человек смотрит первый снимок. Последним
+    // ставить нельзя: до конца галереи долистывает меньшинство.
     final video = _product?.video;
     final hasVideo = video != null;
 
     // Всего слайдов: фотографии плюс видео, если оно есть.
     final total = images.length + (hasVideo ? 1 : 0);
+
+    // Место видео: второе, а без фотографий единственное.
+    final videoIndex = images.isEmpty ? 0 : 1;
 
     return Column(
       children: [
@@ -1637,17 +1644,26 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               controller: _pageController,
               onPageChanged: (index) => setState(() => _currentImage = index),
               itemCount: total,
+
+              // Соседняя страница строится заранее (19.10.2026): плеер
+              // начинает грузиться, пока человек смотрит первый снимок.
+              allowImplicitScrolling: true,
               itemBuilder: (context, index) {
-                if (hasVideo && index == 0) {
+                if (hasVideo && index == videoIndex) {
                   return VideoReviewSlide(
                     video: video,
                     // Чем закрыть место, пока плеер грузится, и что показать
                     // там, где встроить нельзя.
                     fallbackImage: images.isEmpty ? null : images.first,
+                    // Играть начинаем, когда слайд открыт, а не когда он
+                    // построен в запас.
+                    active: _currentImage == index,
                   );
                 }
 
-                final image = images[hasVideo ? index - 1 : index];
+                final image = images[
+                  hasVideo && index > videoIndex ? index - 1 : index
+                ];
 
                 return Image.network(
                   image,

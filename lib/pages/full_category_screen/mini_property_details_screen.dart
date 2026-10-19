@@ -882,11 +882,22 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       );
     }
 
-    // Видео первым слайдом (19.10.2026, задача 10). Решение заказчика:
-    // ролик человек должен увидеть сразу, не листая фотографии.
+    // Видео ВТОРЫМ слайдом (19.10.2026, задача 10).
+    //
+    // Первой остаётся та же фотография, что человек видел в ленте: иначе в
+    // момент перехода он теряет опору, особенно на слабой сети, где вместо
+    // снимка его встречала бы обложка ролика с кружком загрузки. Видео идёт
+    // сразу следом, одним движением пальца, и благодаря соседней странице
+    // плеер успевает подгрузиться, пока человек смотрит первый снимок.
+    //
+    // Последним ролик ставить нельзя: до конца галереи долистывает
+    // меньшинство, и видео увидели бы единицы.
     final video = _listing.video;
     final hasVideo = video != null;
     final total = images.length + (hasVideo ? 1 : 0);
+
+    // Место видео: второе, а если фотографий нет вовсе, то единственное.
+    final videoIndex = images.isEmpty ? 0 : 1;
 
     return Column(
       children: [
@@ -903,15 +914,24 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 });
               },
               itemCount: total,
+
+              // Соседняя страница строится заранее (19.10.2026): плеер
+              // начинает грузиться, пока человек смотрит первый снимок.
+              allowImplicitScrolling: true,
               itemBuilder: (context, index) {
-                if (hasVideo && index == 0) {
+                if (hasVideo && index == videoIndex) {
                   return VideoReviewSlide(
                     video: video,
                     fallbackImage: images.isEmpty ? null : images.first,
+                    // Играть начинаем, когда слайд открыт, а не когда он
+                    // построен в запас.
+                    active: _currentPage == index,
                   );
                 }
 
-                final imageIndex = hasVideo ? index - 1 : index;
+                final imageIndex = hasVideo && index > videoIndex
+                    ? index - 1
+                    : index;
 
                 return GestureDetector(
                   onTap: () {
