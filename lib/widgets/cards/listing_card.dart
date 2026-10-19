@@ -938,7 +938,9 @@ class _VideoBadge extends StatelessWidget {
     // читается, а возвращать подложку заказчик не хочет. Мягкая тень держит
     // край значка на любом снимке и в глаза не бросается.
     return const Icon(
-      Icons.play_circle_fill,
+      // Круг контуром и треугольник внутри: значок, который прислал
+      // заказчик 19.10.2026. Залитого кружка под ним нет.
+      Icons.play_circle_outline,
       color: Color(0xFF19D849),
       size: 24,
       shadows: [
