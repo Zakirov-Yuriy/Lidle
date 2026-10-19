@@ -931,20 +931,19 @@ class _VideoBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 24,
-      height: 24,
-      decoration: const BoxDecoration(
-        // Тот же зелёный, что у кнопок приложения (решение заказчика от
-        // 19.10.2026): значок должен читаться как часть приложения.
-        color: Color(0xFF19D849),
-        shape: BoxShape.circle,
-      ),
-      child: const Icon(
-        Icons.play_arrow_rounded,
-        color: Colors.white,
-        size: 16,
-      ),
+    // Без подложки, как сердечко рядом (19.10.2026). Сам значок зелёный, тем
+    // же цветом, что кнопки приложения.
+    //
+    // Тень вместо кружка: на светлой фотографии зелёное по белому почти не
+    // читается, а возвращать подложку заказчик не хочет. Мягкая тень держит
+    // край значка на любом снимке и в глаза не бросается.
+    return const Icon(
+      Icons.play_circle_fill,
+      color: Color(0xFF19D849),
+      size: 24,
+      shadows: [
+        Shadow(color: Color(0x66000000), blurRadius: 4),
+      ],
     );
   }
 }
