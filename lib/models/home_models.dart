@@ -532,7 +532,9 @@ class Listing {
       // у старой сборки сервера тоже. Пусто означает «откликаться нельзя».
       video: VideoReview.tryParse(json['video_review']),
       // В карточке признака `has_video` нет, зато есть само видео.
-      hasVideo: json['has_video'] == true || json['video_review'] is Map,
+      hasVideo: json['has_video'] == true ||
+          json['video_review'] is Map ||
+          '${json['video'] ?? ''}'.trim().isNotEmpty,
       canRespond: json['can_respond'] == true,
       isResponded: json['is_responded'] == true,
       responsesCount: json['responses_count'] is int

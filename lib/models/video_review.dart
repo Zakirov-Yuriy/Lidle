@@ -15,6 +15,12 @@ class VideoReview {
   /// youtube, rutube, vk, ok, telegram, dzen, other.
   final String platform;
 
+  /// Номер ролика у площадки.
+  ///
+  /// Нужен Ютубу: его плеер мы собираем в приложении сами, через настоящий
+  /// плеерный скрипт площадки, а не ссылкой на готовую страницу.
+  final String? videoId;
+
   /// Адрес встроенного плеера. Пусто, если играть внутри нельзя.
   final String? embedUrl;
 
@@ -27,6 +33,7 @@ class VideoReview {
   const VideoReview({
     required this.url,
     required this.platform,
+    this.videoId,
     this.embedUrl,
     this.thumbnail,
     required this.canEmbed,
@@ -41,10 +48,12 @@ class VideoReview {
 
     final embed = '${raw['embed_url'] ?? ''}'.trim();
     final thumb = '${raw['thumbnail'] ?? ''}'.trim();
+    final id = '${raw['video_id'] ?? ''}'.trim();
 
     return VideoReview(
       url: url,
       platform: '${raw['platform'] ?? 'other'}',
+      videoId: id.isEmpty ? null : id,
       embedUrl: embed.isEmpty ? null : embed,
       thumbnail: thumb.isEmpty ? null : thumb,
       canEmbed: raw['can_embed'] == true && embed.isNotEmpty,

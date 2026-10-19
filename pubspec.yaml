@@ -35,6 +35,9 @@ dependencies:
   # автозапуск видео без звука включается только через настройку платформы
   # Android, `setMediaPlaybackRequiresUserGesture(false)`.
   webview_flutter_android: ^4.14.1
+  # То же для айфона (19.10.2026): разрешение играть без нажатия выдаётся там
+  # при создании окна, и без прямой зависимости этих настроек не достать.
+  webview_flutter_wkwebview: ^3.27.0
   crypto: ^3.0.3 # PKCE (sha256) для VK ID OAuth 2.1
   vkid_flutter_sdk: ^1.0.3 # Нативный VK ID SDK (one tap / app-to-app), confidential flow
   share_plus: ^10.0.2 # Добавлен для шаринга
