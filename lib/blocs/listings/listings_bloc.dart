@@ -7,6 +7,7 @@ import 'listings_event.dart';
 import 'listings_state.dart';
 import '../../models/home_models.dart' as home;
 import '../../models/advert_model.dart';
+import '../../models/video_review.dart';
 import '../../services/api_service.dart';
 import '../../services/token_service.dart';
 import '../../services/selected_city_service.dart';
@@ -272,7 +273,16 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         final cachedListings = AppCacheService().get<Map>(
           CacheKeys.listingsData,
         );
+        // Кеш ленты главной тоже версионируется (19.10.2026).
+        //
+        // ЭТО И БЫЛА ПРИЧИНА. Версия проверялась только у кеша одной
+        // карточки, а список главной лежал без неё и жил между запусками
+        // приложения. Экран поднимал ленту из старой записи и за свежей на
+        // сервер не ходил вовсе: сервер отдавал признак видео, а значок на
+        // обложке так и не появлялся, сколько бы раз мы ни чинили сервер.
+        // Запись прошлой версии теперь просто не читается.
         if (cachedListings != null &&
+            cachedListings['cache_version'] == _advertCacheVersion &&
             cachedListings.containsKey('listings') &&
             cachedListings.containsKey('categories')) {
           try {
@@ -1245,13 +1255,41 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   // 6 с 09.10.2026: добавились поля откликов (can_respond, is_responded).
   // Записи пятой версии их не содержат, и у объявления из кеша кнопка
   // «Откликнуться» не появилась бы, пока кеш не истечёт.
-  static const int _advertCacheVersion = 6;
+  // 7 с 19.10.2026: в кеше появились признак видео, само видео и признаки
+  // товара. Шестая версия их не содержит, и значок видео в ленте не появился
+  // бы, пока кеш не истечёт, сколько бы раз ни чинили сервер.
+  static const int _advertCacheVersion = 7;
 
   /// Конвертирует Listing в JSON для кеша.
   Map<String, dynamic> _listingToJson(home.Listing listing) {
     return {
       'cache_version': _advertCacheVersion,
       'id': listing.id,
+      'slug': listing.slug,
+
+      // Признаки товара (19.10.2026). Без них карточка товара, поднятая из
+      // кеша, становилась обычным объявлением: пропадала кнопка корзины, а
+      // переход вёл не в товар.
+      'isProduct': listing.isProduct,
+      'productId': listing.productId,
+      'canOrder': listing.canOrder,
+      'inStock': listing.inStock,
+
+      // Видеообзор (19.10.2026, задача 10). Главная рисует ленту из кеша и
+      // за свежим списком не идёт, пока кеш не истечёт. Поэтому всё, что
+      // карточке нужно показать, должно лежать здесь: иначе признак с
+      // сервера просто не доезжает до экрана.
+      'hasVideo': listing.hasVideo,
+      'video': listing.video == null
+          ? null
+          : {
+              'url': listing.video!.url,
+              'platform': listing.video!.platform,
+              'video_id': listing.video!.videoId,
+              'embed_url': listing.video!.embedUrl,
+              'thumbnail': listing.video!.thumbnail,
+              'can_embed': listing.video!.canEmbed,
+            },
       'imagePath': listing.imagePath,
       'images': listing.images,
       'title': listing.title,
@@ -1330,6 +1368,21 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       canRespond: json['canRespond'] == true,
       isResponded: json['isResponded'] == true,
       responsesCount: (json['responsesCount'] as num?)?.toInt(),
+
+      // Товар и видео (19.10.2026).
+      isProduct: json['isProduct'] == true,
+      productId: (json['productId'] as num?)?.toInt(),
+      canOrder: json['canOrder'] == true,
+      inStock: json['inStock'] != false,
+      hasVideo: json['hasVideo'] == true || json['video'] is Map,
+      video: json['video'] is Map
+          // Hive отдаёт вложенные карты как Map<dynamic, dynamic>, и без
+          // приведения разбор молча вернул бы пусто, как это было с
+          // характеристиками 22.09.2026.
+          ? VideoReview.tryParse(
+              Map<String, dynamic>.from(json['video'] as Map),
+            )
+          : null,
     );
   }
 
@@ -1546,6 +1599,26 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
                     mainRegion: listing.mainRegion,
                     subRegion: listing.subRegion,
                     district: listing.district,
+
+                    // Пересборка карточки ради характеристик не должна терять
+                    // остальное (19.10.2026). Так уже пропадал значок видео:
+                    // поля, не перечисленные здесь, молча становятся пустыми.
+                    isProduct: listing.isProduct,
+                    productId: listing.productId,
+                    canOrder: listing.canOrder,
+                    inStock: listing.inStock,
+                    hallsCount: listing.hallsCount,
+                    rating: listing.rating,
+                    reviewsCount: listing.reviewsCount,
+                    showsRating: listing.showsRating,
+                    categoryPath: listing.categoryPath,
+                    feedAttributes: listing.feedAttributes,
+                    wishlistId: listing.wishlistId,
+                    canRespond: listing.canRespond,
+                    isResponded: listing.isResponded,
+                    responsesCount: listing.responsesCount,
+                    video: listing.video,
+                    hasVideo: listing.hasVideo,
                   );
                 }
               });
@@ -1604,6 +1677,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           AppCacheService().set<Map>(
             CacheKeys.listingsData,
             {
+              // Версия записи (19.10.2026): по ней старый кеш отбрасывается.
+              'cache_version': _advertCacheVersion,
               'listings': finalSortedListings
                   .map((listing) => _listingToJson(listing))
                   .toList(),
@@ -1649,6 +1724,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           AppCacheService().set<Map>(
             CacheKeys.listingsData,
             {
+              // Версия записи (19.10.2026): по ней старый кеш отбрасывается.
+              'cache_version': _advertCacheVersion,
               'listings': sortedListings
                   .map((listing) => _listingToJson(listing))
                   .toList(),
