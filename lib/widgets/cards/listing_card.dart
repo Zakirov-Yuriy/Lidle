@@ -274,25 +274,10 @@ class _ListingCardState extends State<ListingCard> {
                     // есть ролик. Тёмный кружок под значком обязателен: на
                     // светлой фотографии белая иконка без него теряется.
                     if (widget.listing.hasVideo)
-                      Positioned(
+                      const Positioned(
                         right: 6,
                         top: 34,
-                        child: Container(
-                          width: 24,
-                          height: 24,
-                          decoration: const BoxDecoration(
-                            // Тот же зелёный, что у кнопки «Позвонить»
-                            // (19.10.2026): значок должен читаться как часть
-                            // приложения, а не спорить с ним.
-                            color: Color(0xFF19D849),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.play_arrow_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
+                        child: _VideoBadge(),
                       ),
                   ],
                 ),
@@ -488,6 +473,19 @@ class _ListingCardState extends State<ListingCard> {
                       top: 6,
                       child: _productFavoriteButton(),
                     ),
+
+                    // Значок видео ПОД сердечком (19.10.2026, задача 10).
+                    //
+                    // У товара СВОЯ вёрстка карточки, отдельная от
+                    // объявления, и значок, добавленный только туда, здесь
+                    // не появлялся. Любая пометка на обложке нужна в ОБОИХ
+                    // местах.
+                    if (widget.listing.hasVideo)
+                      const Positioned(
+                        right: 6,
+                        top: 34,
+                        child: _VideoBadge(),
+                      ),
                   ],
                 ),
               ),
@@ -921,5 +919,32 @@ class _ListingCardState extends State<ListingCard> {
       default:
         return 'оценок';
     }
+  }
+}
+
+/// Значок видео на обложке карточки (19.10.2026, задача 10).
+///
+/// Один виджет на оба вида карточки, объявление и товар: вёрстки у них
+/// разные, и пока значок жил двумя кусками кода, он был только у одной.
+class _VideoBadge extends StatelessWidget {
+  const _VideoBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: const BoxDecoration(
+        // Тот же зелёный, что у кнопок приложения (решение заказчика от
+        // 19.10.2026): значок должен читаться как часть приложения.
+        color: Color(0xFF19D849),
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(
+        Icons.play_arrow_rounded,
+        color: Colors.white,
+        size: 16,
+      ),
+    );
   }
 }
