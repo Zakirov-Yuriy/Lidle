@@ -35,12 +35,24 @@ class RegisterScreen extends StatefulWidget {
 // "Состояние экрана регистрации"
 // ============================================================
 class _RegisterScreenState extends State<RegisterScreen> {
+  /// Согласие на обработку персональных данных (19.10.2026, задача 86).
+  ///
+  /// Галочек стало ТРИ вместо двух: закон требует, чтобы согласие на
+  /// обработку персональных данных человек давал отдельным действием, а не
+  /// одной галочкой вместе с принятием условий. Смешанная галочка считается
+  /// согласием, полученным с нарушением.
+  bool agreePersonalData = false;
+
+  /// Принятие пользовательского соглашения и оферты.
   bool agreeTerms = false;
 
   /// Человек пытался продолжить, не поставив обязательную галочку
-  /// (16.10.2026). По нему под галочкой показывается объяснение.
+  /// (16.10.2026). По ним под галочками показывается объяснение.
+  bool _personalDataMissing = false;
   bool _termsMissing = false;
 
+  /// Рекламная рассылка. Необязательная и по умолчанию пустая: согласие на
+  /// рекламу нельзя получать молчанием.
   bool agreeMarketing = false;
 
   bool showPassword = false;
@@ -90,10 +102,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final formState = _formKey.currentState;
     final isValid = formState?.validate() ?? false;
 
-    // Показываем, чего не хватает, а не молчим (16.10.2026).
-    setState(() => _termsMissing = !agreeTerms);
+    // Показываем, чего не хватает, а не молчим (16.10.2026). Обязательных
+    // галочек теперь две, и подсказка встаёт под каждой непоставленной.
+    setState(() {
+      _personalDataMissing = !agreePersonalData;
+      _termsMissing = !agreeTerms;
+    });
 
-    if (!isValid || !agreeTerms) return;
+    if (!isValid || !agreePersonalData || !agreeTerms) return;
 
     formState?.save();
     final formData = formState?.value ?? {};
@@ -283,39 +299,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       false,
                     ),
                     const SizedBox(height: 10),
+                    // Три отдельные галочки (19.10.2026, задача 86).
+                    //
+                    // Раньше согласие на обработку персональных данных,
+                    // пользовательское соглашение и оферта стояли одной
+                    // галочкой. Так нельзя: согласие на обработку данных
+                    // человек должен давать отдельным действием, иначе оно
+                    // считается полученным с нарушением. Ссылки на документы
+                    // остались прежними, просто разошлись по своим строкам.
                     _buildCheckBox(
-                      value: agreeTerms,
+                      value: agreePersonalData,
                       text: RichText(
                         text: TextSpan(
-                          text: 'Я ознакомлен и согласен с ',
+                          text: 'Я даю ',
                           style: const TextStyle(color: Colors.white70, fontSize: 13),
                           children: [
-                            TextSpan(
-                              text: 'Пользовательским \nсоглашением',
-                              style: const TextStyle(
-                                color: Color(0xFF38BDF8),
-                                fontSize: 13,
-                              ),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL(AppConfig().userAgreementUrl),
-                            ),
-                            const TextSpan(
-                              text: ', ',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                            TextSpan(
-                              text: 'офертой',
-                              style: const TextStyle(
-                                color: Color(0xFF38BDF8),
-                                fontSize: 13,
-                              ),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL(AppConfig().publicOfferUrl),
-                            ),
-                            const TextSpan(
-                              text: ' и даю ',
-                              style: TextStyle(color: Colors.white70),
-                            ),
                             TextSpan(
                               text: 'согласие',
                               style: const TextStyle(
@@ -326,17 +324,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ..onTap = () => _openURL(AppConfig().consentUrl),
                             ),
                             const TextSpan(
-                              text: ' на обработку персональных данных на условиях ',
+                              text: ' на обработку моих персональных данных на условиях ',
                               style: TextStyle(color: Colors.white70),
                             ),
                             TextSpan(
-                              text: 'политики \nконфиденциальности',
+                              text: 'Политики конфиденциальности',
                               style: const TextStyle(
                                 color: Color(0xFF38BDF8),
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () => _openURL(AppConfig().privacyPolicyUrl),
+                            ),
+                          ],
+                        ),
+                      ),
+                      onChanged: (v) => setState(() {
+                        agreePersonalData = v ?? false;
+
+                        if (agreePersonalData) _personalDataMissing = false;
+                      }),
+                    ),
+                    RequiredCheckHint(visible: _personalDataMissing),
+                    const SizedBox(height: 16),
+                    _buildCheckBox(
+                      value: agreeTerms,
+                      text: RichText(
+                        text: TextSpan(
+                          text: 'Я принимаю условия ',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          children: [
+                            TextSpan(
+                              text: 'Пользовательского соглашения',
+                              style: const TextStyle(
+                                color: Color(0xFF38BDF8),
+                                fontSize: 13,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _openURL(AppConfig().userAgreementUrl),
+                            ),
+                            const TextSpan(
+                              text: ' и ',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            TextSpan(
+                              text: 'оферты',
+                              style: const TextStyle(
+                                color: Color(0xFF38BDF8),
+                                fontSize: 13,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _openURL(AppConfig().publicOfferUrl),
                             ),
                           ],
                         ),
@@ -354,11 +392,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       value: agreeMarketing,
                       text: RichText(
                         text: TextSpan(
-                          text: 'Я соглашаюсь на ',
+                          text: 'Я соглашаюсь получать ',
                           style: const TextStyle(color: Colors.white70, fontSize: 13),
                           children: [
                             TextSpan(
-                              text: 'Рекламную \n',
+                              text: 'рекламную',
                               style: const TextStyle(
                                 color: Color(0xFF38BDF8),
                                 fontSize: 13,
@@ -367,17 +405,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ..onTap = () => _openURL(AppConfig().mailingUrl),
                             ),
                             const TextSpan(
-                              text: 'и ',
+                              text: ' и ',
                               style: TextStyle(color: Colors.white70),
                             ),
                             TextSpan(
-                              text: 'Информационную рассылку',
+                              text: 'информационную рассылку',
                               style: const TextStyle(
                                 color: Color(0xFF38BDF8),
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () => _openURL(AppConfig().mailingUrl),
+                            ),
+                            const TextSpan(
+                              text: ' (необязательно)',
+                              style: TextStyle(color: Colors.white70),
                             ),
                           ],
                         ),
