@@ -12,7 +12,6 @@
 // - DELETE /me/crm-feeds/{id}   — удалить фид
 
 import 'package:lidle/services/my_adverts_service.dart';
-import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_preview_screen.dart';
 
 import 'package:flutter/material.dart';
@@ -82,13 +81,14 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
   /// текущие. Показываем сообщение и уводим на экран предпросмотра.
   Future<void> _checkPendingModeration() async {
     try {
-      final token = HiveService.getUserData('token') as String?;
-      if (token == null) return;
-
+      // Токен не достаём руками: его подставит `ApiService`, как и во всех
+      // остальных запросах этого экрана. Раньше здесь стоял выход «токена
+      // нет», и в этом случае экран молчал вовсе.
       final count = await MyAdvertsService.getModerationCount(
-        token: token,
         catalogId: widget.catalogId,
       );
+
+      log.d('🔎 Незавершённых объявлений в разделе ${widget.catalogId}: $count');
 
       if (count > 0 && mounted) {
         // Выбор человека: уйти к объявлениям или остаться здесь
