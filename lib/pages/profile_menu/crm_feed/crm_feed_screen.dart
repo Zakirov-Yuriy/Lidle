@@ -52,13 +52,6 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
   bool _isSubmitting = false;
   String? _error;
 
-  /// Сколько объявлений из фида ждут разбора (20.10.2026).
-  ///
-  /// Показывается ПЛАШКОЙ ПРЯМО НА ЭКРАНЕ, а не только всплывающим окном:
-  /// окно зависит от состояния навигации и может не показаться вовсе, а
-  /// человеку надо видеть, что объявления ждут его.
-  int _pendingCount = 0;
-
   /// Если включено — ИИ изменит заголовок и описание импортируемых объявлений.
   /// По умолчанию включено.
   bool _aiRewrite = true;
@@ -83,71 +76,6 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
     super.dispose();
   }
 
-  /// Плашка «есть незавершённые объявления» прямо на экране (20.10.2026).
-  ///
-  /// Тот же смысл, что у всплывающего окна: объявления из фида ждут, пока их
-  /// опубликуют или разберут, и пока это не сделано, новый фид подключать
-  /// нельзя. Но плашка видна всегда, не зависит от навигации и не исчезает,
-  /// если окно почему-то не показалось.
-  Widget _buildPendingBanner() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: activeIconColor, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Есть незавершённые объявления',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'У вас есть объявления из фида на модерации ($_pendingCount). '
-            'Сначала опубликуйте или разберите их, прежде чем подключать '
-            'новый фид.',
-            style: const TextStyle(color: Colors.white70, height: 1.35),
-          ),
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => CrmFeedPreviewScreen(
-                    catalogId: widget.catalogId,
-                    catalogName: widget.catalogName,
-                  ),
-                ),
-              );
-
-              if (!mounted) return;
-
-              _loadFeeds();
-              _checkPendingModeration();
-            },
-            child: Text(
-              'Перейти к объявлениям',
-              style: TextStyle(
-                color: activeIconColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Проверка: если у пользователя есть неопубликованные объявления из фида
   /// (на модерации), не даём подключать новый фид — сначала нужно разобрать
   /// текущие. Показываем сообщение и уводим на экран предпросмотра.
@@ -157,16 +85,15 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
       // остальных запросах этого экрана. Раньше здесь стоял выход «токена
       // нет», и в этом случае экран молчал вовсе.
       //
-      // Считаем ВСЕ незавершённые объявления человека, без привязки к
-      // разделу (20.10.2026). Вопрос здесь простой: есть ли у него
-      // неразобранные объявления из фида. Отбор по разделу давал ноль, когда
-      // раздел, выбранный при входе, не совпадал с разделом, в котором лежат
-      // сами объявления, и плашка молчала при полусотне ждущих объявлений.
-      final count = await MyAdvertsService.getModerationCount();
+      // Считаем ТОЛЬКО по разделу, в который человек зашёл (20.10.2026):
+      // зайдя в транспорт, он не должен получать окно про недвижимость.
+      // Сервер при этом смотрит и на раздел объявления, и на раздел фида,
+      // который его привёз, иначе счёт давал ноль там, где объявления есть.
+      final count = await MyAdvertsService.getModerationCount(
+        catalogId: widget.catalogId,
+      );
 
       log.d('🔎 Незавершённых объявлений в разделе ${widget.catalogId}: $count');
-
-      if (mounted) setState(() => _pendingCount = count);
 
       if (count > 0 && mounted) {
         // Выбор человека: уйти к объявлениям или остаться здесь
@@ -238,11 +165,20 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
         // Отмена оставляет на этом экране: отсюда видно подключённые фиды,
         // их можно удалить и подключить новый.
         if (goToList == true && mounted) {
+          // Открываем ПОСЛЕДНИЙ подключённый фид (20.10.2026).
+          //
+          // Раньше уходили на раздел целиком, и человек попадал на экран, где
+          // всё по нулям: объявления там отбираются по фиду, а фид не задан.
+          // Нужен тот, который он только что загрузил, то есть самый свежий,
+          // сервер отдаёт список от новых к старым.
+          final lastFeedId = _lastFeedId();
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (_) => CrmFeedPreviewScreen(
-                catalogId: widget.catalogId,
+                feedId: lastFeedId,
+                catalogId: lastFeedId == null ? widget.catalogId : null,
                 catalogName: widget.catalogName,
               ),
             ),
@@ -264,6 +200,26 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
         );
       }
     }
+  }
+
+  /// Номер последнего подключённого фида из списка на экране.
+  ///
+  /// Список приходит от новых к старым, поэтому берём первый. Пусто, если
+  /// фидов нет вовсе: тогда открываем раздел, как раньше.
+  int? _lastFeedId() {
+    for (final feed in _feeds) {
+      if (feed is! Map) continue;
+
+      final id = feed['id'];
+
+      if (id is int) return id;
+
+      final parsed = int.tryParse('$id');
+
+      if (parsed != null) return parsed;
+    }
+
+    return null;
   }
 
   /// Загрузить список подключённых фидов.
@@ -512,9 +468,6 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
                   ),
                 ),
               ),
-
-              // ───── Незавершённые объявления ─────
-              if (_pendingCount > 0) _buildPendingBanner(),
 
               // ───── Заголовок ─────
               const Padding(
