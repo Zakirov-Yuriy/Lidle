@@ -41,6 +41,39 @@ class DynamicTextInputField extends StatelessWidget {
   Widget build(BuildContext context) {
     final TextInputType keyboardType;
     final String hint;
+
+    // Ссылка на видео (стиль V, задача 10). Своя подсказка: человек должен
+    // понимать, что сюда вставляют адрес ролика и что стереть его можно
+    // здесь же, очистив поле (20.10.2026).
+    if (attribute.style == 'V' || attribute.styleSingle == 'V1') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          StyleHeader(attribute: attribute, isSubmissionMode: isSubmissionMode),
+          LabeledTextField(
+            label: attribute.isTitleHidden
+                ? ''
+                : attribute.title + (attribute.isRequired ? '*' : ''),
+            hint: 'Вставьте ссылку на ролик',
+            controller: controller,
+            keyboardType: TextInputType.url,
+            errorMessage: errorMessage,
+            hasError: hasError,
+            onChanged: onChanged,
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 4, bottom: 8),
+            child: Text(
+              'Ютуб, Рутуб, ВК и Одноклассники играют прямо в карточке, '
+              'остальные откроются на своей площадке. Чтобы убрать видео, '
+              'очистите поле и сохраните.',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ),
+        ],
+      );
+    }
+
     switch (attribute.dataType) {
       case 'integer':
         keyboardType = TextInputType.number;

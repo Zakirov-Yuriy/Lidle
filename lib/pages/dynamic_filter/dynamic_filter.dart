@@ -3417,12 +3417,10 @@ class _DynamicFilterState extends State<DynamicFilter>
   static Map<String, dynamic>? _plainFieldPayload(Attribute attr, String raw) {
     final text = raw.trim();
 
-    if (text.isEmpty) {
-      return null;
-    }
-
     // Ссылка на видео (стиль V, задача 10). Уезжает СТРОКОЙ, какой бы тип
-    // данных ни стоял у характеристики.
+    // данных ни стоял у характеристики, и ПУСТАЯ тоже (20.10.2026): стёртое
+    // поле означает «убрать видео», и сервер по пустому значению удаляет
+    // ссылку. Не отправь мы его, ролик остался бы в карточке навсегда.
     //
     // ЗАЧЕМ ОТДЕЛЬНО. Ниже значение собирается по типу данных, а у
     // характеристики, заведённой в админке, тип бывает не задан вовсе: поле
@@ -3432,6 +3430,10 @@ class _DynamicFilterState extends State<DynamicFilter>
     // объявлении 9691.
     if (attr.style == 'V' || attr.styleSingle == 'V1') {
       return {'value': text};
+    }
+
+    if (text.isEmpty) {
+      return null;
     }
 
     switch (attr.dataType) {
