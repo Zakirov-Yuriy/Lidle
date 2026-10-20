@@ -61,7 +61,14 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
   void initState() {
     super.initState();
     _loadFeeds();
-    _checkPendingModeration();
+
+    // Проверку незавершённых объявлений спрашиваем ПОСЛЕ первого кадра
+    // (20.10.2026). Из `initState` окно показывается в ещё не отрисованном
+    // экране, и на части устройств оно не появляется вовсе: ошибка при этом
+    // уходит в пустоту, потому что проверка обёрнута в тихий обработчик.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _checkPendingModeration();
+    });
   }
 
   @override
@@ -171,7 +178,19 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
         }
       }
     } catch (e) {
-      // При ошибке проверки не блокируем (не мешаем работе).
+      // Не молчим (20.10.2026). Раньше любая ошибка проверки проглатывалась
+      // без следа, и человек видел экран без плашки, не понимая, почему её
+      // нет. Работу не блокируем, но говорим, что проверка не прошла.
+      log.d('⚠️ Проверка незавершённых объявлений не прошла: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Не удалось проверить незавершённые объявления: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
