@@ -111,13 +111,9 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            widget.catalogName != null
-                ? 'В разделе «${widget.catalogName}» есть объявления из фида '
-                    'на модерации ($_pendingCount). Сначала опубликуйте или '
-                    'разберите их, прежде чем подключать новый фид.'
-                : 'У вас есть объявления из фида на модерации '
-                    '($_pendingCount). Сначала опубликуйте или разберите их, '
-                    'прежде чем подключать новый фид.',
+            'У вас есть объявления из фида на модерации ($_pendingCount). '
+            'Сначала опубликуйте или разберите их, прежде чем подключать '
+            'новый фид.',
             style: const TextStyle(color: Colors.white70, height: 1.35),
           ),
           const SizedBox(height: 10),
@@ -160,9 +156,13 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
       // Токен не достаём руками: его подставит `ApiService`, как и во всех
       // остальных запросах этого экрана. Раньше здесь стоял выход «токена
       // нет», и в этом случае экран молчал вовсе.
-      final count = await MyAdvertsService.getModerationCount(
-        catalogId: widget.catalogId,
-      );
+      //
+      // Считаем ВСЕ незавершённые объявления человека, без привязки к
+      // разделу (20.10.2026). Вопрос здесь простой: есть ли у него
+      // неразобранные объявления из фида. Отбор по разделу давал ноль, когда
+      // раздел, выбранный при входе, не совпадал с разделом, в котором лежат
+      // сами объявления, и плашка молчала при полусотне ждущих объявлений.
+      final count = await MyAdvertsService.getModerationCount();
 
       log.d('🔎 Незавершённых объявлений в разделе ${widget.catalogId}: $count');
 
@@ -187,15 +187,9 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.catalogName != null
-                      // Раздел назван: человек выбрал его сам минуту назад,
-                      // и ему важно понимать, что речь именно про него.
-                      ? 'В разделе «${widget.catalogName}» есть объявления '
-                          'из фида на модерации ($count). Сначала опубликуйте '
-                          'или разберите их, прежде чем подключать новый фид.'
-                      : 'У вас есть объявления из фида на модерации ($count). '
-                          'Сначала опубликуйте или разберите их, '
-                          'прежде чем подключать новый фид.',
+                  'У вас есть объявления из фида на модерации ($count). '
+                  'Сначала опубликуйте или разберите их, прежде чем '
+                  'подключать новый фид.',
                   style: const TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 20),
