@@ -1386,6 +1386,30 @@ class _DynamicFilterState extends State<DynamicFilter>
             }
           }
 
+          // Ссылка на видео (20.10.2026, задача 10).
+          //
+          // Форма правки грузит обычную карточку объявления, а в ней ссылки
+          // в списке характеристик НЕТ намеренно: она уже показана плеером,
+          // и голый адрес строкой рядом с «Этаж» и «Площадь» выглядит
+          // мусором. Поэтому поле видео открывалось пустым, и сохранение
+          // затирало ссылку.
+          //
+          // Берём её из разобранного видео: сервер отдаёт его отдельным
+          // полем карточки, вместе с исходным адресом.
+          final videoReview = advertData['video_review'];
+
+          if (videoReview is Map && videoReview['url'] != null) {
+            final videoAttr = _attributes.firstWhere(
+              (a) => a.style == 'V' || a.styleSingle == 'V1',
+              orElse: () => Attribute(id: 0, title: '', order: 0, values: []),
+            );
+
+            if (videoAttr.id != 0) {
+              tempSelectedValues[videoAttr.id] = '${videoReview['url']}';
+              log.d('      ✅ Ссылка на видео: ${videoReview['url']}');
+            }
+          }
+
           log.d('   Processed ${processedAttrIds.length} attributes from API');
           log.d(
             '   tempSelectedValues prepared: ${tempSelectedValues.length} items',

@@ -137,38 +137,49 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
 
       final resp = await ApiService.get(query);
       final feeds = (resp['data'] as List?) ?? [];
-      int sum = 0;
-      bool any = false;
+
+      // Берём ОДИН фид, а не сумму (20.10.2026).
+      //
+      // Так было: складывались все фиды раздела, и человек видел «60 из
+      // 2618», где шестьдесят это последняя выгрузка, а две с половиной
+      // тысячи все прошлые вместе взятые. Экран говорит про последнюю
+      // загрузку, значит и считать должен её.
+      //
+      // Открыт конкретный фид, берём его. Открыт раздел, берём самый
+      // свежий: сервер отдаёт список от новых к старым.
+      Map<String, dynamic>? chosen;
 
       for (final f in feeds) {
-        // Открыт один фид: остальные к этому экрану отношения не имеют,
-        // даже если они в том же разделе.
-        if (widget.feedId != null && f['id'] != widget.feedId) continue;
+        if (f is! Map) continue;
 
-        final bool active = f['is_active'] == true;
+        final feed = Map<String, dynamic>.from(f);
 
-        if (!active) continue;
+        if (widget.feedId != null) {
+          if (feed['id'] == widget.feedId) {
+            chosen = feed;
 
-        // Сколько фид привёз. Ноль тоже ответ: фид подключён, объявлений
-        // пока нет, и «0 из 0» честнее, чем «0 из 2688».
-        final imported = f['imported_count'];
-
-        if (imported != null) {
-          sum += (imported as num).toInt();
-          any = true;
+            break;
+          }
 
           continue;
         }
 
-        final total = f['total_offers'];
+        if (feed['is_active'] != true) continue;
 
-        if (total != null) {
-          sum += (total as num).toInt();
-          any = true;
-        }
+        chosen = feed;
+
+        break;
       }
 
-      if (mounted && any) setState(() => _feedTotal = sum);
+      if (chosen == null) return;
+
+      // Сколько объявлений этот фид реально привёз. У сервера прошлой сборки
+      // такого поля нет, тогда остаётся число офферов в прайсе.
+      final imported = chosen['imported_count'] ?? chosen['total_offers'];
+
+      if (mounted && imported != null) {
+        setState(() => _feedTotal = (imported as num).toInt());
+      }
     } catch (_) {
       // Молча: индикатор просто покажет «N объявлений» без «из M».
     }
