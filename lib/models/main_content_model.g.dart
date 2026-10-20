@@ -119,6 +119,7 @@ UserAdvert _$UserAdvertFromJson(Map<String, dynamic> json) => UserAdvert(
   aiProcessed: json['ai_processed'] as bool?,
   isReviewed: json['is_reviewed'] as bool?,
   isFeed: json['is_feed'] as bool?,
+  categoryId: (json['category_id'] as num?)?.toInt(),
   aiRewritten: json['ai_rewritten'] as bool?,
 );
 
@@ -142,6 +143,7 @@ Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>
       'ai_processed': instance.aiProcessed,
       'is_reviewed': instance.isReviewed,
       'is_feed': instance.isFeed,
+      'category_id': instance.categoryId,
       'ai_rewritten': instance.aiRewritten,
     };
 

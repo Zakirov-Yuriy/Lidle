@@ -177,8 +177,13 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
       // такого поля нет, тогда остаётся число офферов в прайсе.
       final imported = chosen['imported_count'] ?? chosen['total_offers'];
 
-      if (mounted && imported != null) {
-        setState(() => _feedTotal = (imported as num).toInt());
+      final total = imported == null ? 0 : (imported as num).toInt();
+
+      // Ноль не показываем (20.10.2026): «186 из 0» выглядит поломкой. Так
+      // бывает, когда последний фид ещё не привёз ни одного объявления или
+      // не разобрался вовсе, а на экране лежат объявления прошлых загрузок.
+      if (mounted) {
+        setState(() => _feedTotal = total > 0 ? total : null);
       }
     } catch (_) {
       // Молча: индикатор просто покажет «N объявлений» без «из M».
@@ -474,7 +479,13 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => DynamicFilter(
-          categoryId: 2,
+          // Категория самого объявления (20.10.2026). Раньше здесь стояла
+          // двойка, и форма правки показывала характеристики чужой
+          // категории: у фидового объявления не было поля видео, хотя в его
+          // категории характеристика заведена. Двойка остаётся запасным
+          // вариантом для сервера прошлой сборки, который категорию не
+          // присылает.
+          categoryId: advert.categoryId ?? 2,
           advertId: advert.id,
           fromModeration: true,
         ),
