@@ -238,7 +238,13 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
       ),
     );
     if (mounted) {
-      Navigator.push(
+      // Ждём возврата и спрашиваем заново (20.10.2026).
+      //
+      // Проверка незавершённых объявлений жила только в `initState`, то есть
+      // срабатывала один раз, при создании экрана. Человек уходил к
+      // объявлениям, возвращался назад, и плашка больше не появлялась, хотя
+      // объявления на модерации никуда не делись.
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => CrmFeedPreviewScreen(
@@ -247,6 +253,11 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
           ),
         ),
       );
+
+      if (!mounted) return;
+
+      _loadFeeds();
+      _checkPendingModeration();
     }
   }
 
@@ -691,15 +702,23 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
     // без возврата назад и повторного выбора раздела. Теперь фид и его
     // объявления связаны напрямую.
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => CrmFeedPreviewScreen(
-            feedId: id is int ? id : int.tryParse('$id'),
-            catalogName: catalogName?.toString(),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CrmFeedPreviewScreen(
+              feedId: id is int ? id : int.tryParse('$id'),
+              catalogName: catalogName?.toString(),
+            ),
           ),
-        ),
-      ),
+        );
+
+        if (!mounted) return;
+
+        // Вернулись из объявлений: состав мог измениться, спрашиваем заново.
+        _loadFeeds();
+        _checkPendingModeration();
+      },
       child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 6),
       padding: const EdgeInsets.all(16),
