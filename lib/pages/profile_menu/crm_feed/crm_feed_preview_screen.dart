@@ -111,7 +111,7 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
     });
   }
 
-  /// Узнать общее число объявлений в фиде (M) для индикатора «N из M».
+  /// Узнать, сколько объявлений привёз фид (M) для индикатора «N из M».
   ///
   /// Считаем ТОЛЬКО то, что относится к открытому экрану (16.10.2026).
   /// Раньше суммировались все активные фиды человека, и выходило «186 из
@@ -119,8 +119,14 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
   /// офферов по всем разделам сразу. Человек читал это как «двадцать восемь
   /// где-то потерялись».
   ///
-  /// Теперь: открыт конкретный фид, берём его число; открыт раздел, берём
-  /// фиды этого раздела; не задано ни то ни другое, считаем как раньше.
+  /// С 20.10.2026 знаменатель это `imported_count`, то есть сколько
+  /// объявлений фид РЕАЛЬНО привёз в этот раздел, а не сколько офферов было
+  /// в прайсе поставщика. Прежние «60 из 2688» сравнивали привезённое со
+  /// всем чужим прайсом, где объявлений нашего раздела столько и не было.
+  /// Когда всё загружено, человек видит честные «60 из 60».
+  ///
+  /// Старое число офферов остаётся запасным вариантом: у сервера прошлой
+  /// сборки поля `imported_count` нет вовсе.
   Future<void> _loadFeedTotal() async {
     try {
       // Раздел сервер умеет отбирать сам, этот же параметр использует экран
@@ -140,9 +146,23 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
         if (widget.feedId != null && f['id'] != widget.feedId) continue;
 
         final bool active = f['is_active'] == true;
+
+        if (!active) continue;
+
+        // Сколько фид привёз. Ноль тоже ответ: фид подключён, объявлений
+        // пока нет, и «0 из 0» честнее, чем «0 из 2688».
+        final imported = f['imported_count'];
+
+        if (imported != null) {
+          sum += (imported as num).toInt();
+          any = true;
+
+          continue;
+        }
+
         final total = f['total_offers'];
 
-        if (active && total != null) {
+        if (total != null) {
           sum += (total as num).toInt();
           any = true;
         }
@@ -171,10 +191,15 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
       _listings.where((a) => a.aiProcessed == true).length;
 
   /// Текст индикатора обработки ИИ.
+  ///
+  /// Знаменатель тот же, что у загрузки: сколько объявлений привёз фид
+  /// (20.10.2026). Сравнивать обработанные с объёмом чужого прайса
+  /// бессмысленно, ИИ обрабатывает ровно то, что приехало.
   String get _aiProgressText {
     final n = _aiProcessedCount;
-    final m = _feedTotal;
-    return m != null ? 'Обработано ИИ: $n из $m' : 'Обработано ИИ: $n';
+    final m = _feedTotal ?? _listings.length;
+
+    return 'Обработано ИИ: $n из $m';
   }
 
   /// Русское склонение «объявление/объявления/объявлений».
