@@ -52,6 +52,13 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
   bool _isSubmitting = false;
   String? _error;
 
+  /// Сколько объявлений из фида ждут разбора (20.10.2026).
+  ///
+  /// Показывается ПЛАШКОЙ ПРЯМО НА ЭКРАНЕ, а не только всплывающим окном:
+  /// окно зависит от состояния навигации и может не показаться вовсе, а
+  /// человеку надо видеть, что объявления ждут его.
+  int _pendingCount = 0;
+
   /// Если включено — ИИ изменит заголовок и описание импортируемых объявлений.
   /// По умолчанию включено.
   bool _aiRewrite = true;
@@ -76,6 +83,75 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
     super.dispose();
   }
 
+  /// Плашка «есть незавершённые объявления» прямо на экране (20.10.2026).
+  ///
+  /// Тот же смысл, что у всплывающего окна: объявления из фида ждут, пока их
+  /// опубликуют или разберут, и пока это не сделано, новый фид подключать
+  /// нельзя. Но плашка видна всегда, не зависит от навигации и не исчезает,
+  /// если окно почему-то не показалось.
+  Widget _buildPendingBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: activeIconColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Есть незавершённые объявления',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            widget.catalogName != null
+                ? 'В разделе «${widget.catalogName}» есть объявления из фида '
+                    'на модерации ($_pendingCount). Сначала опубликуйте или '
+                    'разберите их, прежде чем подключать новый фид.'
+                : 'У вас есть объявления из фида на модерации '
+                    '($_pendingCount). Сначала опубликуйте или разберите их, '
+                    'прежде чем подключать новый фид.',
+            style: const TextStyle(color: Colors.white70, height: 1.35),
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CrmFeedPreviewScreen(
+                    catalogId: widget.catalogId,
+                    catalogName: widget.catalogName,
+                  ),
+                ),
+              );
+
+              if (!mounted) return;
+
+              _loadFeeds();
+              _checkPendingModeration();
+            },
+            child: Text(
+              'Перейти к объявлениям',
+              style: TextStyle(
+                color: activeIconColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Проверка: если у пользователя есть неопубликованные объявления из фида
   /// (на модерации), не даём подключать новый фид — сначала нужно разобрать
   /// текущие. Показываем сообщение и уводим на экран предпросмотра.
@@ -89,6 +165,8 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
       );
 
       log.d('🔎 Незавершённых объявлений в разделе ${widget.catalogId}: $count');
+
+      if (mounted) setState(() => _pendingCount = count);
 
       if (count > 0 && mounted) {
         // Выбор человека: уйти к объявлениям или остаться здесь
@@ -440,6 +518,9 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
                   ),
                 ),
               ),
+
+              // ───── Незавершённые объявления ─────
+              if (_pendingCount > 0) _buildPendingBanner(),
 
               // ───── Заголовок ─────
               const Padding(
