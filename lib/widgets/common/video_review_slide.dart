@@ -140,7 +140,15 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
 
     // Фон под плеером тёмный: пока страница грузится, белый прямоугольник на
     // тёмной карточке бьёт по глазам.
-    await controller.setBackgroundColor(const Color(0xFF1F2C3A));
+    //
+    // ТОЛЬКО НА АНДРОИДЕ (20.10.2026). На айфоне заданный фон окна ломает
+    // отрисовку видео: вместо картинки идут цветные полосы и шум, звук при
+    // этом играет. Окно там рисуется поверх обычных слоёв приложения, и
+    // собственный цвет фона сбивает ему прозрачность. Место под плеером и
+    // так не светится: под ним лежит обложка ролика.
+    if (platform is AndroidWebViewController) {
+      await controller.setBackgroundColor(const Color(0xFF1F2C3A));
+    }
 
     // Обратная связь от плеера: заиграл, не смог, площадка отказала.
     await controller.addJavaScriptChannel(
@@ -351,6 +359,11 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
     return Stack(
       fit: StackFit.expand,
       children: [
+        // Подложка под плеером (20.10.2026): на айфоне окно плеера рисуется
+        // без своего фона, и пока ролик не пошёл, под ним должно быть хоть
+        // что-то, иначе проступает тёмная пустота.
+        _backdrop(),
+
         WebViewWidget(controller: controller),
 
         // Значок звука поверх плеера, как в лентах соцсетей.
@@ -376,6 +389,21 @@ class _VideoReviewSlideState extends State<VideoReviewSlide> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Картинка под плеером: обложка ролика, иначе первая фотография.
+  Widget _backdrop() {
+    final image = widget.video.thumbnail ?? widget.fallbackImage;
+
+    if (image == null) {
+      return Container(color: const Color(0xFF1F2C3A));
+    }
+
+    return Image.network(
+      image,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1F2C3A)),
     );
   }
 

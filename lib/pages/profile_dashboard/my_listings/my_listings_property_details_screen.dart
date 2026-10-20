@@ -9,6 +9,7 @@ import 'package:lidle/pages/bookings/booking_settings_screen.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
+import 'package:lidle/widgets/common/video_review_slide.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
@@ -328,6 +329,11 @@ class _MyListingsPropertyDetailsScreenState
                 feedAttributes: state.listing.feedAttributes.isNotEmpty
                     ? state.listing.feedAttributes
                     : _listing.feedAttributes,
+                // Видеообзор (20.10.2026). Эта ветка пересобирает объявление
+                // руками, и всё, что здесь не перечислено, становится
+                // пустым: так на экране своего объявления пропадало видео.
+                video: state.listing.video ?? _listing.video,
+                hasVideo: state.listing.hasVideo || _listing.hasVideo,
               );
             }
             // log.d('✅ _listing updated:');
@@ -509,6 +515,14 @@ class _MyListingsPropertyDetailsScreenState
         ? _listing.images
         : [_listing.imagePath];
 
+    // Видеообзор и здесь (20.10.2026, задача 10). Свой экран объявления
+    // живёт отдельно от покупательского, и видео, добавленное туда, сюда не
+    // попадало: продавец открывал своё же объявление и ролика не видел.
+    final video = _listing.video;
+    final hasVideo = video != null;
+    final total = images.length + (hasVideo ? 1 : 0);
+    final videoIndex = images.isEmpty ? 0 : 1;
+
     return Column(
       children: [
         ClipRRect(
@@ -516,16 +530,31 @@ class _MyListingsPropertyDetailsScreenState
           child: Container(
             height: 260,
             color: const Color(0xFF374B5C),
-            child: PageView(
+            child: PageView.builder(
               controller: _pageController,
               onPageChanged: (index) {
                 setState(() {
                   _currentPage = index;
                 });
               },
-              children: List.generate(
-                images.length,
-                (index) => images[index].startsWith('http')
+              // Соседняя страница строится заранее: плеер успевает
+              // подгрузиться, пока человек смотрит первый снимок.
+              allowImplicitScrolling: true,
+              itemCount: total,
+              itemBuilder: (context, position) {
+                if (hasVideo && position == videoIndex) {
+                  return VideoReviewSlide(
+                    video: video,
+                    fallbackImage: images.isEmpty ? null : images.first,
+                    active: _currentPage == position,
+                  );
+                }
+
+                final index = hasVideo && position > videoIndex
+                    ? position - 1
+                    : position;
+
+                return images[index].startsWith('http')
                     ? Image.network(
                         images[index],
                         fit: BoxFit.cover,
@@ -571,8 +600,8 @@ class _MyListingsPropertyDetailsScreenState
                             ),
                           );
                         },
-                      ),
-              ),
+                      );
+              },
             ),
           ),
         ),
@@ -580,7 +609,7 @@ class _MyListingsPropertyDetailsScreenState
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
-            images.length,
+            total,
             (index) => _buildPageIndicator(index == _currentPage),
           ),
         ),
