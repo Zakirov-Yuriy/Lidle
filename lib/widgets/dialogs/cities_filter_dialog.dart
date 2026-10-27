@@ -695,32 +695,48 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
   void _buildDisplayCities(List<String> cities, {String searchQuery = ''}) {
     List<dynamic> newDisplayCities = [];
     String? currentLetter;
-    
-    // Проверяем точный результат поиска
-    String? exactMatch;
-    if (searchQuery.isNotEmpty) {
-      final searchLower = searchQuery.toLowerCase();
-      for (final city in cities) {
-        final cleanName = _getCleanCityName(city).toLowerCase();
-        if (cleanName == searchLower) {
-          exactMatch = city;
-          break;
-        }
+
+    // ПРИ ПОИСКЕ СПИСОК ИДЁТ ПО БЛИЗОСТИ К ЗАПРОСУ, а не по алфавиту
+    // (27.10.2026). Человек написал «Москва» и ждёт её первой строкой.
+    // Раньше наверх поднималось только точное совпадение, а всё остальное
+    // раскладывалось по буквам, и найденное приходилось искать глазами
+    // где-то на «М», прокручивая весь список.
+    //
+    // Буквенные заголовки при поиске не нужны вовсе: найденного обычно
+    // немного, и разделители только мешают.
+    if (searchQuery.trim().isNotEmpty) {
+      final query = searchQuery.trim().toLowerCase();
+
+      int weight(String city) {
+        final name = _getCleanCityName(city).toLowerCase();
+
+        if (name == query) return 0;
+        if (name.startsWith(query)) return 1;
+        if (name.contains(query)) return 2;
+
+        return 3;
       }
+
+      final ranked = List<String>.from(cities)
+        ..sort((a, b) {
+          final byWeight = weight(a).compareTo(weight(b));
+
+          if (byWeight != 0) return byWeight;
+
+          return _getCleanCityName(a)
+              .toLowerCase()
+              .compareTo(_getCleanCityName(b).toLowerCase());
+        });
+
+      setState(() {
+        _displayCities = ranked;
+      });
+
+      return;
     }
 
-    // Если нашли точный результат - показываем его первым БЕЗ буквы-разделителя
-    if (exactMatch != null) {
-      newDisplayCities.add(exactMatch);
-      newDisplayCities.add(_LetterHeader(''));  // Пустой разделитель для визуального разделения
-    }
-
-    // Остальные города выдокими по буквам
+    // Без поиска: прежний вид, по алфавиту с буквами-разделителями.
     final sortedCities = List<String>.from(cities);
-    // Исключаем точный результат из остального списка
-    if (exactMatch != null) {
-      sortedCities.removeWhere((city) => city == exactMatch);
-    }
 
     sortedCities.sort((a, b) {
       final cleanA = _getCleanCityName(a).toLowerCase();
