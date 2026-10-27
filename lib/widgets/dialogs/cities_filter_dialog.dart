@@ -143,7 +143,7 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
           _isLoadingMore = true;  // Обновляем в фоне
           log.d('   ✅ Показаны города из кеша');
         });
-        _buildDisplayCities(_allCities, searchQuery: '');
+        _refreshDisplay();
       }
 
       // Кеш живёт неделю, а Москва и Петербург в списке появились только
@@ -156,7 +156,7 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
         setState(() {
           _allCities = [...missing, ..._allCities];
         });
-        _buildDisplayCities(_allCities, searchQuery: '');
+        _refreshDisplay();
         await _saveCitiesToCache(_allCities);
       }
 
@@ -220,7 +220,7 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
           _isLoadingMore = true;  // Но продолжаем загружать в фоне
           log.d('   ✅ Показаны первые ${_allCities.length} городов');
         });
-        _buildDisplayCities(_allCities, searchQuery: '');
+        _refreshDisplay();
       }
 
       // ✅ ЭТАП 2: Продолжаем загружать в фоне (другие города)
@@ -257,7 +257,7 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
               };
               log.d('      ✅ Добавлено $addedCount новых городов (всего ${_allCities.length})');
             });
-            _buildDisplayCities(_allCities, searchQuery: '');
+            _refreshDisplay();
           }
         } catch (e) {
           log.d('      ⚠️  Ошибка: $e');
@@ -339,7 +339,7 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
               };
               log.d('🔄 Добавлено $addedCount новых городов (всего ${_allCities.length})');
             });
-            _buildDisplayCities(_allCities, searchQuery: '');
+            _refreshDisplay();
           }
         } catch (e) {
           log.d('⚠️  Ошибка фонового обновления: $e');
@@ -406,7 +406,7 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
       setState(() {
         _isSearching = false;
       });
-      _buildDisplayCities(_allCities, searchQuery: '');
+      _refreshDisplay();
       return;
     }
 
@@ -692,6 +692,21 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
 
   /// Построить отображаемый список с разделением по буквам
   /// Если есть точный поиск (searchQuery не пуст), показывает его в верху
+  /// Перерисовать список, НЕ мешая поиску (27.10.2026).
+  ///
+  /// Города подгружаются в несколько заходов и обновляются в фоне, и каждый
+  /// заход перерисовывал список целиком, с пустым запросом. Если человек в
+  /// этот момент уже что-то искал, его выдача затиралась полным алфавитным
+  /// списком: набрал «москва», увидел Казань с буквы «Г». Теперь, пока в
+  /// поиске что-то введено, фоновые обновления экран не трогают.
+  void _refreshDisplay() {
+    if (_searchController.text.trim().isNotEmpty) {
+      return;
+    }
+
+    _buildDisplayCities(_allCities, searchQuery: '');
+  }
+
   void _buildDisplayCities(List<String> cities, {String searchQuery = ''}) {
     List<dynamic> newDisplayCities = [];
     String? currentLetter;
@@ -706,6 +721,21 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
     // немного, и разделители только мешают.
     if (searchQuery.trim().isNotEmpty) {
       final query = searchQuery.trim().toLowerCase();
+
+      // Только то, что человек спрашивал (27.10.2026).
+      //
+      // Сервер на «москва» отдаёт ещё и деревни внутри Москвы: они лежат в
+      // этом регионе и по-своему подходят. Человеку это не нужно, он ищет
+      // название. Показываем совпадения по названию, а если таких нет вовсе,
+      // отдаём что нашлось, иначе список был бы пустым.
+      final matched = cities
+          .where((city) => _getCleanCityName(city).toLowerCase().contains(query)
+              || city.toLowerCase().contains(query))
+          .toList();
+
+      if (matched.isNotEmpty) {
+        cities = matched;
+      }
 
       int weight(String city) {
         final name = _getCleanCityName(city).toLowerCase();
