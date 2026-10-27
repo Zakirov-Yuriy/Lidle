@@ -368,6 +368,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () =>
                       Navigator.pushNamed(context, '/company_contact_data'),
                 ),
+                // Ключи для ИИ-агентов (задача 55, 27.10.2026). Иконка своя,
+                // из набора Material: отдельной картинки под ключ в ассетах
+                // нет, а заводить её ради одного пункта незачем.
+                _settingsItem(
+                  const Icon(
+                    Icons.vpn_key_outlined,
+                    color: Colors.white,
+                    size: 21,
+                  ),
+                  'Ключи для ИИ-агентов',
+                  onTap: () => Navigator.pushNamed(context, '/agent_keys'),
+                ),
                 _settingsItem(
                   SvgPicture.asset(
                     'assets/profile_menu/settings/volume-max.svg',
