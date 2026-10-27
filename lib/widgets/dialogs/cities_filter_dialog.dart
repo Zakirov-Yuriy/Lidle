@@ -146,6 +146,20 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
         _buildDisplayCities(_allCities, searchQuery: '');
       }
 
+      // Кеш живёт неделю, а Москва и Петербург в списке появились только
+      // 27.10.2026. Без этого человек с тёплым кешем ещё неделю не увидел бы
+      // их в фильтре.
+      final federal = await _federalPlaces();
+      final missing = federal.where((name) => !_allCities.contains(name)).toList();
+
+      if (missing.isNotEmpty && mounted) {
+        setState(() {
+          _allCities = [...missing, ..._allCities];
+        });
+        _buildDisplayCities(_allCities, searchQuery: '');
+        await _saveCitiesToCache(_allCities);
+      }
+
       // Обновляем кеш в фоне (не блокируя UI)
       _updateCitiesInBackground();
       return;
@@ -191,10 +205,14 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
         }
       }
 
+      // Города федерального значения (27.10.2026). В справочнике ГОРОДОВ их
+      // нет, это регионы, поэтому в списке они не появлялись никогда.
+      final federal = await _federalPlaces();
+
       // ✅ Показываем первые города пользователю (снимаем экран загрузки)
       if (mounted) {
         setState(() {
-          _allCities = citiesMap.values.toList();
+          _allCities = [...federal, ...citiesMap.values];
           _citiesIdCache = {
             for (final entry in citiesMap.entries) entry.value: entry.key
           };
@@ -275,11 +293,18 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
       log.d('🔄 Обновляем города в фоне...');
 
       final citiesMap = <int, String>{};
+      // Места БЕЗ номера в кеше: это города федерального значения, они
+      // регионы, и номера городов у них нет. Держим их отдельно, иначе
+      // фоновое обновление вычёркивало бы их из списка (27.10.2026).
+      final withoutId = <String>[];
+
       // Сохраняем старые города
       for (final city in _allCities) {
         final id = _citiesIdCache[city];
         if (id != null) {
           citiesMap[id] = city;
+        } else {
+          withoutId.add(city);
         }
       }
 
@@ -308,7 +333,7 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
 
           if (addedCount > 0 && mounted) {
             setState(() {
-              _allCities = citiesMap.values.toList();
+              _allCities = [...withoutId, ...citiesMap.values];
               _citiesIdCache = {
                 for (final entry in citiesMap.entries) entry.value: entry.key
               };
@@ -400,32 +425,93 @@ class _CitiesFilterDialogState extends State<CitiesFilterDialog> {
     });
   }
 
-  /// Поиск городов через API (по всем регионам)
+  /// Города федерального значения: Москва, Санкт-Петербург, Севастополь.
+  ///
+  /// В справочнике это РЕГИОНЫ, городами там заведены внутригородские округа,
+  /// поэтому обычная загрузка списка их не приносит и в фильтре их выбрать
+  /// нельзя было вовсе. Номера сюда не кладём: при выборе место всё равно
+  /// уточняется у сервера, см. `_rememberPlace`.
+  ///
+  /// @return array названий, которые встают в начало списка
+  Future<List<String>> _federalPlaces() async {
+    final names = <String>[];
+
+    for (final query in const ['Москва', 'Санкт-Петербург', 'Севастополь']) {
+      try {
+        final found = await PlacesService.cities(query);
+
+        for (final place in found) {
+          if (place.isRegion && !place.isAll && !names.contains(place.name)) {
+            names.add(place.name);
+          }
+        }
+      } catch (e) {
+        log.d('   ⚠️  Не вышло получить место "$query": $e');
+      }
+    }
+
+    log.d('   🏙  Городов федерального значения: ${names.length}');
+
+    return names;
+  }
+
+  /// Поиск мест через API (города и города-регионы).
+  ///
+  /// ИЩЕМ ЧЕРЕЗ `PlacesService`, а не через поиск адресов по типу `city`
+  /// (27.10.2026). Москвы, Санкт-Петербурга и Севастополя в справочнике
+  /// ГОРОДОВ нет вовсе, это регионы, а городами там заведены внутригородские
+  /// округа. Поэтому запрос «Москва» с типом `city` возвращал деревни внутри
+  /// Москвы, а саму Москву не возвращал никогда, и человек не мог выбрать её
+  /// в фильтре, хотя на главной она ищется.
+  ///
+  /// `PlacesService.cities` отдаёт и регионы тоже, тем же способом, каким
+  /// место выбирается на главном экране. Номера регионов в кеш номеров
+  /// городов НЕ кладём: там лежат номера городов, и регион, попавший туда,
+  /// сузил бы выдачу до чужого города.
   Future<void> _searchCitiesAPI(String query) async {
     try {
       final token = TokenService.currentToken;
 
       log.d('');
-      log.d('🔍 _searchCitiesAPI: "$query" (все регионы)');
-      
+      log.d('🔍 _searchCitiesAPI: "$query" (города и регионы)');
+
       final searchResults = <String, int>{};
 
       try {
-        final response = await AddressService.searchAddresses(
-          query: query,
-          token: token,
-          types: ['city'],
-          // Без фильтра - ищем по ВСЕ регионам
-        );
+        final found = await PlacesService.cities(query);
 
-        for (final result in response.data) {
-          if (result.type == 'city' && result.city != null) {
-            final cityName = result.city!.name;
-            final cityId = result.city!.id;
-            
-            if (_isCityNameValid(cityName)) {
-              searchResults[cityName] = cityId;
-              _citiesIdCache[cityName] = cityId;
+        for (final place in found) {
+          if (place.isAll || !_isCityNameValid(place.name)) {
+            continue;
+          }
+
+          searchResults[place.name] = place.id;
+
+          if (!place.isRegion) {
+            _citiesIdCache[place.name] = place.id;
+          }
+        }
+
+        // Запасной путь на случай, если подсказки мест не ответили: старый
+        // поиск по типу `city`. Он хуже, но лучше пустого списка.
+        if (searchResults.isEmpty) {
+          log.d('   ↩️  Подсказки пусты, пробуем поиск адресов по типу city');
+
+          final response = await AddressService.searchAddresses(
+            query: query,
+            token: token,
+            types: ['city'],
+          );
+
+          for (final result in response.data) {
+            if (result.type == 'city' && result.city != null) {
+              final cityName = result.city!.name;
+              final cityId = result.city!.id;
+
+              if (_isCityNameValid(cityName)) {
+                searchResults[cityName] = cityId;
+                _citiesIdCache[cityName] = cityId;
+              }
             }
           }
         }
