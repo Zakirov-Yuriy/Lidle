@@ -95,7 +95,11 @@ class AgentKeysService {
 
   /// Выпустить ключ. Сам ключ приходит ОДИН раз, показать его повторно
   /// невозможно: сервер хранит только отпечаток.
-  static Future<IssuedAgentKey> issue({String? name, int? days}) async {
+  static Future<IssuedAgentKey> issue({
+    String? name,
+    int? days,
+    bool trusted = false,
+  }) async {
     final body = <String, dynamic>{};
 
     if (name != null && name.trim().isNotEmpty) {
@@ -104,6 +108,10 @@ class AgentKeysService {
 
     if (days != null && days > 0) {
       body['days'] = days;
+    }
+
+    if (trusted) {
+      body['trusted'] = true;
     }
 
     final response = await ApiService.post(_path, body);

@@ -2,13 +2,19 @@
 // "Виджет: Экран ключей для ИИ-агентов"
 // ============================================================
 //
-// Человек выпускает ключ себе сам и вставляет его в своего агента: Клода,
+// Человек выпускает ключ себе сам и вставляет его в своего помощника: Клода,
 // GPT, Алису, любого. Раньше ключ выписывал только администратор в админке,
 // куда обычному человеку хода нет (задача 55, 27.10.2026).
 //
+// ФОРМА ПРЯМО НА ЭКРАНЕ, а не в окне (27.10.2026). Так же, как в админке:
+// поле «для кого», срок и уровень видны сразу, и выпуск это одно нажатие, а
+// не два. Поля живут в состоянии экрана, поэтому не теряются и не
+// уничтожаются по второму разу: на окне это и ловило падение при повторном
+// выпуске.
+//
 // КЛЮЧ ПОКАЗЫВАЕТСЯ ОДИН РАЗ. Сервер хранит только отпечаток, поэтому после
-// закрытия окна ключ не увидеть ни здесь, ни в админке. Если потерял, нужно
-// выпустить новый.
+// закрытия окна ключ не увидеть ни здесь, ни в админке. Потерял, значит
+// выпускай новый.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,15 +35,29 @@ class _AgentKeysScreenState extends State<AgentKeysScreen> {
   static const dangerColor = Color(0xFFFF3B30);
   static const textSecondary = Colors.white54;
 
+  final TextEditingController _nameController = TextEditingController();
+
   List<AgentKey> _keys = const [];
   bool _loading = true;
   bool _busy = false;
   String? _error;
 
+  /// Срок действия в днях. Пусто означает бессрочно.
+  int? _days;
+
+  /// Повышенные лимиты.
+  bool _trusted = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -99,40 +119,30 @@ class _AgentKeysScreenState extends State<AgentKeysScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 25),
-              child: Text(
-                'Ключ нужен, чтобы ваш помощник работал на площадке за вас: '
-                'искал, бронировал, подавал объявления и оформлял заказы. '
-                'Права у него будут ровно ваши.',
-                style: TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Expanded(child: _buildBody()),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(25, 10, 25, 20),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _busy ? null : _openIssueDialog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(25, 16, 25, 24),
+                children: [
+                  const Text(
+                    'Ключ нужен, чтобы ваш помощник работал на площадке за вас: '
+                    'искал, бронировал, подавал объявления и оформлял заказы. '
+                    'Права у него будут ровно ваши.',
+                    style: TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
                   ),
-                  child: const Text(
-                    'Выпустить ключ',
+                  const SizedBox(height: 20),
+                  _buildForm(),
+                  const SizedBox(height: 28),
+                  const Text(
+                    'Мои ключи',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  _buildKeys(),
+                ],
               ),
             ),
           ],
@@ -141,56 +151,150 @@ class _AgentKeysScreenState extends State<AgentKeysScreen> {
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildForm() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Новый ключ',
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _nameController,
+            maxLength: 60,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: 'Для кого этот ключ',
+              labelStyle: TextStyle(color: textSecondary),
+              hintText: 'Например, Клод на телефоне',
+              hintStyle: TextStyle(color: Colors.white24),
+              counterText: '',
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: accentColor),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text('Срок действия', style: TextStyle(color: textSecondary, fontSize: 13)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _dayChip('Бессрочно', null),
+              _dayChip('30 дней', 30),
+              _dayChip('90 дней', 90),
+              _dayChip('365 дней', 365),
+            ],
+          ),
+          const SizedBox(height: 18),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _busy ? null : () => setState(() => _trusted = !_trusted),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: _trusted,
+                  onChanged: _busy ? null : (value) => setState(() => _trusted = value == true),
+                  activeColor: accentColor,
+                  side: const BorderSide(color: Colors.white38),
+                ),
+                const Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Text(
+                      'Доверенный ключ. Нужен крупным площадкам вроде Яндекса: '
+                      'у него выше предел обращений в минуту и в сутки. '
+                      'Обычному помощнику он не требуется.',
+                      style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _busy ? null : _issue,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: accentColor,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: _busy
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text(
+                      'Выпустить ключ',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKeys() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: accentColor));
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator(color: accentColor)),
+      );
     }
 
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 25),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: _load,
-                child: const Text('Повторить', style: TextStyle(color: accentColor)),
-              ),
-            ],
+      return Column(
+        children: [
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 15),
           ),
-        ),
+          TextButton(
+            onPressed: _load,
+            child: const Text('Повторить', style: TextStyle(color: accentColor)),
+          ),
+        ],
       );
     }
 
     if (_keys.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 25),
-          child: Text(
-            'Ключей пока нет. Выпустите первый и вставьте его в настройках своего помощника.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: textSecondary, fontSize: 15, height: 1.4),
-          ),
-        ),
+      return const Text(
+        'Ключей пока нет. Выпустите первый и вставьте его в настройках своего помощника.',
+        style: TextStyle(color: textSecondary, fontSize: 14, height: 1.4),
       );
     }
 
-    return RefreshIndicator(
-      color: accentColor,
-      onRefresh: _load,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 25),
-        itemCount: _keys.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) => _buildCard(_keys[index]),
-      ),
+    return Column(
+      children: [
+        for (final key in _keys) ...[
+          _buildCard(key),
+          const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 
@@ -252,90 +356,40 @@ class _AgentKeysScreenState extends State<AgentKeysScreen> {
     );
   }
 
-  /// Окно выпуска: название и срок.
-  ///
-  /// Доверенного уровня здесь нет намеренно: повышенные лимиты нужны крупным
-  /// площадкам, и ставит их администратор.
-  Future<void> _openIssueDialog() async {
-    final nameController = TextEditingController();
-    int? days;
+  Widget _dayChip(String title, int? value) {
+    final selected = _days == value;
 
-    final issue = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setLocal) => AlertDialog(
-          backgroundColor: cardColor,
-          title: const Text(
-            'Новый ключ',
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: nameController,
-                maxLength: 60,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Для кого ключ',
-                  labelStyle: TextStyle(color: textSecondary),
-                  hintText: 'Например, Клод на телефоне',
-                  hintStyle: TextStyle(color: Colors.white24),
-                  counterText: '',
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white24),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: accentColor),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text('Срок действия', style: TextStyle(color: textSecondary, fontSize: 13)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  _dayChip('Бессрочно', null, days, (value) => setLocal(() => days = value)),
-                  _dayChip('30 дней', 30, days, (value) => setLocal(() => days = value)),
-                  _dayChip('90 дней', 90, days, (value) => setLocal(() => days = value)),
-                  _dayChip('365 дней', 365, days, (value) => setLocal(() => days = value)),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена', style: TextStyle(color: textSecondary)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Выпустить', style: TextStyle(color: accentColor)),
-            ),
-          ],
-        ),
-      ),
+    return ChoiceChip(
+      label: Text(title),
+      selected: selected,
+      onSelected: _busy ? null : (_) => setState(() => _days = value),
+      backgroundColor: bgColor,
+      selectedColor: accentColor,
+      labelStyle: TextStyle(color: selected ? Colors.white : textSecondary),
+      side: const BorderSide(color: Colors.white24),
     );
+  }
 
-    final name = nameController.text;
-    nameController.dispose();
-
-    if (issue != true) return;
-
+  Future<void> _issue() async {
     setState(() => _busy = true);
 
     try {
       final issued = await AgentKeysService.issue(
-        name: name,
-        days: days,
+        name: _nameController.text,
+        days: _days,
+        trusted: _trusted,
       );
 
       if (!mounted) return;
 
-      setState(() => _busy = false);
-      await _showKeyOnce(issued);
+      setState(() {
+        _busy = false;
+        _nameController.clear();
+        _days = null;
+        _trusted = false;
+      });
+
+      await _showKeyOnce(issued.key);
       await _load();
     } catch (e) {
       if (!mounted) return;
@@ -345,75 +399,61 @@ class _AgentKeysScreenState extends State<AgentKeysScreen> {
     }
   }
 
-  Widget _dayChip(String title, int? value, int? current, void Function(int?) onPick) {
-    final selected = current == value;
-
-    return ChoiceChip(
-      label: Text(title),
-      selected: selected,
-      onSelected: (_) => onPick(value),
-      backgroundColor: bgColor,
-      selectedColor: accentColor,
-      labelStyle: TextStyle(color: selected ? Colors.white : textSecondary),
-      side: const BorderSide(color: Colors.white24),
-    );
-  }
-
   /// Единственный показ ключа.
-  Future<void> _showKeyOnce(IssuedAgentKey issued) async {
+  Future<void> _showKeyOnce(String key) async {
+    if (!mounted) return;
+
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: cardColor,
         title: const Text(
           'Ключ выпущен',
           style: TextStyle(color: Colors.white, fontSize: 18),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Скопируйте его сейчас: второй раз он не покажется.',
-              style: TextStyle(color: textSecondary, fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(8),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Скопируйте его сейчас: второй раз он не покажется.',
+                style: TextStyle(color: textSecondary, fontSize: 14),
               ),
-              child: SelectableText(
-                issued.key,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  key,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Вставьте его в настройках своего помощника, в поле заголовка '
-              'Authorization или X-Api-Key.',
-              style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
-            ),
-          ],
+              const SizedBox(height: 12),
+              const Text(
+                'Вставьте его в настройках своего помощника, в заголовок '
+                'Authorization или X-Api-Key.',
+                style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: issued.key));
-
-              if (context.mounted) {
-                Navigator.pop(context);
-              }
-
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: key));
+              Navigator.of(dialogContext).pop();
               _say('Ключ скопирован.');
             },
             child: const Text('Скопировать', style: TextStyle(color: accentColor)),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Готово', style: TextStyle(color: textSecondary)),
           ),
         ],
@@ -424,7 +464,7 @@ class _AgentKeysScreenState extends State<AgentKeysScreen> {
   Future<void> _confirmRevoke(AgentKey key) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: cardColor,
         title: const Text('Отозвать ключ?', style: TextStyle(color: Colors.white, fontSize: 18)),
         content: Text(
@@ -433,11 +473,11 @@ class _AgentKeysScreenState extends State<AgentKeysScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Отмена', style: TextStyle(color: textSecondary)),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Отозвать', style: TextStyle(color: dangerColor)),
           ),
         ],
