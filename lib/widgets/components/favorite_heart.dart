@@ -79,11 +79,30 @@ class _FavoriteHeartState extends State<FavoriteHeart>
       return;
     }
 
-    if (widget.isFavorited) {
+    _playTo(widget.isFavorited);
+  }
+
+  /// Проиграть заливку или снятие.
+  ///
+  /// Если нужное состояние уже показано, ничего не делаем: иначе при
+  /// перестройке экрана анимация запускалась бы заново и дёргала глаз.
+  void _playTo(bool filled) {
+    if (filled && _controller.value < 1) {
       _controller.forward();
-    } else {
+    } else if (!filled && _controller.value > 0) {
       _controller.reverse();
     }
+  }
+
+  /// Нажатие: СНАЧАЛА проигрываем, потом сообщаем наружу (28.10.2026).
+  ///
+  /// Родитель на нажатие перестраивает экран, и если ждать его ответа,
+  /// виджет успевает собраться заново уже в конечном виде: человек видит
+  /// готовое красное сердце и никакой заливки.
+  void _handleTap() {
+    _playTo(!_controller.isCompleted);
+
+    widget.onTap();
   }
 
   @override
@@ -96,7 +115,7 @@ class _FavoriteHeartState extends State<FavoriteHeart>
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
+      onTap: _handleTap,
       child: Padding(
         padding: widget.padding,
         child: SizedBox(

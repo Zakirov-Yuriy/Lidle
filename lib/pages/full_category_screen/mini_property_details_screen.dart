@@ -712,6 +712,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                         // рамка нажатия вместо кнопки: у кнопки широкие поля
                         // по умолчанию, и иконки разъезжались.
                         FavoriteHeart(
+                          // Постоянный ключ: без него перестройка экрана
+                          // создаёт виджет заново, и анимация пропадает.
+                          key: const ValueKey('advert-favorite-heart'),
                           isFavorited: _isFavorited,
                           onTap: _toggleFavorite,
                           outlineColor: textPrimary,
