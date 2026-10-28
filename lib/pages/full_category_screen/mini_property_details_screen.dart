@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/favorites_service.dart';
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/models/home_models.dart';
@@ -707,24 +708,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                           ),
                         ),
                         const Spacer(),
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
+                        // Сердечко с заливкой от центра (28.10.2026). Своя
+                        // рамка нажатия вместо кнопки: у кнопки широкие поля
+                        // по умолчанию, и иконки разъезжались.
+                        FavoriteHeart(
+                          isFavorited: _isFavorited,
                           onTap: _toggleFavorite,
-                          child: Padding(
-                            // Своя рамка нажатия вместо IconButton: у того
-                            // широкие поля по умолчанию, и сердечко уезжало
-                            // далеко от «Поделиться» (28.10.2026).
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(
-                              _isFavorited
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              // Красное, как в ленте и в галерее: цвет
-                              // избранного по всему приложению один.
-                              color: _isFavorited ? Colors.red : textPrimary,
-                              size: 24,
-                            ),
-                          ),
+                          outlineColor: textPrimary,
                         ),
                         IconButton(
                           icon: SvgPicture.asset(
