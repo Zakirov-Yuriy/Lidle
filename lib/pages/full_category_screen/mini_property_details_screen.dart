@@ -225,6 +225,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   bool _showFullDescription = false;
   bool _showAllCharacteristics = false;
 
+  /// В избранном ли это объявление (28.10.2026, просьба Саши).
+  ///
+  /// Сердечко стоит в шапке карточки, рядом с «Поделиться»: человек дочитал
+  /// объявление и решил сохранить его, а уходить ради этого обратно в ленту
+  /// неудобно.
+  bool _isFavorited = false;
+
   /// Раскрыт ли блок «Дополнительно» с полями из фида (05.10.2026).
   bool _showAllFeedAttributes = false;
   final PageController _pageController = PageController();
@@ -332,6 +339,12 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     super.initState();
     _listing = widget.listing;
     _imagesPrecached = false;
+
+    // Состояние сердечка при открытии (28.10.2026). Сначала смотрим ответ
+    // сервера, он знает про избранное этого человека на всех устройствах, и
+    // только потом местное хранилище: оно работает и без входа.
+    _isFavorited = widget.listing.isFavorited
+        || FavoritesService.isFavorite(widget.listing.id);
 
     // 👁 Регистрируем ПЕРЕХОД (открытие карточки). Дедуп по дню на бэке.
     // «Просмотр» здесь НЕ шлём: просмотр = показ карточки в выдаче (главная,
@@ -595,6 +608,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             if (state.listing.images.isNotEmpty) {
               // API вернул изображения - используем их
               _listing = state.listing;
+              // Карточка пришла с сервера: там же лежит и признак
+              // избранного, он точнее местного хранилища.
+              _isFavorited = state.listing.isFavorited
+                  || FavoritesService.isFavorite(state.listing.id);
               log.d('📸 Используем изображения из API: ${state.listing.images.length} шт');
             } else {
               // API вернул пустые изображения - сохраняем старые
@@ -690,6 +707,21 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                           ),
                         ),
                         const Spacer(),
+                        IconButton(
+                          tooltip: _isFavorited
+                              ? 'Убрать из избранного'
+                              : 'В избранное',
+                          icon: Icon(
+                            _isFavorited
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            // Закрашенное сердце подсвечиваем, пустое держим
+                            // в цвете остальных иконок шапки.
+                            color: _isFavorited ? activeIconColor : textPrimary,
+                            size: 24,
+                          ),
+                          onPressed: _toggleFavorite,
+                        ),
                         IconButton(
                           icon: SvgPicture.asset(
                             'assets/home_page/share_outlined.svg',
@@ -1843,6 +1875,53 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   }
 
   /// 🔗 Поделиться объявлением (та же логика, что у иконки шаринга сверху).
+  /// Добавить объявление в избранное или убрать оттуда (28.10.2026).
+  ///
+  /// Сердечко закрашивается СРАЗУ, ответ сервера догоняет: иначе нажатие
+  /// выглядит как «не сработало». Если запрос не прошёл, возвращаем вид
+  /// обратно, чтобы человек не думал, будто сохранил.
+  void _toggleFavorite() {
+    final id = _listing.id.isNotEmpty ? _listing.id : widget.listing.id;
+    final listingId = int.tryParse(id);
+
+    if (listingId == null) {
+      return;
+    }
+
+    final token = TokenService.currentToken;
+
+    if (token == null || token.isEmpty) {
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Войдите в свой профиль, чтобы добавлять объявления в избранное',
+      );
+
+      return;
+    }
+
+    final wasFavorited = _isFavorited;
+
+    setState(() {
+      _isFavorited = FavoritesService.toggleFavorite(id);
+    });
+
+    if (_isFavorited) {
+      context.read<WishlistBloc>().add(AddToWishlistEvent(listingId: listingId));
+    } else {
+      context.read<WishlistBloc>().add(
+            RemoveFromWishlistEvent(
+              listingId: listingId,
+              wishlistId: _listing.wishlistId ?? widget.listing.wishlistId,
+            ),
+          );
+    }
+
+    if (wasFavorited == _isFavorited) {
+      // Хранилище не переключилось: показываем честный вид, а не ложный.
+      setState(() => _isFavorited = wasFavorited);
+    }
+  }
+
   void _shareAdvert() {
     final advertisementUrl = _generateAdvertisementUrl(widget.listing);
     final textToShare =
