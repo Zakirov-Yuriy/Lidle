@@ -175,9 +175,10 @@ class CrmConnectionsService {
   static Future<CreatedCrmConnection> create({
     required String url,
     String? name,
+    String kind = 'webhook',
     List<String>? events,
   }) async {
-    final body = <String, dynamic>{'url': url.trim()};
+    final body = <String, dynamic>{'url': url.trim(), 'kind': kind};
 
     if (name != null && name.trim().isNotEmpty) {
       body['name'] = name.trim();

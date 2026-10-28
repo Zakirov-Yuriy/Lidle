@@ -34,6 +34,9 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
 
+  /// Вид подключения: обычный приёмник или Битрикс24.
+  String _kind = 'webhook';
+
   List<CrmConnection> _items = const [];
   bool _loading = true;
   bool _busy = false;
@@ -173,6 +176,16 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
               focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentColor)),
             ),
           ),
+          const SizedBox(height: 16),
+          const Text('Куда подключаем', style: TextStyle(color: textSecondary, fontSize: 13)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              _kindChip('Битрикс24', 'bitrix24'),
+              _kindChip('Другая система', 'webhook'),
+            ],
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: _urlController,
@@ -188,10 +201,14 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Это адрес, на который ваша CRM принимает входящие запросы. '
-            'Если не знаете его, спросите у того, кто её настраивал.',
-            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+          Text(
+            _kind == 'bitrix24'
+                ? 'В Битрикс24 это «входящий вебхук»: Разработчикам, Другое, Входящий вебхук. '
+                    'Отметьте права CRM и вставьте сюда полученную ссылку вида '
+                    'https://ваш-портал.bitrix24.ru/rest/1/КЛЮЧ/'
+                : 'Это адрес, на который ваша система принимает входящие запросы. '
+                    'Если не знаете его, спросите у того, кто её настраивал.',
+            style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -217,6 +234,20 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _kindChip(String title, String value) {
+    final selected = _kind == value;
+
+    return ChoiceChip(
+      label: Text(title),
+      selected: selected,
+      onSelected: _busy ? null : (_) => setState(() => _kind = value),
+      backgroundColor: bgColor,
+      selectedColor: accentColor,
+      labelStyle: TextStyle(color: selected ? Colors.white : textSecondary),
+      side: const BorderSide(color: Colors.white24),
     );
   }
 
@@ -291,6 +322,10 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
               ),
             ],
           ),
+          Text(
+            item.kind == 'bitrix24' ? 'Битрикс24' : 'Другая система',
+            style: const TextStyle(color: accentColor, fontSize: 12),
+          ),
           if (item.url != null) ...[
             const SizedBox(height: 4),
             Text(
@@ -336,6 +371,7 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
       final created = await CrmConnectionsService.create(
         url: url,
         name: _nameController.text,
+        kind: _kind,
       );
 
       if (!mounted) return;
