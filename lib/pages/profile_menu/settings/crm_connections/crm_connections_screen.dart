@@ -37,8 +37,12 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
   /// Токен amoCRM. У других видов подключения не спрашивается.
   final TextEditingController _tokenController = TextEditingController();
 
-  /// Вид подключения: обычный приёмник или Битрикс24.
+  /// Вид подключения: обычный приёмник, Битрикс24 или amoCRM.
   String _kind = 'webhook';
+
+  /// Какие события слать. Пусто означает все, так подключение работает сразу
+  /// после создания, без возни с галочками.
+  final Set<String> _events = <String>{};
 
   List<CrmConnection> _items = const [];
   bool _loading = true;
@@ -233,6 +237,26 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 18),
+          const Text('Что присылать', style: TextStyle(color: textSecondary, fontSize: 13)),
+          const SizedBox(height: 4),
+          const Text(
+            'Если ничего не отмечать, будем присылать всё.',
+            style: TextStyle(color: Colors.white24, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _eventChip('Позвонить', 'call'),
+              _eventChip('Открыли контакты', 'contact'),
+              _eventChip('Предложили цену', 'offer'),
+              _eventChip('Отклики', 'response'),
+              _eventChip('Записи и брони', 'booking'),
+              _eventChip('Переписка', 'chat_message'),
+            ],
+          ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -257,6 +281,29 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _eventChip(String title, String value) {
+    final selected = _events.contains(value);
+
+    return FilterChip(
+      label: Text(title),
+      selected: selected,
+      onSelected: _busy
+          ? null
+          : (picked) => setState(() {
+                if (picked) {
+                  _events.add(value);
+                } else {
+                  _events.remove(value);
+                }
+              }),
+      backgroundColor: bgColor,
+      selectedColor: accentColor,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(color: selected ? Colors.white : textSecondary),
+      side: const BorderSide(color: Colors.white24),
     );
   }
 
@@ -360,6 +407,13 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
               style: const TextStyle(color: textSecondary, fontSize: 13),
             ),
           ],
+          const SizedBox(height: 4),
+          Text(
+            (item.events == null || item.events!.isEmpty)
+                ? 'Присылаем все обращения'
+                : 'Присылаем: ${item.events!.map(_eventName).join(', ')}',
+            style: const TextStyle(color: textSecondary, fontSize: 12),
+          ),
           const SizedBox(height: 6),
           Text(
             item.subtitle,
@@ -433,6 +487,7 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
         name: _nameController.text,
         kind: _kind,
         token: _tokenController.text,
+        events: _events.toList(),
       );
 
       if (!mounted) return;
@@ -442,6 +497,7 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
         _nameController.clear();
         _urlController.clear();
         _tokenController.clear();
+        _events.clear();
       });
 
       await _showSecretOnce(created.secret);
@@ -658,6 +714,18 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
       setState(() => _busy = false);
       _say('Удалить не вышло. Попробуйте ещё раз.');
     }
+  }
+
+  String _eventName(String event) {
+    return switch (event) {
+      'call' => 'звонки',
+      'contact' => 'открытие контактов',
+      'offer' => 'предложения цены',
+      'response' => 'отклики',
+      'booking' => 'записи и брони',
+      'chat_message' => 'переписку',
+      _ => event,
+    };
   }
 
   void _say(String text) {
