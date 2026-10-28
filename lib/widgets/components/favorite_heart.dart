@@ -20,7 +20,7 @@ class FavoriteHeart extends StatefulWidget {
   const FavoriteHeart({
     super.key,
     required this.isFavorited,
-    required this.onTap,
+    this.onTap,
     this.size = 24,
     this.outlineColor = Colors.white,
     this.fillColor = Colors.red,
