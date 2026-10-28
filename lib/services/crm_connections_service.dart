@@ -18,6 +18,7 @@ class CrmConnection {
     this.isActive = true,
     this.lastOkAt,
     this.lastError,
+    this.inboundUrl,
   });
 
   factory CrmConnection.fromJson(Map<String, dynamic> json) {
@@ -32,6 +33,7 @@ class CrmConnection {
       isActive: json['is_active'] != false,
       lastOkAt: json['last_ok_at'] as String?,
       lastError: json['last_error'] as String?,
+      inboundUrl: json['inbound_url'] as String?,
     );
   }
 
@@ -46,6 +48,9 @@ class CrmConnection {
   final bool isActive;
   final String? lastOkAt;
   final String? lastError;
+
+  /// Куда CRM шлёт ответ менеджера, чтобы он дошёл человеку в переписку.
+  final String? inboundUrl;
 
   String get title => (name == null || name!.trim().isEmpty) ? 'Подключение' : name!.trim();
 

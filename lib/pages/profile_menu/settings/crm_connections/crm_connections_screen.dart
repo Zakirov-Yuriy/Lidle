@@ -365,6 +365,39 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
             item.subtitle,
             style: TextStyle(color: broken ? dangerColor : textSecondary, fontSize: 13),
           ),
+          if (item.inboundUrl != null) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Адрес для ответов менеджера',
+              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Настройте в своей системе отправку ответа на этот адрес, и ответ менеджера '
+              'появится у человека в переписке обычным сообщением от вашей компании.',
+              style: TextStyle(color: textSecondary, fontSize: 12, height: 1.4),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+              child: SelectableText(
+                item.inboundUrl!,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: item.inboundUrl!));
+                  _say('Адрес скопирован.');
+                },
+                child: const Text('Скопировать адрес', style: TextStyle(color: accentColor)),
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
           Row(
             children: [
