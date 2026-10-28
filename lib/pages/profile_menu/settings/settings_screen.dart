@@ -347,6 +347,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'Автовыгрузка через CRM систему',
                   onTap: () => Navigator.pushNamed(context, '/crm_feed'),
                 ),
+                // Подключение CRM компании (задача 88, 28.10.2026). Рядом с
+                // автовыгрузкой намеренно: это две половины одной истории,
+                // туда объявления, оттуда обращения по ним.
+                _settingsItem(
+                  const Icon(
+                    Icons.sync_alt,
+                    color: Colors.white,
+                    size: 21,
+                  ),
+                  'Подключение CRM',
+                  onTap: () => Navigator.pushNamed(context, '/crm_connections'),
+                ),
                 _settingsItem(
                   SvgPicture.asset(
                     'assets/profile_menu/settings/image-user.svg',

@@ -25,6 +25,7 @@ import 'package:lidle/pages/profile_menu/invite_friends/connect_contacts_screen.
 import 'package:lidle/pages/profile_menu/settings/settings_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/devices/devices_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/agent_keys/agent_keys_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/crm_connections/crm_connections_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/delete_account/delete_account_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/privacy_policy/privacy_policy_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/faq/faq_screen.dart';
@@ -103,6 +104,9 @@ class AppRoutes {
     // Ключи для ИИ-агентов (задача 55, 27.10.2026): человек выпускает их
     // себе сам, раньше это умела только админка.
     '/agent_keys': (context) => const AgentKeysScreen(),
+
+    // Подключение CRM компании (задача 88, 28.10.2026).
+    '/crm_connections': (context) => const CrmConnectionsScreen(),
     QrScannerScreen.routeName: (context) => const QrScannerScreen(),
     DeleteAccountScreen.routeName: (context) =>
         const DeleteAccountScreen(),
