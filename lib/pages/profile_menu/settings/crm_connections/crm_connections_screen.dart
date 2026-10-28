@@ -34,6 +34,9 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
 
+  /// Токен amoCRM. У других видов подключения не спрашивается.
+  final TextEditingController _tokenController = TextEditingController();
+
   /// Вид подключения: обычный приёмник или Битрикс24.
   String _kind = 'webhook';
 
@@ -52,6 +55,7 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
   void dispose() {
     _nameController.dispose();
     _urlController.dispose();
+    _tokenController.dispose();
     super.dispose();
   }
 
@@ -183,6 +187,7 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
             spacing: 8,
             children: [
               _kindChip('Битрикс24', 'bitrix24'),
+              _kindChip('amoCRM', 'amocrm'),
               _kindChip('Другая система', 'webhook'),
             ],
           ),
@@ -202,14 +207,32 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            _kind == 'bitrix24'
-                ? 'В Битрикс24 это «входящий вебхук»: Разработчикам, Другое, Входящий вебхук. '
-                    'Отметьте права CRM и вставьте сюда полученную ссылку вида '
-                    'https://ваш-портал.bitrix24.ru/rest/1/КЛЮЧ/'
-                : 'Это адрес, на который ваша система принимает входящие запросы. '
-                    'Если не знаете его, спросите у того, кто её настраивал.',
+            switch (_kind) {
+              'bitrix24' => 'В Битрикс24 это «входящий вебхук»: Разработчикам, Другое, Входящий вебхук. '
+                  'Отметьте права CRM и вставьте сюда полученную ссылку вида '
+                  'https://ваш-портал.bitrix24.ru/rest/1/КЛЮЧ/',
+              'amocrm' => 'Укажите адрес своего аккаунта, например https://вашафирма.amocrm.ru, '
+                  'а ниже вставьте долгоживущий токен из карточки внешней интеграции.',
+              _ => 'Это адрес, на который ваша система принимает входящие запросы. '
+                  'Если не знаете его, спросите у того, кто её настраивал.',
+            },
             style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
           ),
+          if (_kind == 'amocrm') ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _tokenController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Долгоживущий токен',
+                labelStyle: TextStyle(color: textSecondary),
+                hintText: 'Из карточки вашей внешней интеграции',
+                hintStyle: TextStyle(color: Colors.white24),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentColor)),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -323,7 +346,11 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
             ],
           ),
           Text(
-            item.kind == 'bitrix24' ? 'Битрикс24' : 'Другая система',
+            switch (item.kind) {
+              'bitrix24' => 'Битрикс24',
+              'amocrm' => 'amoCRM',
+              _ => 'Другая система',
+            },
             style: const TextStyle(color: accentColor, fontSize: 12),
           ),
           if (item.url != null) ...[
@@ -372,6 +399,7 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
         url: url,
         name: _nameController.text,
         kind: _kind,
+        token: _tokenController.text,
       );
 
       if (!mounted) return;
@@ -380,6 +408,7 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
         _busy = false;
         _nameController.clear();
         _urlController.clear();
+        _tokenController.clear();
       });
 
       await _showSecretOnce(created.secret);

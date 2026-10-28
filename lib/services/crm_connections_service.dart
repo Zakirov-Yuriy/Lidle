@@ -176,9 +176,15 @@ class CrmConnectionsService {
     required String url,
     String? name,
     String kind = 'webhook',
+    String? token,
     List<String>? events,
   }) async {
     final body = <String, dynamic>{'url': url.trim(), 'kind': kind};
+
+    // Токен нужен только amoCRM: туда мы ходим сами, а не она к нам.
+    if (token != null && token.trim().isNotEmpty) {
+      body['token'] = token.trim();
+    }
 
     if (name != null && name.trim().isNotEmpty) {
       body['name'] = name.trim();
