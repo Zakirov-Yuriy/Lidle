@@ -707,20 +707,24 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                           ),
                         ),
                         const Spacer(),
-                        IconButton(
-                          tooltip: _isFavorited
-                              ? 'Убрать из избранного'
-                              : 'В избранное',
-                          icon: Icon(
-                            _isFavorited
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            // Закрашенное сердце подсвечиваем, пустое держим
-                            // в цвете остальных иконок шапки.
-                            color: _isFavorited ? activeIconColor : textPrimary,
-                            size: 24,
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _toggleFavorite,
+                          child: Padding(
+                            // Своя рамка нажатия вместо IconButton: у того
+                            // широкие поля по умолчанию, и сердечко уезжало
+                            // далеко от «Поделиться» (28.10.2026).
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(
+                              _isFavorited
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              // Красное, как в ленте и в галерее: цвет
+                              // избранного по всему приложению один.
+                              color: _isFavorited ? Colors.red : textPrimary,
+                              size: 24,
+                            ),
                           ),
-                          onPressed: _toggleFavorite,
                         ),
                         IconButton(
                           icon: SvgPicture.asset(
