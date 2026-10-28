@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/products/product_item.dart';
 import 'package:lidle/services/cart_service.dart';
@@ -349,7 +350,12 @@ class _FavoriteButton extends StatelessWidget {
       builder: (context, favorites, _) {
         final isFavorite = favorites.containsKey(productId);
 
-        return GestureDetector(
+        // Без подложки и того же размера, что на карточке главной
+        // (15.09.2026): серый кружок вокруг сердца выбивался из вида
+        // карточки.
+        return FavoriteHeart(
+          key: const ValueKey('product-tile-favorite-heart'),
+          isFavorited: isFavorite,
           onTap: () async {
             final error = await ProductFavoritesService.toggle(productId);
 
@@ -362,14 +368,8 @@ class _FavoriteButton extends StatelessWidget {
               );
             }
           },
-          behavior: HitTestBehavior.opaque,
-          // Без подложки и того же размера, что на карточке главной
-          // (15.09.2026): серый кружок вокруг сердца выбивался из вида
-          // карточки.
-          child: Icon(
-            isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: isFavorite ? Colors.red : textPrimary,
-          ),
+          outlineColor: textPrimary,
+          padding: EdgeInsets.zero,
         );
       },
     );

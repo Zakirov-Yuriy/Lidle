@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
@@ -2292,10 +2293,15 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: isFavorite ? const Color(0xFFE05B5B) : Colors.white,
+              // Нажатие ловит сама кнопка: сердечко тут только показывает
+              // и проигрывает заливку, когда состояние меняется.
+              FavoriteHeart(
+                key: const ValueKey('product-details-favorite-heart'),
+                isFavorited: isFavorite,
+                outlineColor: Colors.white,
+                fillColor: const Color(0xFFE05B5B),
                 size: 18,
+                padding: EdgeInsets.zero,
               ),
               const SizedBox(width: 6),
               Flexible(
@@ -2525,10 +2531,15 @@ class _SimilarFavorite extends StatelessWidget {
               color: Color(0xCC1E2831),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? const Color(0xFFE05B5B) : Colors.white,
+            // Нажатие ловит кружок целиком: он больше самой иконки, и
+            // попадать по нему пальцем удобнее.
+            child: FavoriteHeart(
+              key: const ValueKey('product-photo-favorite-heart'),
+              isFavorited: isFavorite,
+              outlineColor: Colors.white,
+              fillColor: const Color(0xFFE05B5B),
               size: 18,
+              padding: EdgeInsets.zero,
             ),
           ),
         );

@@ -28,7 +28,15 @@ class FavoriteHeart extends StatefulWidget {
   });
 
   final bool isFavorited;
-  final VoidCallback onTap;
+
+  /// Что делать по нажатию.
+  ///
+  /// Можно не задавать: тогда сердечко только показывает и проигрывает
+  /// заливку, а нажатие ловит кто-то снаружи. Так сделано там, где сердечко
+  /// лежит внутри кнопки вместе с подписью: двух ловцов нажатия на одном
+  /// месте быть не должно.
+  final VoidCallback? onTap;
+
   final double size;
 
   /// Цвет контура, когда объявление не в избранном.
@@ -102,7 +110,7 @@ class _FavoriteHeartState extends State<FavoriteHeart>
   void _handleTap() {
     _playTo(!_controller.isCompleted);
 
-    widget.onTap();
+    widget.onTap?.call();
   }
 
   @override
@@ -113,36 +121,42 @@ class _FavoriteHeartState extends State<FavoriteHeart>
 
   @override
   Widget build(BuildContext context) {
+    final heart = Padding(
+      padding: widget.padding,
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Контур виден всегда: закрашенное сердце растёт поверх него,
+            // и без контура в начале роста была бы пустота.
+            Icon(
+              Icons.favorite_border,
+              color: widget.outlineColor,
+              size: widget.size,
+            ),
+            ScaleTransition(
+              scale: _fill,
+              child: Icon(
+                Icons.favorite,
+                color: widget.fillColor,
+                size: widget.size,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (widget.onTap == null) {
+      return heart;
+    }
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _handleTap,
-      child: Padding(
-        padding: widget.padding,
-        child: SizedBox(
-          width: widget.size,
-          height: widget.size,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Контур виден всегда: закрашенное сердце растёт поверх него,
-              // и без контура в начале роста была бы пустота.
-              Icon(
-                Icons.favorite_border,
-                color: widget.outlineColor,
-                size: widget.size,
-              ),
-              ScaleTransition(
-                scale: _fill,
-                child: Icon(
-                  Icons.favorite,
-                  color: widget.fillColor,
-                  size: widget.size,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      child: heart,
     );
   }
 }

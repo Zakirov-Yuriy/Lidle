@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/store_menu_service.dart';
 import 'package:lidle/widgets/navigation/open_my_store.dart';
@@ -574,7 +575,12 @@ class _RealEstateRentListingsScreenState
                         ),
                       ),
                     ),
-                    GestureDetector(
+                    FavoriteHeart(
+                      key: ValueKey('rent-favorite-heart-${listing.id}'),
+                      isFavorited: _listings[index].isFavorited,
+                      outlineColor: Colors.white70,
+                      size: 20,
+                      padding: EdgeInsets.zero,
                       onTap: () {
                         setState(() {
                           final old = _listings[index];
@@ -595,15 +601,6 @@ class _RealEstateRentListingsScreenState
                           );
                         });
                       },
-                      child: Icon(
-                        _listings[index].isFavorited
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        color: _listings[index].isFavorited
-                            ? Colors.red
-                            : Colors.white70,
-                        size: 20,
-                      ),
                     ),
                   ],
                 ),

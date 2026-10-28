@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
@@ -90,13 +91,13 @@ class _ProductCardState extends State<ProductCard> {
               Positioned(
                 top: 8,
                 right: 8,
-                child: GestureDetector(
+                child: FavoriteHeart(
+                  key: const ValueKey('product-card-favorite-heart'),
+                  isFavorited: _isFavorite,
                   onTap: _toggleFavorite,
-                  child: Icon(
-                    _isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: _isFavorite ? Colors.red : textPrimary,
-                    size: 25,
-                  ),
+                  outlineColor: textPrimary,
+                  size: 25,
+                  padding: EdgeInsets.zero,
                 ),
               ),
             ],

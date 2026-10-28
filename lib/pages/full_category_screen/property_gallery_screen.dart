@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/core/config/app_config.dart';
@@ -174,12 +175,12 @@ class _PropertyGalleryScreenState extends State<PropertyGalleryScreen> {
                       Share.share(textToShare);
                     },
                   ),
-                  GestureDetector(
+                  FavoriteHeart(
+                    key: const ValueKey('gallery-favorite-heart'),
+                    isFavorited: _isFavorite,
                     onTap: _toggleFavorite,
-                    child: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: _isFavorite ? Colors.red : textPrimary,
-                    ),
+                    outlineColor: textPrimary,
+                    padding: EdgeInsets.zero,
                   ),
                 ],
               ),

@@ -32,6 +32,7 @@ import '../pages/full_category_screen/real_estate_listings_screen.dart';
 import 'profile_menu/profile_menu_screen.dart';
 import '../pages/auth/sign_in_screen.dart';
 import '../main.dart'; // Для доступа к routeObserver
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/services/companies_search_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -1336,13 +1337,12 @@ class _CompanySearchCard extends StatelessWidget {
                     Positioned(
                       right: 6,
                       top: 6,
-                      child: GestureDetector(
+                      child: FavoriteHeart(
+                        key: const ValueKey('company-card-favorite-heart'),
+                        isFavorited: company.isWishlisted,
                         onTap: onWishlist,
-                        behavior: HitTestBehavior.opaque,
-                        child: Icon(
-                          company.isWishlisted ? Icons.favorite : Icons.favorite_border,
-                          color: company.isWishlisted ? Colors.red : textPrimary,
-                        ),
+                        outlineColor: textPrimary,
+                        padding: EdgeInsets.zero,
                       ),
                     ),
                   ],

@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/pages/bookings/booking_flow.dart';
 import 'package:lidle/constants.dart';
@@ -258,13 +259,12 @@ class _ListingCardState extends State<ListingCard> {
                     Positioned(
                       right: 6,
                       top: 6,
-                      child: GestureDetector(
+                      child: FavoriteHeart(
+                        key: const ValueKey('listing-card-favorite-heart'),
+                        isFavorited: _isFavorite,
                         onTap: _toggleFavorite,
-                        behavior: HitTestBehavior.opaque,
-                        child: Icon(
-                          _isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: _isFavorite ? Colors.red : textPrimary,
-                        ),
+                        outlineColor: textPrimary,
+                        padding: EdgeInsets.zero,
                       ),
                     ),
 
@@ -721,7 +721,12 @@ class _ListingCardState extends State<ListingCard> {
       builder: (context, favorites, _) {
         final isFavorite = favorites.containsKey(productId);
 
-        return GestureDetector(
+        // Без подложки и того же размера, что у объявления (15.09.2026):
+        // серый кружок вокруг сердца выбивался из вида карточки, а два
+        // разных сердца в одной ленте читались как две разные кнопки.
+        return FavoriteHeart(
+          key: const ValueKey('listing-card-product-favorite-heart'),
+          isFavorited: isFavorite,
           onTap: () async {
             final error = await ProductFavoritesService.toggle(productId);
 
@@ -734,14 +739,8 @@ class _ListingCardState extends State<ListingCard> {
               );
             }
           },
-          behavior: HitTestBehavior.opaque,
-          // Без подложки и того же размера, что у объявления (15.09.2026):
-          // серый кружок вокруг сердца выбивался из вида карточки, а два
-          // разных сердца в одной ленте читались как две разные кнопки.
-          child: Icon(
-            isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: isFavorite ? Colors.red : textPrimary,
-          ),
+          outlineColor: textPrimary,
+          padding: EdgeInsets.zero,
         );
       },
     );

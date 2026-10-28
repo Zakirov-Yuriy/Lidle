@@ -3,6 +3,7 @@
 import 'dart:ui' show PathOperation;
 
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
 import 'package:lidle/pages/products/checkout_screen.dart';
@@ -1613,7 +1614,9 @@ class _CartFavoriteButton extends StatelessWidget {
       builder: (context, favorites, _) {
         final isFavorite = favorites.containsKey(modelId);
 
-        return GestureDetector(
+        return FavoriteHeart(
+          key: const ValueKey('cart-favorite-heart'),
+          isFavorited: isFavorite,
           onTap: () async {
             final error = await ProductFavoritesService.toggle(modelId);
 
@@ -1621,12 +1624,9 @@ class _CartFavoriteButton extends StatelessWidget {
               SnackBarHelper.showError(context, error);
             }
           },
-          behavior: HitTestBehavior.opaque,
-          child: Icon(
-            isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: isFavorite ? Colors.red : textMuted,
-            size: 22,
-          ),
+          outlineColor: textMuted,
+          size: 22,
+          padding: EdgeInsets.zero,
         );
       },
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/favorites_service.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
@@ -966,25 +967,18 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                       style: const TextStyle(color: Colors.white, fontSize: 14),
                     ),
                     const Spacer(),
-                    GestureDetector(
+                    // Сердечко общим виджетом, как в ленте и в карточке
+                    // объявления (28.10.2026): заливка от центра и один вид
+                    // по всему приложению. Раньше здесь лежали две разные
+                    // картинки, и подмена одной на другую читалась как
+                    // мигание.
+                    FavoriteHeart(
+                      key: const ValueKey('similar-advert-favorite-heart'),
+                      isFavorited: _isFavorited,
                       onTap: _toggleFavorite,
-                      child: _isFavorited
-                          ? SvgPicture.asset(
-                              'assets/profile_dashboard/heart-rounded.svg',
-                              colorFilter: const ColorFilter.mode(
-                                Colors.red,
-                                BlendMode.srcIn,
-                              ),
-                              width: 20,
-                              height: 20,
-                            )
-                          : Image.asset(
-                              'assets/BottomNavigation/heart-rounded.png',
-                              color: Colors.white70,
-                              colorBlendMode: BlendMode.srcIn,
-                              width: 20,
-                              height: 20,
-                            ),
+                      outlineColor: Colors.white70,
+                      size: 20,
+                      padding: EdgeInsets.zero,
                     ),
                   ],
                 ),

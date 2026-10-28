@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/widgets/skeletons/listing_card_skeleton.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -2102,20 +2103,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               // Сердечко = добавить/убрать продавца из избранного.
               // Мгновенное переключение без лоадера (как на главном экране);
               // сам запрос идёт в фоне, при ошибке состояние откатывается.
-              GestureDetector(
+              FavoriteHeart(
+                key: const ValueKey('seller-favorite-heart'),
+                isFavorited: _isWishlisted,
                 onTap: _toggleSubscription,
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  transitionBuilder: (child, anim) =>
-                      ScaleTransition(scale: anim, child: child),
-                  child: Icon(
-                    _isWishlisted ? Icons.favorite : Icons.favorite_border,
-                    key: ValueKey<bool>(_isWishlisted),
-                    color: _isWishlisted ? Colors.redAccent : textSecondary,
-                    size: 28,
-                  ),
-                ),
+                outlineColor: textSecondary,
+                size: 28,
+                padding: EdgeInsets.zero,
               ),
             ],
           ),

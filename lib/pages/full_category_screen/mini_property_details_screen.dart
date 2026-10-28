@@ -3010,25 +3010,15 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                       style: const TextStyle(color: Colors.white, fontSize: 14),
                     ),
                     const Spacer(),
-                    GestureDetector(
+                    // Сердечко общим виджетом (28.10.2026): тот же вид и та
+                    // же заливка, что в шапке этой же карточки.
+                    FavoriteHeart(
+                      key: const ValueKey('similar-advert-favorite-heart'),
+                      isFavorited: _isFavorited,
                       onTap: _toggleFavorite,
-                      child: _isFavorited
-                          ? SvgPicture.asset(
-                              'assets/profile_dashboard/heart-rounded.svg',
-                              colorFilter: const ColorFilter.mode(
-                                Colors.red,
-                                BlendMode.srcIn,
-                              ),
-                              width: 20,
-                              height: 20,
-                            )
-                          : Image.asset(
-                              'assets/BottomNavigation/heart-rounded.png',
-                              color: Colors.white70,
-                              colorBlendMode: BlendMode.srcIn,
-                              width: 20,
-                              height: 20,
-                            ),
+                      outlineColor: Colors.white70,
+                      size: 20,
+                      padding: EdgeInsets.zero,
                     ),
                     const SizedBox(width: 5),
                   ],
