@@ -74,13 +74,36 @@ class AgentKeysService {
   /// кнопку, которая всё равно ответит отказом.
   static int lastLeft = 0;
 
+  /// Адрес, который человек вставляет в настройки своего помощника.
+  ///
+  /// ПРИХОДИТ С СЕРВЕРА, а не зашит здесь (28.10.2026): на деве и на проде он
+  /// разный, и правильный знает только сервер. Пока не загрузили, пусто, и
+  /// экран ничего не показывает, чтобы не соврать.
+  static String mcpUrl = '';
+
+  /// Имя заголовка, в который кладут ключ.
+  static String headerName = 'Authorization';
+
   /// Список ключей человека.
   static Future<List<AgentKey>> all() async {
     final response = await ApiService.get(_path);
 
     final meta = response['meta'];
-    if (meta is Map && meta['left'] is num) {
-      lastLeft = (meta['left'] as num).toInt();
+
+    if (meta is Map) {
+      if (meta['left'] is num) {
+        lastLeft = (meta['left'] as num).toInt();
+      }
+
+      final url = meta['mcp_url'];
+      if (url is String && url.trim().isNotEmpty) {
+        mcpUrl = url.trim();
+      }
+
+      final header = meta['header_name'];
+      if (header is String && header.trim().isNotEmpty) {
+        headerName = header.trim();
+      }
     }
 
     final data = response['data'];

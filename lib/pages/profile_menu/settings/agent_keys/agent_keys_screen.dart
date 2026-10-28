@@ -131,6 +131,8 @@ class _AgentKeysScreenState extends State<AgentKeysScreen> {
                   ),
                   const SizedBox(height: 20),
                   _buildForm(),
+                  const SizedBox(height: 20),
+                  _buildServerCard(),
                   const SizedBox(height: 28),
                   const Text(
                     'Мои ключи',
@@ -251,6 +253,75 @@ class _AgentKeysScreenState extends State<AgentKeysScreen> {
                       ),
                     ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Адрес сервера для подключения помощника.
+  ///
+  /// Человек не обязан знать наизусть «dev-api.lidle.ru/mcp», поэтому адрес
+  /// стоит готовой строкой с кнопкой «Скопировать». Приходит он С СЕРВЕРА
+  /// (28.10.2026): на деве и на проде он разный, и правильный знает только
+  /// сервер. Пока не загрузили, карточку не показываем вовсе, чтобы не
+  /// подсунуть неверный адрес.
+  Widget _buildServerCard() {
+    final url = AgentKeysService.mcpUrl;
+
+    if (url.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Адрес MCP-сервера',
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Вставьте этот адрес в настройках помощника, когда будете добавлять '
+            'подключение, а ключ положите в заголовок запроса.',
+            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: SelectableText(
+              url,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Заголовок: ${AgentKeysService.headerName}',
+                  style: const TextStyle(color: textSecondary, fontSize: 13),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: url));
+                  _say('Адрес скопирован.');
+                },
+                child: const Text('Скопировать', style: TextStyle(color: accentColor)),
+              ),
+            ],
           ),
         ],
       ),
