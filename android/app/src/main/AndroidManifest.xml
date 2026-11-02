@@ -35,7 +35,11 @@
          REQUEST_IGNORE_BATTERY_OPTIMIZATIONS убраны вместе с сервисом,
          который держал соединение при закрытом приложении. Последнее из
          них Google Play отдельно называет допустимым лишь в узком списке
-         случаев, к которым доска объявлений не относится. -->
+         случаев, к которым доска объявлений не относится.
+
+         Из НАШЕГО манифеста они убраны, но в сборку всё равно попадали:
+         их подмешивает WorkManager. Вычищаем принудительно ниже
+         (02.11.2026). -->
 
     <!-- Разрешение для доступа к контактам.
          Используется на экране «Пригласить друзей», спрашивается у
@@ -53,6 +57,26 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"
         tools:node="remove"/>
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"
+        tools:node="remove"/>
+
+    <!-- Активные службы (02.11.2026). Эти три разрешения подмешивает за нас
+         библиотека WorkManager, которую тянет пакет `workmanager`: она
+         объявляет их на случай СРОЧНЫХ задач, запускаемых как активная
+         служба с заметным уведомлением.
+
+         Мы такими не пользуемся. У нас одна периодическая задача раз в
+         пятнадцать минут (проверка сообщений), и она идёт обычным фоновым
+         заданием: ни expedited, ни OutOfQuotaPolicy в коде нет.
+
+         Google Play проверяет каждое из них отдельно и требует видео с
+         задачей, заметной человеку, когда он приложением не пользуется.
+         Показывать нам нечего, да и незачем: без разрешения периодическое
+         задание работает ровно так же. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
+        tools:node="remove"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"
+        tools:node="remove"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
         tools:node="remove"/>
 
     <!-- Разрешения для бейджей приложения (требуется для Nova, Apex, Samsung) -->
