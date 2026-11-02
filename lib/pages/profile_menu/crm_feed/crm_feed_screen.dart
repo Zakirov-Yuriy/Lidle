@@ -8,8 +8,11 @@
 //
 // API:
 // - GET    /me/crm-feeds        — список подключённых фидов
-// - POST   /me/crm-feeds        — подключить фид (feed_url)
+// - POST   /me/crm-feeds        — подключить фид (feed_url или file)
 // - DELETE /me/crm-feeds/{id}   — удалить фид
+//
+// Файлом принимается и XML, и таблица Excel (02.11.2026, задача 90): для
+// сервера это один и тот же фид, вид источника он определяет по расширению.
 
 import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_preview_screen.dart';
@@ -350,13 +353,15 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
     }
   }
 
-  /// Подключить фид файлом (выбор XML и загрузка через multipart).
+  /// Подключить фид файлом: XML или таблица Excel (задача 90, 02.11.2026).
   Future<void> _connectFeedFile() async {
     try {
-      // Выбор XML-файла фида.
+      // Таблица в этом же списке, а не отдельной кнопкой: для сервера это
+      // такой же фид, только с другим разбором файла. Без `xlsx` в списке
+      // выбранный файл просто не нажимался, и человек не понимал, почему.
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['xml', 'txt'],
+        allowedExtensions: ['xml', 'txt', 'xlsx', 'csv', 'ods'],
         withData: false,
       );
 
@@ -369,7 +374,7 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
       setState(() => _isSubmitting = true);
 
       final token = await TokenService.getCurrentToken();
-      await ApiService.uploadFile(
+      final response = await ApiService.uploadFile(
         '/me/crm-feeds',
         filePath: filePath,
         fieldName: 'file',
@@ -379,6 +384,25 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
           if (widget.catalogId != null) 'catalog_id': '${widget.catalogId}',
         },
       );
+
+      // Отказ с объяснением показываем как есть (02.11.2026).
+      //
+      // Сервер отвечает понятным текстом: старый формат .xls просит
+      // пересохранить, суточный предел загрузок называет числом. Раньше всё
+      // это превращалось в общее «не удалось загрузить файл», и человек
+      // пробовал снова тот же файл.
+      // Проверка полей отвечает иначе, чем наши отказы: ключа `success` у неё
+      // нет вовсе, зато есть `errors`. Смотрим на оба случая, иначе «не тот
+      // тип файла» снова превратилось бы в общую ошибку.
+      if (response['success'] == false || response['errors'] != null) {
+        final message = response['message'];
+
+        _showSnack(message is String && message.isNotEmpty
+            ? message
+            : 'Не удалось загрузить файл');
+
+        return;
+      }
 
       await _loadFeeds();
 
@@ -586,7 +610,7 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
                     icon: Icon(Icons.attach_file,
                         color: activeIconColor, size: 20),
                     label: Text(
-                      'Загрузить файлом (XML)',
+                      'Загрузить файлом (XML или Excel)',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -601,6 +625,21 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
                       ),
                     ),
                   ),
+                ),
+              ),
+
+              // Подсказка про колонки таблицы (02.11.2026, задача 90).
+              //
+              // Без неё человек заполняет прайс наугад и получает отказ по
+              // колонкам, которых он не знал. Названия тут те же, что ждёт
+              // сервер; регистр и знаки в шапке не важны.
+              const Padding(
+                padding: EdgeInsets.fromLTRB(25, 8, 25, 0),
+                child: Text(
+                  'В таблице нужны колонки «Название» и «Цена», а чтобы '
+                  'объявление попало в нужный раздел, ещё «Категория» и '
+                  '«Тип сделки». Остальные колонки необязательны.',
+                  style: TextStyle(fontSize: 13, color: Colors.white54),
                 ),
               ),
 
