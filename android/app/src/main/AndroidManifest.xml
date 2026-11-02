@@ -21,7 +21,25 @@
         android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <!-- READ_MEDIA_IMAGES и READ_MEDIA_VIDEO убраны (02.11.2026).
+         Google Play не пропускает сборку с ними: по его правилам
+         приложение должно пользоваться СИСТЕМНЫМ выбором фотографий, а
+         общий доступ к хранилищу просить только если системного выбора не
+         хватает.
+
+         Нам хватает. Фотографии объявлений выбираются через `image_picker`,
+         а он на Android 13 и выше сам открывает системный выбор, и никакого
+         разрешения для этого не нужно.
+
+         Разрешение оставалось от сохранения чека и QR-кода в галерею, но и
+         там оно ничего не давало: приложение собрано под Android 36 и писало
+         файл прямо в папку DCIM, а так нельзя с Android 10. То есть эта
+         функция и без того не работала на современных телефонах.
+         Переделывается отдельно, через системное окно сохранения. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
+        tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"
+        tools:node="remove"/>
 
     <!-- SCHEDULE_EXACT_ALARM убран: точные будильники в коде не
          используются, фоновые задачи идут через workmanager с обычным
