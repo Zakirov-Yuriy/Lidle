@@ -440,6 +440,31 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
     );
   }
 
+  /// Скачать образец таблицы (02.11.2026, задача 90).
+  ///
+  /// Открываем обычной ссылкой во внешнем браузере, и телефон сам положит
+  /// файл в загрузки. Ручка отдаёт его без токена нарочно: это неизменный
+  /// образец с шапкой колонок и строкой примера, личных данных в нём нет.
+  /// Скачивать файл внутрь приложения значило бы тащить два новых пакета
+  /// ради статического образца.
+  Future<void> _openTemplate({required bool products}) async {
+    final url = '${ApiService.baseUrl}/meta/feed-template'
+        '${products ? '?kind=products' : ''}';
+
+    try {
+      final uri = Uri.parse(url);
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showSnack('Не удалось открыть образец');
+      }
+    } catch (e) {
+      log.e('Ошибка открытия образца таблицы: $e');
+      _showSnack('Не удалось открыть образец');
+    }
+  }
+
   /// Открыть видеообзор работы сервиса во внешнем приложении/браузере.
   Future<void> _openVideoReview() async {
     const url =
@@ -641,6 +666,31 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
                   'для товаров можно добавить «Остаток». Остальные колонки '
                   'необязательны.',
                   style: TextStyle(fontSize: 13, color: Colors.white54),
+                ),
+              ),
+
+              // Образцы таблиц (02.11.2026, задача 90). Два, потому что у
+              // объявлений и товаров разные колонки: у товара нет типа
+              // сделки и адреса, зато есть остаток.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(17, 0, 17, 0),
+                child: Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => _openTemplate(products: false),
+                      child: Text(
+                        'Образец: объявления',
+                        style: TextStyle(fontSize: 13, color: activeIconColor),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => _openTemplate(products: true),
+                      child: Text(
+                        'Образец: товары',
+                        style: TextStyle(fontSize: 13, color: activeIconColor),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
