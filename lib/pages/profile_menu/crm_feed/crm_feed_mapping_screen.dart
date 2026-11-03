@@ -695,8 +695,12 @@ class _CategoryPickerState extends State<_CategoryPicker> {
 
     if (needle.isEmpty) return widget.categories;
 
+    // Ищем и по каталогу тоже: человек помнит «мебель», а не точное
+    // название конечного раздела.
     return widget.categories
-        .where((c) => '${c['name']}'.toLowerCase().contains(needle))
+        .where((c) =>
+            '${c['name']}'.toLowerCase().contains(needle) ||
+            '${c['catalog']}'.toLowerCase().contains(needle))
         .toList();
   }
 
@@ -759,6 +763,8 @@ class _CategoryPickerState extends State<_CategoryPicker> {
                       itemBuilder: (_, index) {
                         final category = list[index];
 
+                        final catalog = '${category['catalog']}';
+
                         return ListTile(
                           title: Text(
                             '${category['name']}',
@@ -767,6 +773,18 @@ class _CategoryPickerState extends State<_CategoryPicker> {
                               fontSize: 15,
                             ),
                           ),
+                          // Каталог подписью: в товарном дереве есть и
+                          // транспорт, и по одному слову «Феррари» понять,
+                          // откуда оно, нельзя.
+                          subtitle: catalog.isEmpty
+                              ? null
+                              : Text(
+                                  catalog,
+                                  style: const TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 12,
+                                  ),
+                                ),
                           onTap: () => Navigator.pop(context, category),
                         );
                       },
