@@ -211,6 +211,21 @@ class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
+  /// Характеристики, уже занятые другими колонками.
+  Set<int> _takenAttributes(String exceptColumn) {
+    final taken = <int>{};
+
+    for (final column in _columns) {
+      if ('${column['title']}' == exceptColumn) continue;
+
+      final id = column['attribute_id'];
+
+      if (id is int && id > 0) taken.add(id);
+    }
+
+    return taken;
+  }
+
   Map<String, dynamic>? _attributeById(int? id) {
     if (id == null) return null;
 
@@ -446,6 +461,7 @@ class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
     final attributeId = column['attribute_id'] as int?;
     final attribute = _attributeById(attributeId);
     final values = _mapList(attribute?['values']);
+    final system = column['system'] as String?;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -475,11 +491,23 @@ class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
             ),
           ],
           const SizedBox(height: 10),
-          _buildAttributePicker(title, attributeId),
+
+          // Колонку, которую разбор понимает сам, не спрашиваем вовсе:
+          // выбор характеристики для «Ссылок на фото» только сбивает с толку.
+          if (system != null)
+            Text(
+              'Загружается как $system',
+              style: TextStyle(color: activeIconColor, fontSize: 13),
+            )
+          else
+            _buildAttributePicker(title, attributeId),
 
           // Стыковка значений нужна только там, где у характеристики есть
           // справочник: «Б/у» продавца к нашему «Б/у».
-          if (attribute != null && values.isNotEmpty && samples.isNotEmpty) ...[
+          if (system == null &&
+              attribute != null &&
+              values.isNotEmpty &&
+              samples.isNotEmpty) ...[
             const SizedBox(height: 10),
             const Text(
               'Значения',
@@ -523,16 +551,23 @@ class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
           child:
               Text('Не использовать', style: TextStyle(color: Colors.white54)),
         ),
-        ..._attributes.map(
-          (attribute) => DropdownMenuItem<int?>(
-            value: attribute['id'] as int,
-            child: Text(
-              '${attribute['title']}'
-              '${attribute['is_required'] == true ? ' (обязательная)' : ''}',
-              overflow: TextOverflow.ellipsis,
+        // Занятые другими колонками не показываем: одну характеристику
+        // нельзя взять из двух колонок сразу, и видеть её в каждом списке
+        // значит выбрать её дважды и удивиться.
+        ..._attributes
+            .where((attribute) =>
+                attribute['id'] == selected ||
+                !_takenAttributes(column).contains(attribute['id']))
+            .map(
+              (attribute) => DropdownMenuItem<int?>(
+                value: attribute['id'] as int,
+                child: Text(
+                  '${attribute['title']}'
+                  '${attribute['is_required'] == true ? ' (обязательная)' : ''}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
-          ),
-        ),
       ],
       onChanged: (value) {
         setState(() {
