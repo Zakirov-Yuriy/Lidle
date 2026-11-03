@@ -354,8 +354,54 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
     }
   }
 
+  /// Предупреждение про фотографии перед выбором файла (03.11.2026).
+  ///
+  /// ЗАЧЕМ. Просьба заказчика. Продавцы несут выгрузку как есть и ждут, что
+  /// фотографии появятся сами. А ссылки в ней бывают служебные, чужое
+  /// хранилище их не отдаёт, и человек видит объявления без картинок и
+  /// считает это поломкой. Сказать об этом надо ДО загрузки, а не после.
+  ///
+  /// Возвращает true, если человек готов продолжать.
+  Future<bool> _warnAboutPhotos() async {
+    final ready = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardColor,
+        title: const Text(
+          'Про фотографии',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Проверьте, что в файле есть ссылки на фотографии: мы скачаем их '
+          'сами. Ссылки подходят любые, с вашего сайта или хранилища.\n\n'
+          'Служебные ссылки площадок, например из выгрузки Авито, не '
+          'подойдут: они отдают фотографии только самой площадке.\n\n'
+          'Если ссылок нет, объявления загрузятся без фотографий, и вы '
+          'сможете добавить их к каждому вручную.',
+          style: TextStyle(color: Colors.white70, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Выбрать файл'),
+          ),
+        ],
+      ),
+    );
+
+    return ready == true;
+  }
+
   /// Подключить фид файлом: XML или таблица Excel (задача 90, 02.11.2026).
   Future<void> _connectFeedFile() async {
+    if (!await _warnAboutPhotos()) return;
+
+    if (!mounted) return;
+
     try {
       // Таблица в этом же списке, а не отдельной кнопкой: для сервера это
       // такой же фид, только с другим разбором файла. Без `xlsx` в списке
