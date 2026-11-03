@@ -438,9 +438,17 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
+                // Описание белым, как в объявлениях (03.11.2026). Было серым,
+                // и один и тот же текст в объявлении читался, а в товаре
+                // выглядел выцветшим. Межстрочный такой же, как в виде из
+                // заказа: описания из прайсов бывают по двадцать строк.
                 Text(
                   product.description!,
-                  style: const TextStyle(color: textSecondary, fontSize: 14),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
