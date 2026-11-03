@@ -60,7 +60,11 @@ class CrmFeedMappingScreen extends StatefulWidget {
 
 class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
   static const bgColor = Color(0xFF243241);
-  static const cardColor = Color(0xFF2B3A4A);
+
+  // Тот же цвет карточки, что на экране автозагрузки через CRM (03.11.2026).
+  // Здесь был свой, светлее, и два соседних экрана выглядели из разных
+  // приложений. Цвет один на карточки, окна и выпадающие списки.
+  static const cardColor = Color(0xFF1F2C3A);
   static const warnText = Color(0xFFE8D6A8);
   static const warnBack = Color(0xFF3A2E14);
   static const warnAccent = Color(0xFFE0B33C);
