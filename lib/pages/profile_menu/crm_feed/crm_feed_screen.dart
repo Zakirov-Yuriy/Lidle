@@ -383,11 +383,20 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Отмена'),
+            child: const Text(
+              'Отмена',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Выбрать файл'),
+            child: Text(
+              'Выбрать файл',
+              style: TextStyle(
+                color: activeIconColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
