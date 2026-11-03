@@ -13,11 +13,21 @@
 // Решение заказчика от 02.11.2026: сопоставление на стороне продавца, с
 // возможностью открыть заново и поправить.
 //
+// СПРАШИВАЕМ ПРО НАШИ ХАРАКТЕРИСТИКИ, А НЕ ПРО ЕГО КОЛОНКИ (03.11.2026).
+//
+// Сначала было наоборот: список колонок файла, у каждой выбор характеристики.
+// На живой выгрузке Авито колонок тридцать четыре, и для большинства верный
+// ответ «никакая». Человек открывал «Номер телефона» и видел там размер и
+// цвет, что выглядит бредом и им и является.
+//
+// Характеристик же у раздела единицы. Поэтому спрашиваем про них: «Размер, из
+// какой колонки его брать?» Четыре вопроса вместо тридцати четырёх.
+//
 // ЧТО ЗДЕСЬ ЕСТЬ:
 //  - раздел, один на весь файл (в выгрузке Авито вся книга это одна
 //    категория), с подставленной догадкой по пути над шапкой и выбором
 //    вручную, если догадка неверна;
-//  - колонки файла с примерами значений против наших характеристик;
+//  - наши характеристики раздела, у каждой выбор колонки файла;
 //  - для характеристик со справочником — стыковка значений.
 //
 // Очевидные совпадения сервер подставляет сам, человек поправляет.
@@ -210,32 +220,6 @@ class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
-
-  /// Характеристики, уже занятые другими колонками.
-  Set<int> _takenAttributes(String exceptColumn) {
-    final taken = <int>{};
-
-    for (final column in _columns) {
-      if ('${column['title']}' == exceptColumn) continue;
-
-      final id = column['attribute_id'];
-
-      if (id is int && id > 0) taken.add(id);
-    }
-
-    return taken;
-  }
-
-  Map<String, dynamic>? _attributeById(int? id) {
-    if (id == null) return null;
-
-    for (final attribute in _attributes) {
-      if (attribute['id'] == id) return attribute;
-    }
-
-    return null;
-  }
-
   /// Выбор раздела: список с поиском.
   Future<void> _pickCategory() async {
     final chosen = await showModalBottomSheet<Map<String, dynamic>>(
@@ -334,7 +318,7 @@ class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       children: [
         const Text(
-          'Колонки вашего файла',
+          'Характеристики раздела',
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -344,25 +328,210 @@ class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
         const SizedBox(height: 6),
         Text(
           hasAttributes
-              ? 'Укажите, какой нашей характеристике соответствует каждая '
-                  'колонка. Что совпало по названию, мы подставили сами. '
-                  'Колонку можно оставить пустой, тогда она не используется.'
-              : 'Сначала выберите раздел: характеристики, с которыми '
-                  'стыкуются колонки, принадлежат ему.',
+              ? 'Укажите, из какой колонки вашего файла брать каждую '
+                  'характеристику. Что совпало по названию, мы подставили '
+                  'сами. Ненужную можно оставить незаполненной.'
+              : 'Сначала выберите раздел: характеристики принадлежат ему.',
           style: const TextStyle(color: Colors.white54, fontSize: 13),
         ),
         const SizedBox(height: 16),
         _buildCategoryCard(),
         const SizedBox(height: 16),
-
-        // Стыковать не с чем: карточки колонок не рисуем вовсе. Три десятка
-        // одинаковых пустых выборов читаются как поломка, а не как «у
-        // раздела нет характеристик».
         if (!hasAttributes)
           _buildNoAttributes()
-        else
-          ..._columns.map(_buildColumnCard),
+        else ...[
+          ..._attributes.map(_buildAttributeCard),
+          const SizedBox(height: 8),
+          _buildSystemNote(),
+        ],
       ],
+    );
+  }
+
+  /// Что мы разбираем сами, без всякой настройки.
+  ///
+  /// Человеку важно видеть, что название, цена и фотографии уже работают, и
+  /// их отсутствие в списке выше не значит, что они потеряются.
+  Widget _buildSystemNote() {
+    final known = _columns
+        .where((c) => c['system'] != null)
+        .map((c) => '${c['title']} — ${c['system']}')
+        .toList();
+
+    if (known.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Эти колонки загружаются сами',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            known.join('\n'),
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Одна наша характеристика: из какой колонки её брать.
+  Widget _buildAttributeCard(Map<String, dynamic> attribute) {
+    final attributeId = attribute['id'] as int?;
+    final column = _columnForAttribute(attributeId);
+    final columnTitle = column == null ? null : '${column['title']}';
+    final samples =
+        ((column?['samples'] as List?) ?? []).map((e) => '$e').toList();
+    final values = _mapList(attribute['values']);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${attribute['title']}'
+            '${attribute['is_required'] == true ? ' (обязательная)' : ''}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Из какой колонки файла',
+            style: TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          _buildColumnPicker(attributeId, columnTitle),
+          if (samples.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'В файле: ${samples.join(', ')}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white38, fontSize: 12),
+            ),
+          ],
+
+          // Стыковка значений нужна только там, где у характеристики есть
+          // справочник: «Б/у» продавца к нашему «Б/у».
+          if (columnTitle != null && values.isNotEmpty && samples.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Значения',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            ...samples
+                .expand(_splitSample)
+                .toSet()
+                .map((part) => _buildValuePicker(columnTitle, part, values)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Колонка, из которой сейчас берётся эта характеристика.
+  Map<String, dynamic>? _columnForAttribute(int? attributeId) {
+    if (attributeId == null) return null;
+
+    for (final column in _columns) {
+      if (column['attribute_id'] == attributeId) return column;
+    }
+
+    return null;
+  }
+
+  /// Выбор колонки файла для характеристики.
+  ///
+  /// Системные колонки в список не попадают: название и цена уже разбираются
+  /// сами, и брать из них характеристику незачем. Занятые другими
+  /// характеристиками тоже скрыты: одна колонка это одна характеристика.
+  Widget _buildColumnPicker(int? attributeId, String? selected) {
+    final taken = <String>{};
+
+    for (final column in _columns) {
+      final id = column['attribute_id'];
+
+      if (id is int && id > 0 && id != attributeId) {
+        taken.add('${column['title']}');
+      }
+    }
+
+    final options = _columns
+        .where((c) => c['system'] == null)
+        .map((c) => '${c['title']}')
+        .where((title) => title == selected || !taken.contains(title))
+        .toList();
+
+    return DropdownButtonFormField<String?>(
+      // Ключ с текущим выбором обязателен: поле формы держит своё состояние
+      // и после setState показало бы прежнее значение.
+      key: ValueKey('col-$attributeId-$selected'),
+      initialValue: selected,
+      isExpanded: true,
+      dropdownColor: cardColor,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white24),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: activeIconColor),
+        ),
+      ),
+      items: [
+        const DropdownMenuItem<String?>(
+          value: null,
+          child: Text('Не заполнять', style: TextStyle(color: Colors.white54)),
+        ),
+        ...options.map(
+          (title) => DropdownMenuItem<String?>(
+            value: title,
+            child: Text(title, overflow: TextOverflow.ellipsis),
+          ),
+        ),
+      ],
+      onChanged: (title) {
+        setState(() {
+          // Снимаем характеристику со старой колонки и ставим на новую:
+          // хранится это по-прежнему на колонке.
+          for (final column in _columns) {
+            if (column['attribute_id'] == attributeId) {
+              _values.remove('${column['title']}');
+              column['attribute_id'] = null;
+            }
+
+            if (title != null && '${column['title']}' == title) {
+              column['attribute_id'] = attributeId;
+            }
+          }
+        });
+      },
     );
   }
 
@@ -452,137 +621,6 @@ class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
       ),
     );
   }
-
-  /// Одна колонка файла: примеры значений и выбор характеристики.
-  Widget _buildColumnCard(Map<String, dynamic> column) {
-    final title = '${column['title']}';
-    final samples =
-        ((column['samples'] as List?) ?? []).map((e) => '$e').toList();
-    final attributeId = column['attribute_id'] as int?;
-    final attribute = _attributeById(attributeId);
-    final values = _mapList(attribute?['values']);
-    final system = column['system'] as String?;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (samples.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              'В файле: ${samples.join(', ')}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
-            ),
-          ],
-          const SizedBox(height: 10),
-
-          // Колонку, которую разбор понимает сам, не спрашиваем вовсе:
-          // выбор характеристики для «Ссылок на фото» только сбивает с толку.
-          if (system != null)
-            Text(
-              'Загружается как $system',
-              style: TextStyle(color: activeIconColor, fontSize: 13),
-            )
-          else
-            _buildAttributePicker(title, attributeId),
-
-          // Стыковка значений нужна только там, где у характеристики есть
-          // справочник: «Б/у» продавца к нашему «Б/у».
-          if (system == null &&
-              attribute != null &&
-              values.isNotEmpty &&
-              samples.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            const Text(
-              'Значения',
-              style: TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            ...samples
-                .expand(_splitSample)
-                .toSet()
-                .map((part) => _buildValuePicker(title, part, values)),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAttributePicker(String column, int? selected) {
-    return DropdownButtonFormField<int?>(
-      // Ключ с текущим выбором обязателен: поле формы держит своё состояние
-      // и после setState показало бы прежнее значение, а не новое.
-      key: ValueKey('attr-$column-$selected'),
-      initialValue: selected,
-      isExpanded: true,
-      dropdownColor: cardColor,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
-      decoration: InputDecoration(
-        isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.white24),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: activeIconColor),
-        ),
-      ),
-      items: [
-        const DropdownMenuItem<int?>(
-          value: null,
-          child:
-              Text('Не использовать', style: TextStyle(color: Colors.white54)),
-        ),
-        // Занятые другими колонками не показываем: одну характеристику
-        // нельзя взять из двух колонок сразу, и видеть её в каждом списке
-        // значит выбрать её дважды и удивиться.
-        ..._attributes
-            .where((attribute) =>
-                attribute['id'] == selected ||
-                !_takenAttributes(column).contains(attribute['id']))
-            .map(
-              (attribute) => DropdownMenuItem<int?>(
-                value: attribute['id'] as int,
-                child: Text(
-                  '${attribute['title']}'
-                  '${attribute['is_required'] == true ? ' (обязательная)' : ''}',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-      ],
-      onChanged: (value) {
-        setState(() {
-          for (final c in _columns) {
-            if ('${c['title']}' == column) c['attribute_id'] = value;
-          }
-
-          // Сменили характеристику — прежняя стыковка значений больше не про
-          // неё, иначе в сохранение уедут чужие номера.
-          _values.remove(column);
-        });
-      },
-    );
-  }
-
   Widget _buildValuePicker(
     String column,
     String sample,
