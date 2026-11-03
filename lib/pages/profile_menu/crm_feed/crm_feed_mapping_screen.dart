@@ -483,11 +483,15 @@ class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
         .where((title) => title == selected || !taken.contains(title))
         .toList();
 
+    // Та же защита, что у значений: колонка могла пропасть из файла, а в
+    // сохранённом сопоставлении остаться.
+    final current = options.contains(selected) ? selected : null;
+
     return DropdownButtonFormField<String?>(
       // Ключ с текущим выбором обязателен: поле формы держит своё состояние
       // и после setState показало бы прежнее значение.
-      key: ValueKey('col-$attributeId-$selected'),
-      initialValue: selected,
+      key: ValueKey('col-$attributeId-$current'),
+      initialValue: current,
       isExpanded: true,
       dropdownColor: cardColor,
       style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -626,7 +630,17 @@ class _CrmFeedMappingScreenState extends State<CrmFeedMappingScreen> {
     String sample,
     List<Map<String, dynamic>> values,
   ) {
-    final selected = _values[column]?[sample];
+    final saved = _values[column]?[sample];
+
+    /*
+     * Выбранное значение могло исчезнуть (03.11.2026).
+     *
+     * Админ удалил характеристику и завёл заново, номера значений сменились,
+     * а в сохранённом сопоставлении остались прежние. Выпадающий список на
+     * такое не рассчитан: он падает, если текущее значение не нашлось среди
+     * пунктов. Поэтому проверяем сами и показываем «Нет».
+     */
+    final selected = values.any((v) => v['id'] == saved) ? saved : null;
 
     return Padding(
       padding: const EdgeInsets.only(top: 8),
