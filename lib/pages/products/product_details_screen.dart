@@ -698,7 +698,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 Expanded(
                   child: Text(
                     product.orderNotice ??
-                        'Этот товар не заказывают через сайт: '
+                        'Этот товар не заказывают через сайт или приложение: '
                             'оплата и получение на месте, у продавца.',
                     style: const TextStyle(color: Colors.white, fontSize: 14),
                   ),
@@ -732,33 +732,39 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          ...product.attributes.map(
-            (attribute) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: Text(
-                      attribute.title,
-                      style: const TextStyle(color: textSecondary, fontSize: 14),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 5,
-                    child: Text(
-                      attribute.value,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          ...product.attributes.map(_attributeLine),
         ],
+      ),
+    );
+  }
+
+  /// Строка характеристики: «Название: значение».
+  ///
+  /// БЫЛО ДВЕ КОЛОНКИ, НАЗВАНИЕ СЛЕВА И ЗНАЧЕНИЕ ПО ПРАВОМУ КРАЮ (03.11.2026).
+  /// На коротких значениях между ними зияла пустота в половину экрана, а на
+  /// длинных, вроде семи типов конструкции через запятую, правый столбец
+  /// ломался на четыре строки и выглядел оторванным от названия. В
+  /// объявлениях такой же блок всегда был одной строкой с двоеточием, и
+  /// два экрана выглядели из разных приложений.
+  ///
+  /// Теперь это один абзац: название серым, значение белым, перенос по всей
+  /// ширине карточки.
+  Widget _attributeLine(ProductAttribute attribute) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '${attribute.title}: ',
+              style: const TextStyle(color: textSecondary, fontSize: 14),
+            ),
+            TextSpan(
+              text: '${attribute.value}',
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -984,32 +990,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          ...visible.map(
-            (attribute) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: Text(
-                      attribute.title,
-                      style: const TextStyle(color: textSecondary, fontSize: 14),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 5,
-                    child: Text(
-                      attribute.value,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          ...visible.map(_attributeLine),
           if (all.length > _shortAttributes)
             _expandLink(
               _attributesExpanded ? 'Свернуть' : 'Все характеристики',
