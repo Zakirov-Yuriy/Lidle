@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_preview_screen.dart';
+import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_mapping_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -867,10 +868,63 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
+
+          // Сопоставление колонок (03.11.2026, задача 90).
+          //
+          // Только для загрузок таблицей: у фида по ссылке колонок нет, там
+          // формат задан нами и разбирается словарём полей.
+          //
+          // Кнопка остаётся видимой и после настройки, нарочно: заказчик
+          // просил, чтобы можно было открыть заново и поправить, когда
+          // продавец добавит колонку или передумает.
+          if (feed['source'] == 'excel') ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _openMapping(id),
+                icon: Icon(Icons.tune, color: activeIconColor, size: 18),
+                label: Text(
+                  'Настроить колонки',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: activeIconColor,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  side: BorderSide(color: activeIconColor),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
       ),
     );
+  }
+
+  /// Открыть экран сопоставления колонок и обновить список после возврата.
+  ///
+  /// Список обновляем потому, что сохранение сопоставления сразу
+  /// перезапускает загрузку, и состояние фида меняется.
+  Future<void> _openMapping(dynamic id) async {
+    final feedId = id is int ? id : int.tryParse('$id');
+
+    if (feedId == null) return;
+
+    final saved = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CrmFeedMappingScreen(feedId: feedId),
+      ),
+    );
+
+    if (saved == true && mounted) await _loadFeeds();
   }
 
   void _confirmDelete(dynamic id) {
