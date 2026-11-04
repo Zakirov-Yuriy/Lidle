@@ -1719,7 +1719,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           return Row(
             children: [
               Text(
-                'В наличии: $_availableStock шт.',
+                // Точное количество прячем, если товар приехал из учётной
+                // системы компании (задача 54, 04.11.2026): склад она светить
+                // не хочет. Заказать больше, чем есть, всё равно не выйдет,
+                // счётчик ниже упирается в настоящий остаток, а сервер
+                // проверяет его ещё раз при оформлении.
+                product.hideStock ? 'В наличии' : 'В наличии: $_availableStock шт.',
                 style: const TextStyle(color: Colors.white, fontSize: 15),
               ),
               const Spacer(),

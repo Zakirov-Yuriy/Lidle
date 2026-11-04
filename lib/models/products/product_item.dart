@@ -21,6 +21,13 @@ class ProductItem {
   final int stockQuantity;
   final bool inStock;
 
+  /// Прятать ли точное количество от покупателя (задача 54, 04.11.2026).
+  ///
+  /// Ставится товарам, приехавшим из учётной системы компании: склад она
+  /// светить не хочет. Само количество при этом приходит и дальше, по нему
+  /// счётчик не пускает положить в корзину больше, чем есть.
+  final bool hideStock;
+
   final String? description;
 
   final int? categoryId;
@@ -121,6 +128,7 @@ class ProductItem {
     required this.price,
     required this.stockQuantity,
     required this.inStock,
+    this.hideStock = false,
     this.slug,
     this.sku,
     this.image,
@@ -162,6 +170,7 @@ class ProductItem {
           : const [],
       stockQuantity: _int(data['stock_quantity']) ?? 0,
       inStock: data['in_stock'] == true || (_int(data['stock_quantity']) ?? 0) > 0,
+      hideStock: data['hide_stock'] == true,
       description: data['description']?.toString(),
       categoryId: _int(data['category_id']),
       categoryPath: data['category'] is Map
