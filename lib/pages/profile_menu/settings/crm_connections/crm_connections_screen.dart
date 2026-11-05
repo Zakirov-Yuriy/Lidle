@@ -214,7 +214,8 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
             switch (_kind) {
               'bitrix24' => 'В Битрикс24 это «входящий вебхук»: Разработчикам, Другое, Входящий вебхук. '
                   'Отметьте права CRM и вставьте сюда полученную ссылку вида '
-                  'https://ваш-портал.bitrix24.ru/rest/1/КЛЮЧ/',
+                  'https://ваш-портал.bitrix24.ru/rest/1/КЛЮЧ/. '
+                  'Больше ничего настраивать в Битриксе не нужно: ключ уже внутри ссылки.',
               'amocrm' => 'Укажите адрес своего аккаунта, например https://вашафирма.amocrm.ru, '
                   'а ниже вставьте долгоживущий токен из карточки внешней интеграции.',
               _ => 'Это адрес, на который ваша система принимает входящие запросы. '
@@ -500,7 +501,19 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
         _events.clear();
       });
 
-      await _showSecretOnce(created.secret);
+      /*
+       * Секрет показываем, только если он пришёл (05.11.2026).
+       *
+       * Для Битрикс24 и amoCRM сервер его больше не выдаёт: вставлять его
+       * там некуда. Раньше окно всплывало всем подряд, и человек шёл искать
+       * несуществующее поле в чужой системе. Поймали на живой компании.
+       */
+      if (created.secret.isNotEmpty) {
+        await _showSecretOnce(created.secret);
+      } else {
+        await _showDone(created.message);
+      }
+
       await _load();
     } catch (e) {
       if (!mounted) return;
@@ -526,9 +539,9 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Вот секрет подключения. Он нужен тому, кто настраивает приём на вашей '
-                'стороне: мы подписываем им каждый запрос, чтобы вашей системе было '
-                'видно, что письмо от нас, а не от постороннего.',
+                'Вот секрет подключения. Его вставляют в ваш приёмник тому, кто его '
+                'настраивал: мы подписываем им каждый запрос, чтобы вашей системе было '
+                'видно, что обращение от нас, а не от постороннего.',
                 style: TextStyle(color: textSecondary, fontSize: 14, height: 1.4),
               ),
               const SizedBox(height: 12),
@@ -558,6 +571,39 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Готово', style: TextStyle(color: textSecondary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Подключение готово, и вставлять больше нечего.
+  ///
+  /// Показываем вместо окна с секретом там, где секрета нет: у Битрикс24 ключ
+  /// внутри ссылки вебхука, у amoCRM в поле её собственный токен. Молчать
+  /// здесь нельзя: человек только что нажал «Подключить» и ждёт ответа, а без
+  /// него начинает искать, чего ещё от него хотят.
+  Future<void> _showDone(String message) async {
+    if (!mounted) return;
+
+    final text = message.trim().isEmpty
+        ? 'Подключение создано. Больше ничего вставлять не нужно. '
+            'Проверьте его кнопкой «Проверить».'
+        : message.trim();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: cardColor,
+        title: const Text('Подключение создано', style: TextStyle(color: Colors.white, fontSize: 18)),
+        content: Text(
+          text,
+          style: const TextStyle(color: textSecondary, fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Понятно', style: TextStyle(color: accentColor)),
           ),
         ],
       ),

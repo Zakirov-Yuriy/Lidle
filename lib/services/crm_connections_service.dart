@@ -135,12 +135,23 @@ class CrmDelivery {
   }
 }
 
-/// Созданное подключение: секрет показывается один раз.
+/// Созданное подключение: секрет показывается один раз, и не всем.
+///
+/// Секрет приходит пустым, когда вставлять его некуда: у Битрикс24 ключ
+/// сидит внутри ссылки вебхука, у amoCRM в этом поле её собственный токен.
+/// Тогда человеку показываем подпись сервера, а не пустое окно.
 class CreatedCrmConnection {
-  const CreatedCrmConnection({required this.secret, required this.connection});
+  const CreatedCrmConnection({
+    required this.secret,
+    required this.connection,
+    this.message = '',
+  });
 
   final String secret;
   final CrmConnection connection;
+
+  /// Что сказал сервер: он один знает, нужно ли дальше что-то вставлять.
+  final String message;
 }
 
 class CrmConnectionsService {
@@ -207,6 +218,7 @@ class CrmConnectionsService {
 
     return CreatedCrmConnection(
       secret: (response['secret'] as String?) ?? '',
+      message: (response['message'] as String?) ?? '',
       connection: card is Map<String, dynamic>
           ? CrmConnection.fromJson(card)
           : const CrmConnection(id: 0, kind: 'webhook'),
