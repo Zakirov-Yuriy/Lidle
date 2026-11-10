@@ -359,6 +359,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'Подключение CRM',
                   onTap: () => Navigator.pushNamed(context, '/crm_connections'),
                 ),
+                // Обмен с 1С (задача 54, 10.11.2026). Рядом с автовыгрузкой
+                // и подключением CRM: это третий способ связать свою систему
+                // с площадкой, и искать его человек будет здесь же.
+                _settingsItem(
+                  const Icon(
+                    Icons.storage,
+                    color: Colors.white,
+                    size: 21,
+                  ),
+                  'Обмен с 1С',
+                  onTap: () => Navigator.pushNamed(context, '/one_c'),
+                ),
                 _settingsItem(
                   SvgPicture.asset(
                     'assets/profile_menu/settings/image-user.svg',

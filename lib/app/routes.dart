@@ -26,6 +26,7 @@ import 'package:lidle/pages/profile_menu/settings/settings_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/devices/devices_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/agent_keys/agent_keys_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/crm_connections/crm_connections_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/one_c/one_c_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/delete_account/delete_account_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/privacy_policy/privacy_policy_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/faq/faq_screen.dart';
@@ -107,6 +108,10 @@ class AppRoutes {
 
     // Подключение CRM компании (задача 88, 28.10.2026).
     '/crm_connections': (context) => const CrmConnectionsScreen(),
+
+    // Обмен с 1С компании (задача 54, 10.11.2026): ключ, состояние каналов,
+    // счёт. Раньше ключ выдавала наша команда на сервере.
+    OneCScreen.routeName: (context) => const OneCScreen(),
     QrScannerScreen.routeName: (context) => const QrScannerScreen(),
     DeleteAccountScreen.routeName: (context) =>
         const DeleteAccountScreen(),
