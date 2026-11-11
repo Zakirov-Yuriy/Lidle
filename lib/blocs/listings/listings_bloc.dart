@@ -114,6 +114,17 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   String _lastSearchQuery = '';
   int _searchPage = 0;
 
+  /// Последняя показанная поисковая выдача (11.11.2026).
+  ///
+  /// ЗАЧЕМ. Карточка объявления работает на ЭТОМ ЖЕ блоке и, открываясь,
+  /// затирает состояние своим `AdvertLoaded`. Возвращаясь назад, человек
+  /// видел скелетон, потом чужую ленту, и только через секунду свою выдачу.
+  /// Здесь она лежит целиком и возвращается мгновенно, без похода на сервер.
+  ListingsSearchResults? _lastSearchState;
+
+  /// Выдача, которую человек видел до того, как открыл объявление.
+  ListingsSearchResults? get lastSearchState => _lastSearchState;
+
   /// Сколько раз подряд догрузка не принесла ничего нового.
   ///
   /// Первые страницы общей ленты пересекаются с тем, что уже показано:
@@ -509,6 +520,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     // Пустой запрос — возвращаемся к обычному списку из кеша.
     if (query.isEmpty) {
+      _lastSearchState = null;
+      _lastSearchQuery = '';
+
       if (_cachedAllListings.isNotEmpty) {
         emit(ListingsLoaded(
           listings: _cachedAllListings,
@@ -565,8 +579,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ' | Всего по запросу: $total',
       );
 
-      emit(
-        ListingsSearchResults(
+      final searchState = ListingsSearchResults(
           searchResults: searchResults,
           query: event.query,
           categories: _cachedCategories,
@@ -576,8 +589,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           // и мы не упёрлись в потолок выдачи.
           hasMore: lastPage > 1 && searchResults.length < searchLimit,
           total: total,
-        ),
       );
+
+      _lastSearchState = searchState;
+
+      emit(searchState);
     } catch (e) {
       log.e('❌ Ошибка при поиске на бэкенде: $e');
       emit(ListingsError(message: e.toString()));
@@ -651,18 +667,20 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       final int lastPage = response.meta.lastPage;
 
-      emit(
-        currentState.copyWith(
-          searchResults: merged,
-          currentPage: nextPage,
-          // Останавливаемся, если страницы кончились, упёрлись в потолок или
-          // страница пришла, но вся состояла из уже показанного.
-          hasMore: nextPage < lastPage &&
-              merged.length < searchLimit &&
-              fresh.isNotEmpty,
-          isLoadingMore: false,
-        ),
+      final nextState = currentState.copyWith(
+        searchResults: merged,
+        currentPage: nextPage,
+        // Останавливаемся, если страницы кончились, упёрлись в потолок или
+        // страница пришла, но вся состояла из уже показанного.
+        hasMore: nextPage < lastPage &&
+            merged.length < searchLimit &&
+            fresh.isNotEmpty,
+        isLoadingMore: false,
       );
+
+      _lastSearchState = nextState;
+
+      emit(nextState);
     } catch (e) {
       log.d('Не удалось догрузить страницу поиска: $e');
 

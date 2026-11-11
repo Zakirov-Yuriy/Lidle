@@ -137,7 +137,17 @@ class _HomePageState extends State<HomePage>
 
     if (activeSearch.isNotEmpty) {
       if (bloc.state is! ListingsSearchResults) {
-        bloc.add(SearchListingsEvent(query: activeSearch));
+        // Карточка объявления работает на этом же блоке и, открываясь,
+        // затирает выдачу своим состоянием. Поэтому берём её из блока
+        // целиком, а не просим сервер заново: иначе человек видит скелетон,
+        // потом чужую ленту и только через секунду свои результаты.
+        final saved = bloc.lastSearchState;
+
+        if (saved != null && saved.query.trim() == activeSearch) {
+          bloc.emit(saved);
+        } else {
+          bloc.add(SearchListingsEvent(query: activeSearch));
+        }
       }
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1198,13 +1208,24 @@ class _HomePageState extends State<HomePage>
               List<Listing> otherListings = const <Listing>[];
 
               if (searchQuery.isNotEmpty) {
-                bool byCategory(Listing l) =>
-                    (l.categoryPath ?? '').toLowerCase().contains(searchQuery);
+                // Старшинство считает СЕРВЕР и присылает полем search_rank:
+                // 0 и 1 значит совпал раздел, 2 и 3 значит слово нашлось в
+                // заголовке, описании или у продавца.
+                //
+                // Раньше приложение решало это само, по названию раздела в
+                // карточке. Не работало: в списке объявлений сервер раздел
+                // вообще не присылает, поле всегда было пустым, и деление
+                // молча скатывалось к проверке заголовка. Отсюда и квартира
+                // «с бассейном в доме» среди домов.
+                bool byRank(Listing l) => (l.searchRank ?? 9) <= 1;
 
                 bool byTitle(Listing l) =>
                     l.title.toLowerCase().contains(searchQuery);
 
-                final matches = listings.any(byCategory) ? byCategory : byTitle;
+                // Запасной путь на случай старого сервера, где поля ещё нет.
+                final matches = listings.any((l) => l.searchRank != null)
+                    ? byRank
+                    : byTitle;
 
                 final exact = listings.where(matches).toList();
                 final rest = listings.where((l) => !matches(l)).toList();

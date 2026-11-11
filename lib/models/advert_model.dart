@@ -44,6 +44,12 @@ class Advert {
   /// (30.09.2026). Приходит только в карточке объявления.
   final String? categoryPath;
 
+  /// Старшинство совпадения при поиске, приходит с сервера (11.11.2026).
+  ///
+  /// 0 и 1 это «то, что искали» (совпал раздел), 2 и 3 это «слово
+  /// встретилось в заголовке, описании или у продавца». Вне поиска null.
+  final int? searchRank;
+
   /// Характеристики из фида CRM для блока «Дополнительно» (05.10.2026).
   /// Пусто у объявлений, созданных человеком в приложении или на сайте.
   final List<FeedAttribute> feedAttributes;
@@ -92,6 +98,7 @@ class Advert {
     this.showsRating = false,
     this.hallsCount = 0,
     this.categoryPath,
+    this.searchRank,
     this.feedAttributes = const [],
     this.canRespond = false,
     this.isResponded = false,
@@ -337,6 +344,9 @@ class Advert {
       reviewsCount: (json['reviews_count'] as num?)?.toInt() ?? 0,
       showsRating: json.containsKey('rating'),
       hallsCount: (json['halls_count'] as num?)?.toInt() ?? 0,
+      // Старшинство совпадения при поиске (11.11.2026). Вне поиска ключа в
+      // ответе нет, и это нормально: выдачу тогда делить не на что.
+      searchRank: (json['search_rank'] as num?)?.toInt(),
       categoryPath: json['category'] is Map
           ? ('${(json['category'] as Map)['path'] ?? (json['category'] as Map)['name'] ?? ''}'
                   .trim()
@@ -551,6 +561,9 @@ extension AdvertToListingExtension on Advert {
       characteristics: characteristics ?? {},
       city: extractedCity, // 🌍 ДОБАВИЛИ ГОРОД ИЗ АДРЕСА
       categoryPath: categoryPath,
+      // Старшинство совпадения при поиске: карточка ленты собирается именно
+      // здесь, пропустить поле тут значит потерять его совсем.
+      searchRank: searchRank,
       feedAttributes: feedAttributes,
       // Отклики (09.10.2026). Карточка объявления собирается именно этим
       // путём, а не разбором в Listing.fromJson: пропустить поля здесь
