@@ -56,6 +56,14 @@ class LoadAdvertEvent extends ListingsEvent {
   LoadAdvertEvent({required this.advertId});
 }
 
+/// Событие догрузки следующей страницы ПОИСКОВОЙ выдачи (11.11.2026).
+///
+/// Отдельное от [LoadNextPageEvent]: у ленты и у поиска разные состояния и
+/// разные запросы к серверу, и смешивать их счётчики страниц нельзя.
+class LoadMoreSearchResultsEvent extends ListingsEvent {
+  const LoadMoreSearchResultsEvent();
+}
+
 /// Событие загрузки следующей страницы объявлений.
 /// Используется для пагинации - загружает следующую страницу результатов.
 class LoadNextPageEvent extends ListingsEvent {

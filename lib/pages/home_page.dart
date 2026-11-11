@@ -360,6 +360,29 @@ class _HomePageState extends State<HomePage>
                                   if (isNearEnd) {
                                     final state = context.read<ListingsBloc>().state;
                                     
+                                    // Поисковая выдача листается так же, как
+                                    // лента (11.11.2026). Раньше поиск брал
+                                    // только первую страницу и упирался в
+                                    // конец, хотя на сайте выдача полная.
+                                    if (state is ListingsSearchResults) {
+                                      final now = DateTime.now();
+                                      final shouldLoadMore =
+                                          _lastLoadMoreTime == null ||
+                                              now.difference(_lastLoadMoreTime!) >=
+                                                  _loadMoreDebounce;
+
+                                      if (state.hasMore &&
+                                          !state.isLoadingMore &&
+                                          shouldLoadMore) {
+                                        _lastLoadMoreTime = now;
+                                        context.read<ListingsBloc>().add(
+                                          const LoadMoreSearchResultsEvent(),
+                                        );
+                                      }
+
+                                      return false;
+                                    }
+
                                     if (state is ListingsLoaded) {
                                       // Спрашиваем у состояния, есть ли ещё
                                       // что добирать. Раньше здесь стояло
@@ -1144,8 +1167,42 @@ class _HomePageState extends State<HomePage>
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                   ),
-                  // 🔘 Показываем кнопку "Показать больше объявлений" если >= 24 объявлений
-                  if (listings.length >= 24)
+                  // Подвал ПОИСКОВОЙ выдачи (11.11.2026): кружок, пока
+                  // догружается следующая страница, и честная строка, когда
+                  // выдача кончилась. Без неё непонятно, это весь результат
+                  // или лента опять обрезана.
+                  if (state is ListingsSearchResults) ...[
+                    if (state.isLoadingMore)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: accentColor,
+                          ),
+                        ),
+                      )
+                    else if (!state.hasMore && listings.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 12,
+                          right: 12,
+                          top: 18,
+                        ),
+                        child: Text(
+                          'Это всё, что нашлось по запросу: ${listings.length}',
+                          style: const TextStyle(
+                            color: textMuted,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                  ],
+                  // 🔘 Показываем кнопку "Показать больше объявлений" если >= 24 объявлений.
+                  // В поиске её нет: она уводит в общий каталог и теряет запрос.
+                  if (state is! ListingsSearchResults && listings.length >= 24)
                     Padding(
                       padding: const EdgeInsets.only(
                         left: 12,

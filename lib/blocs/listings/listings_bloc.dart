@@ -80,6 +80,20 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// расходуются на каждую карточку.
   static const int homeFeedLimit = 200;
 
+  /// Сколько объявлений просим у сервера за один заход поиска (11.11.2026).
+  ///
+  /// Столько же, сколько у ленты: размер страницы задаёт клиент, сервер его
+  /// соблюдает.
+  static const int searchPageSize = 30;
+
+  /// Потолок поисковой выдачи.
+  ///
+  /// Он НЕ про «показать поменьше», а страховка от бесконечной прокрутки на
+  /// запрос вроде «а»: такой запрос совпадает почти со всем каталогом.
+  /// Александр 11.11.2026 просил полную выдачу, и тысяча объявлений это она
+  /// и есть, до неё не доходит ни один живой запрос.
+  static const int searchLimit = 1000;
+
   /// Размер порции при догрузке.
   ///
   /// Двенадцать: столько заказчик и обсуждал с фронтом, и столько же сервер
@@ -95,6 +109,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// игнорировал запрошенный размер), поэтому лента то перепрыгивала через
   /// десятки объявлений, то бесконечно перезапрашивала первую страницу.
   int _feedPage = 0;
+
+  /// Запрос и страница поисковой выдачи: по ним догружаем следующую.
+  String _lastSearchQuery = '';
+  int _searchPage = 0;
 
   /// Сколько раз подряд догрузка не принесла ничего нового.
   ///
@@ -140,6 +158,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   ListingsBloc() : super(ListingsInitial()) {
     on<LoadListingsEvent>(_onLoadListings);
     on<SearchListingsEvent>(_onSearchListings);
+    on<LoadMoreSearchResultsEvent>(_onLoadMoreSearchResults);
     on<FilterListingsByCategoryEvent>(_onFilterListingsByCategory);
     on<ResetFiltersEvent>(_onResetFilters);
     on<LoadAdvertEvent>(_onLoadAdvert);
@@ -513,7 +532,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // название компании) и сами компании с магазинами — одним заходом,
       // параллельно (задача 28, 24.09.2026).
       final results = await Future.wait([
-        ApiService.getAdverts(search: query, token: token, page: 1, limit: 50),
+        ApiService.getAdverts(
+          search: query,
+          token: token,
+          page: 1,
+          limit: searchPageSize,
+        ),
         CompaniesSearchService.search(query),
       ]);
 
@@ -529,7 +553,17 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
                 )
               : <home.Listing>[];
 
-      log.i('🔍 Поиск на бэкенде: "$query" | Найдено: ${searchResults.length}');
+      final meta = response.meta;
+      final int lastPage = meta.lastPage;
+      final int total = meta.total;
+
+      _lastSearchQuery = query;
+      _searchPage = 1;
+
+      log.i(
+        '🔍 Поиск на бэкенде: "$query" | На странице: ${searchResults.length}'
+        ' | Всего по запросу: $total',
+      );
 
       emit(
         ListingsSearchResults(
@@ -537,11 +571,106 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           query: event.query,
           categories: _cachedCategories,
           companies: companies,
+          currentPage: 1,
+          // Дальше есть что брать, если сервер говорит о следующих страницах
+          // и мы не упёрлись в потолок выдачи.
+          hasMore: lastPage > 1 && searchResults.length < searchLimit,
+          total: total,
         ),
       );
     } catch (e) {
       log.e('❌ Ошибка при поиске на бэкенде: $e');
       emit(ListingsError(message: e.toString()));
+    }
+  }
+
+  /// Догрузить следующую страницу поисковой выдачи (11.11.2026).
+  ///
+  /// ЗАЧЕМ. Поиск брал ровно первую страницу и на этом заканчивался. Человек
+  /// искал «квартира», получал полсотни штук и упирался в конец ленты, хотя
+  /// на сайте по тому же слову выдача полная. Александр 11.11.2026: обрезанная
+  /// лента, не продумано.
+  ///
+  /// Устроено так же, как догрузка главной: номер страницы держим сами,
+  /// повторы отсеиваем по номерам объявлений. Выводить номер из длины списка
+  /// нельзя, там убраны повторы, и счёт поедет.
+  ///
+  /// Компании второй раз не запрашиваем: они не постраничные и уже показаны
+  /// над объявлениями.
+  Future<void> _onLoadMoreSearchResults(
+    LoadMoreSearchResultsEvent event,
+    Emitter<ListingsState> emit,
+  ) async {
+    if (state is! ListingsSearchResults) return;
+
+    final currentState = state as ListingsSearchResults;
+
+    if (!currentState.hasMore ||
+        currentState.isLoadingMore ||
+        _lastSearchQuery.isEmpty ||
+        currentState.searchResults.length >= searchLimit) {
+      return;
+    }
+
+    emit(currentState.copyWith(isLoadingMore: true));
+
+    try {
+      final token = await TokenService.getCurrentToken();
+      final nextPage = _searchPage + 1;
+
+      final response = await ApiService.getAdverts(
+        search: _lastSearchQuery,
+        token: token,
+        page: nextPage,
+        limit: searchPageSize,
+      );
+
+      // Пока ходили на сервер, человек мог начать новый поиск. Тогда наш
+      // ответ относится к прошлому запросу, и подмешивать его нельзя.
+      if (state is! ListingsSearchResults ||
+          (state as ListingsSearchResults).query.trim() != _lastSearchQuery) {
+        return;
+      }
+
+      final List<home.Listing> page = response.data.isNotEmpty
+          ? await compute<List<Advert>, List<home.Listing>>(
+              (adverts) => _parseAdvertsOnBackgroundThread(adverts),
+              response.data,
+            )
+          : <home.Listing>[];
+
+      _searchPage = nextPage;
+
+      final seenIds = currentState.searchResults.map((l) => l.id).toSet();
+      final fresh = page.where((l) => !seenIds.contains(l.id)).toList();
+
+      final merged = [
+        ...currentState.searchResults,
+        ...fresh,
+      ].take(searchLimit).toList();
+
+      final int lastPage = response.meta.lastPage;
+
+      emit(
+        currentState.copyWith(
+          searchResults: merged,
+          currentPage: nextPage,
+          // Останавливаемся, если страницы кончились, упёрлись в потолок или
+          // страница пришла, но вся состояла из уже показанного.
+          hasMore: nextPage < lastPage &&
+              merged.length < searchLimit &&
+              fresh.isNotEmpty,
+          isLoadingMore: false,
+        ),
+      );
+    } catch (e) {
+      log.d('Не удалось догрузить страницу поиска: $e');
+
+      // Найденное НЕ выбрасываем: человек листает, и пустой экран вместо
+      // выдачи был бы хуже, чем отсутствие следующей страницы.
+      if (state is ListingsSearchResults) {
+        emit((state as ListingsSearchResults).copyWith(isLoadingMore: false));
+      }
     }
   }
 

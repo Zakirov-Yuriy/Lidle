@@ -80,12 +80,51 @@ class ListingsSearchResults extends ListingsState {
   /// карточками над объявлениями, нажатие ведёт на витрину продавца.
   final List<CompanySearchItem> companies;
 
+  /// Какая страница выдачи уже загружена (11.11.2026).
+  final int currentPage;
+
+  /// Есть ли что догружать дальше.
+  ///
+  /// Раньше поиск брал ровно первую страницу и на этом останавливался:
+  /// человек искал «квартира», получал полсотни штук и упирался в конец,
+  /// хотя на сайте по тому же слову выдача полная.
+  final bool hasMore;
+
+  /// Идёт ли догрузка прямо сейчас: по ней показываем кружок внизу списка.
+  final bool isLoadingMore;
+
+  /// Сколько всего нашлось по запросу, по словам сервера.
+  final int total;
+
   ListingsSearchResults({
     required this.searchResults,
     required this.query,
     this.categories = const [],
     this.companies = const [],
+    this.currentPage = 1,
+    this.hasMore = false,
+    this.isLoadingMore = false,
+    this.total = 0,
   });
+
+  ListingsSearchResults copyWith({
+    List<Listing>? searchResults,
+    int? currentPage,
+    bool? hasMore,
+    bool? isLoadingMore,
+    int? total,
+  }) {
+    return ListingsSearchResults(
+      searchResults: searchResults ?? this.searchResults,
+      query: query,
+      categories: categories,
+      companies: companies,
+      currentPage: currentPage ?? this.currentPage,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      total: total ?? this.total,
+    );
+  }
 }
 
 /// Состояние фильтрации объявлений по категории.
