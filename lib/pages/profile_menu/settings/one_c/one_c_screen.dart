@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lidle/services/one_c_service.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class OneCScreen extends StatefulWidget {
   const OneCScreen({super.key});
@@ -139,6 +140,10 @@ class _OneCScreenState extends State<OneCScreen> {
         children: [
           _shopCard(state),
           const SizedBox(height: 12),
+          if (state.processorReady) ...[
+            _processorCard(state),
+            const SizedBox(height: 12),
+          ],
           if (!state.connected) _notConnectedCard() else ...[
             _urlsCard(state),
             const SizedBox(height: 12),
@@ -230,6 +235,49 @@ class _OneCScreenState extends State<OneCScreen> {
           ),
           const SizedBox(height: 14),
           _button('Подключить обмен', accentColor, _connect),
+        ],
+      ),
+    );
+  }
+
+  /// Готовая обработка для 1С.
+  ///
+  /// СТОИТ ВЫШЕ АДРЕСОВ НАРОЧНО. Адреса нужны тому, кто пишет выгрузку сам, а
+  /// это меньшинство. Большинству нужен файл: открыл в своей 1С, вставил ключ,
+  /// нажал кнопку. Поэтому наверху лежит короткая дорога, а длинная под ней.
+  ///
+  /// Показываем и до подключения обмена: человек сначала смотрит, что вообще
+  /// придётся делать, и только потом решает подключаться.
+  Widget _processorCard(OneCState state) {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _title('Готовый файл для 1С'),
+          const SizedBox(height: 6),
+          const Text(
+            'Скачайте файл и откройте его в своей 1С через Файл, Открыть. '
+            'Он сам найдёт в вашей базе товары, цены и остатки. Останется '
+            'вставить ключ, выбрать вид цен и нажать выгрузить. Программист '
+            'для этого не нужен.',
+            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          _button('Скачать обработку для 1С', accentColor, () async {
+            final uri = Uri.tryParse(state.processorUrl);
+
+            if (uri == null) {
+              _say('Ссылка на файл не пришла, обновите экран');
+
+              return;
+            }
+
+            // Внешним приложением: файл скачивает браузер, внутри приложения
+            // его всё равно некуда положить.
+            final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+            if (!ok) _say('Не удалось открыть ссылку');
+          }),
         ],
       ),
     );

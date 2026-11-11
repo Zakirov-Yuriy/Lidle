@@ -18,6 +18,8 @@ class OneCState {
     required this.pingUrl,
     required this.catalogUrl,
     required this.pricesUrl,
+    required this.processorUrl,
+    required this.processorReady,
     required this.catalogLastAt,
     required this.catalogItems,
     required this.pricesLastAt,
@@ -48,6 +50,14 @@ class OneCState {
   final String catalogUrl;
   final String pricesUrl;
 
+  /// Готовый файл обработки для 1С.
+  ///
+  /// `processorReady` отличает «файла пока нет» от «ссылка не приехала». Пока
+  /// он false, кнопку не рисуем вовсе: ведущая в никуда кнопка хуже, чем её
+  /// отсутствие.
+  final String processorUrl;
+  final bool processorReady;
+
   /// Состояние каналов ПОРОЗНЬ: каталог ходит раз в сутки, цены каждые
   /// четверть часа, и общее «последний обмен» врало бы про оба.
   final String catalogLastAt;
@@ -76,6 +86,7 @@ class OneCState {
     final catalog = (data['catalog'] as Map?) ?? const {};
     final prices = (data['prices'] as Map?) ?? const {};
     final billing = (data['billing'] as Map?) ?? const {};
+    final processor = (data['processor'] as Map?) ?? const {};
 
     return OneCState(
       shopId: _int(shop['id']),
@@ -86,6 +97,8 @@ class OneCState {
       pingUrl: '${urls['ping'] ?? ''}',
       catalogUrl: '${urls['catalog'] ?? ''}',
       pricesUrl: '${urls['prices'] ?? ''}',
+      processorUrl: '${processor['url'] ?? ''}',
+      processorReady: processor['ready'] == true,
       catalogLastAt: '${catalog['last_at'] ?? ''}',
       catalogItems: _int(catalog['items']),
       pricesLastAt: '${prices['last_at'] ?? ''}',
