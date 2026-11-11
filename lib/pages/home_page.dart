@@ -121,10 +121,36 @@ class _HomePageState extends State<HomePage>
     // Вызывается когда экран вернулся на передний план (Navigator.pop был вызван)
     super.didPopNext();
     // log.d('⬅️ Вернулись на HomePage');
-    
+
+    final bloc = context.read<ListingsBloc>();
+
+    // ПОИСК НЕ ТЕРЯЕМ (11.11.2026).
+    //
+    // Было так: человек искал «дом», открывал объявление, возвращался назад и
+    // видел обычную ленту, хотя слово в строке поиска осталось. Причина ниже:
+    // возврат восстанавливает ленту из кэша и просит её обновить, а про
+    // поиск не знает ничего.
+    //
+    // Если выдача ещё цела, не трогаем её вовсе. Если нет, повторяем поиск, а
+    // не подменяем его лентой.
+    final activeSearch = _searchQuery.trim();
+
+    if (activeSearch.isNotEmpty) {
+      if (bloc.state is! ListingsSearchResults) {
+        bloc.add(SearchListingsEvent(query: activeSearch));
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_globalScrollPosition > 0 && _scrollController.hasClients) {
+          _scrollController.jumpTo(_globalScrollPosition);
+        }
+      });
+
+      return;
+    }
+
     // 🟢 СЛОЙ 1: Восстанавливаем ИЗ КЕША (если доступны данные)
     // Даже если API не отвечает, пользователь видит кешированные данные
-    final bloc = context.read<ListingsBloc>();
     final cachedState = bloc.restoreCachedData();
     
     if (cachedState != null) {
@@ -1148,29 +1174,48 @@ class _HomePageState extends State<HomePage>
               // ТОЧНЫЕ СОВПАДЕНИЯ ОТДЕЛЬНО (11.11.2026).
               //
               // Александр: пишешь «дом», а в выдаче вперемешку квартиры и
-              // гаражи. Так и было: сервер ищет ещё и в описании, и у
-              // квартиры в описании слово «дом» встречается постоянно.
+              // гаражи. Сервер ищет ещё и в описании, и у квартиры в описании
+              // слово «дом» встречается постоянно. Убирать такие объявления
+              // нельзя, иначе перестанет работать поиск по тексту. Поэтому
+              // делим выдачу надвое и показываем, где кончается то, что
+              // человек искал.
               //
-              // Убирать такие объявления нельзя, иначе перестанет работать
-              // поиск по тексту объявления. Поэтому делим выдачу надвое: то,
-              // где слово стоит в НАЗВАНИИ, и всё остальное под отдельным
-              // заголовком. Ничего не теряется, но видно, где кончается то,
-              // что человек искал.
+              // ЧТО СЧИТАЕМ ТОЧНЫМ СОВПАДЕНИЕМ. Сначала смотрим на РАЗДЕЛ, и
+              // только если по разделу не совпало ни одно объявление, на
+              // заголовок.
+              //
+              // Иначе объявление «Трёхкомнатная квартира 100 м2 с бассейном
+              // В ДОМЕ» попадало бы в точные совпадения на запрос «дом»: в
+              // заголовке слово есть. Но это квартира, и говорит об этом
+              // раздел, а не название.
+              //
+              // На запрос «квартира» всё наоборот: раздел называется «Продажа
+              // квартир», и слово «квартира» в него подстрокой не входит,
+              // зато входит в заголовки. Поэтому правило и двухступенчатое.
               final searchQuery = searchState?.query.trim().toLowerCase() ?? '';
 
-              final splitSearch = searchQuery.isNotEmpty;
+              List<Listing> exactListings = listings;
+              List<Listing> otherListings = const <Listing>[];
 
-              final exactListings = splitSearch
-                  ? listings
-                      .where((l) => l.title.toLowerCase().contains(searchQuery))
-                      .toList()
-                  : listings;
+              if (searchQuery.isNotEmpty) {
+                bool byCategory(Listing l) =>
+                    (l.categoryPath ?? '').toLowerCase().contains(searchQuery);
 
-              final otherListings = splitSearch
-                  ? listings
-                      .where((l) => !l.title.toLowerCase().contains(searchQuery))
-                      .toList()
-                  : const <Listing>[];
+                bool byTitle(Listing l) =>
+                    l.title.toLowerCase().contains(searchQuery);
+
+                final matches = listings.any(byCategory) ? byCategory : byTitle;
+
+                final exact = listings.where(matches).toList();
+                final rest = listings.where((l) => !matches(l)).toList();
+
+                // Совпало только по описанию или по продавцу: делить нечего,
+                // показываем одним списком, как было.
+                if (exact.isNotEmpty) {
+                  exactListings = exact;
+                  otherListings = rest;
+                }
+              }
 
               Widget buildGrid(List<Listing> items) => GridView.builder(
                     padding: const EdgeInsets.only(left: 12, right: 12),
