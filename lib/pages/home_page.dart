@@ -1060,6 +1060,11 @@ class _HomePageState extends State<HomePage>
         ? state.filteredListings
         : <Listing>[];
 
+    // Поисковое состояние отдельной переменной: внутри вложенных замыканий
+    // ниже на сужение типа по `state is ...` полагаться не стоит.
+    final ListingsSearchResults? searchState =
+        state is ListingsSearchResults ? state : null;
+
     // Компании и магазины, найденные по той же строке (задача 28,
     // 24.09.2026): человек ищет «ZAC» и должен увидеть саму компанию.
     final companies = state is ListingsSearchResults && _searchQuery.trim().isNotEmpty
@@ -1140,9 +1145,34 @@ class _HomePageState extends State<HomePage>
               if (itemWidth < 170) tileHeight = 275;
               if (itemWidth < 140) tileHeight = 300;
 
-              return Column(
-                children: [
-                  GridView.builder(
+              // ТОЧНЫЕ СОВПАДЕНИЯ ОТДЕЛЬНО (11.11.2026).
+              //
+              // Александр: пишешь «дом», а в выдаче вперемешку квартиры и
+              // гаражи. Так и было: сервер ищет ещё и в описании, и у
+              // квартиры в описании слово «дом» встречается постоянно.
+              //
+              // Убирать такие объявления нельзя, иначе перестанет работать
+              // поиск по тексту объявления. Поэтому делим выдачу надвое: то,
+              // где слово стоит в НАЗВАНИИ, и всё остальное под отдельным
+              // заголовком. Ничего не теряется, но видно, где кончается то,
+              // что человек искал.
+              final searchQuery = searchState?.query.trim().toLowerCase() ?? '';
+
+              final splitSearch = searchQuery.isNotEmpty;
+
+              final exactListings = splitSearch
+                  ? listings
+                      .where((l) => l.title.toLowerCase().contains(searchQuery))
+                      .toList()
+                  : listings;
+
+              final otherListings = splitSearch
+                  ? listings
+                      .where((l) => !l.title.toLowerCase().contains(searchQuery))
+                      .toList()
+                  : const <Listing>[];
+
+              Widget buildGrid(List<Listing> items) => GridView.builder(
                     padding: const EdgeInsets.only(left: 12, right: 12),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
@@ -1150,29 +1180,57 @@ class _HomePageState extends State<HomePage>
                       mainAxisSpacing: 0,
                       mainAxisExtent: tileHeight,
                     ),
-                    itemCount: listings.length,
+                    itemCount: items.length,
                     itemBuilder: (context, index) {
                       return ListingCard(
-                        listing: listings[index],
+                        listing: items[index],
                         countImpression: true,
                         onBeforeNavigate: () {
                           // 💾 Сохраняем позицию скролла перед навигацией
                           if (_scrollController.hasClients) {
-                            _globalScrollPosition = _scrollController.position.pixels;
-                            log.d('💾 Сохранена позиция перед навигацией: $_globalScrollPosition');
+                            _globalScrollPosition =
+                                _scrollController.position.pixels;
                           }
                         },
                       );
                     },
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                  ),
+                  );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  buildGrid(exactListings),
+                  if (otherListings.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'Ещё по запросу',
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 12, right: 12, top: 2),
+                      child: Text(
+                        'Слово встретилось в описании или у продавца',
+                        style: TextStyle(color: textMuted, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    buildGrid(otherListings),
+                  ],
                   // Подвал ПОИСКОВОЙ выдачи (11.11.2026): кружок, пока
                   // догружается следующая страница, и честная строка, когда
                   // выдача кончилась. Без неё непонятно, это весь результат
                   // или лента опять обрезана.
-                  if (state is ListingsSearchResults) ...[
-                    if (state.isLoadingMore)
+                  if (searchState != null) ...[
+                    if (searchState.isLoadingMore)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 20),
                         child: SizedBox(
@@ -1184,7 +1242,7 @@ class _HomePageState extends State<HomePage>
                           ),
                         ),
                       )
-                    else if (!state.hasMore && listings.isNotEmpty)
+                    else if (!searchState.hasMore && listings.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(
                           left: 12,
@@ -1202,7 +1260,7 @@ class _HomePageState extends State<HomePage>
                   ],
                   // 🔘 Показываем кнопку "Показать больше объявлений" если >= 24 объявлений.
                   // В поиске её нет: она уводит в общий каталог и теряет запрос.
-                  if (state is! ListingsSearchResults && listings.length >= 24)
+                  if (searchState == null && listings.length >= 24)
                     Padding(
                       padding: const EdgeInsets.only(
                         left: 12,
