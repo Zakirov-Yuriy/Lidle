@@ -20,6 +20,8 @@ class OneCState {
     required this.pricesUrl,
     required this.processorUrl,
     required this.processorReady,
+    required this.docsUrl,
+    required this.docsReady,
     required this.catalogLastAt,
     required this.catalogItems,
     required this.pricesLastAt,
@@ -57,6 +59,14 @@ class OneCState {
   /// отсутствие.
   final String processorUrl;
   final bool processorReady;
+
+  /// Инструкция для программиста компании, файлом.
+  ///
+  /// Лежит рядом с адресами, под той же раскрывашкой: кому нужны адреса, тому
+  /// нужна и она. Своей выгрузке мало ключа, нужны ещё названия полей, формат
+  /// и признак полной выгрузки.
+  final String docsUrl;
+  final bool docsReady;
 
   /// Состояние каналов ПОРОЗНЬ: каталог ходит раз в сутки, цены каждые
   /// четверть часа, и общее «последний обмен» врало бы про оба.
@@ -114,6 +124,7 @@ class OneCState {
     final prices = (data['prices'] as Map?) ?? const {};
     final billing = (data['billing'] as Map?) ?? const {};
     final processor = (data['processor'] as Map?) ?? const {};
+    final docs = (data['docs'] as Map?) ?? const {};
 
     return OneCState(
       shopId: _int(shop['id']),
@@ -126,6 +137,8 @@ class OneCState {
       pricesUrl: '${urls['prices'] ?? ''}',
       processorUrl: '${processor['url'] ?? ''}',
       processorReady: processor['ready'] == true,
+      docsUrl: '${docs['url'] ?? ''}',
+      docsReady: docs['ready'] == true,
       catalogLastAt: '${catalog['last_at'] ?? ''}',
       catalogItems: _int(catalog['items']),
       pricesLastAt: '${prices['last_at'] ?? ''}',

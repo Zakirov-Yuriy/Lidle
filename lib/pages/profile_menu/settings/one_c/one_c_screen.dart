@@ -453,6 +453,43 @@ class _OneCScreenState extends State<OneCScreen> {
             _urlRow('Проверка ключа', state.pingUrl),
             _urlRow('Каталог, раз в сутки', state.catalogUrl),
             _urlRow('Цены и остатки, часто', state.pricesUrl),
+            const SizedBox(height: 14),
+
+            /*
+             * ИНСТРУКЦИЯ ЛЕЖИТ ЗДЕСЬ ЖЕ, А НЕ ОТДЕЛЬНОЙ КАРТОЧКОЙ.
+             *
+             * Кому нужны адреса, тому нужна и она: своей выгрузке мало ключа,
+             * нужны названия полей, формат, признак полной выгрузки и разбор
+             * ответов. Продавцу она не нужна вовсе, поэтому и прячется вместе
+             * с адресами.
+             */
+            if (state.docsReady) ...[
+              const Text(
+                'Полное описание обмена: адреса, названия полей, примеры '
+                'выгрузок, ответы и ошибки. Передайте программисту вместе с '
+                'адресами.',
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _button('Скачать документацию', cardColor, () async {
+                final uri = Uri.tryParse(state.docsUrl);
+
+                if (uri == null) {
+                  _say('Ссылка на документацию не пришла, обновите экран');
+
+                  return;
+                }
+
+                final ok =
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+                if (!ok) _say('Не удалось открыть ссылку');
+              }),
+            ],
             const SizedBox(height: 6),
           ],
         ),
