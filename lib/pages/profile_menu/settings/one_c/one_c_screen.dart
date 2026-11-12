@@ -552,6 +552,40 @@ class _OneCScreenState extends State<OneCScreen> {
           ),
           _line('Каталог', _when(state.catalogLastAt, state.catalogItems)),
           _line('Цены и остатки', _when(state.pricesLastAt, state.pricesItems)),
+
+          /*
+           * ЖДУТ НАШЕГО РАЗБОРА (12.11.2026).
+           *
+           * Товар заводится, только если мы узнали его раздел. Названия групп
+           * у каждой компании свои, поэтому часть каталога на первой выгрузке
+           * не заводится, и человек ищет причину у себя: в ключе, в правах, в
+           * настройках обмена.
+           *
+           * Поэтому говорим прямо: товары не пропали, их разбираем мы, и от
+           * компании сейчас ничего не нужно.
+           */
+          if (state.waitingItems > 0) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Ждут нашего разбора: ${state.waitingItems} позиций '
+                'в ${state.waitingGroups} группах. Это товары, разделы которых '
+                'мы пока не сопоставили со своими. Мы это сделаем и сообщим, '
+                'после чего выгрузите каталог ещё раз. От вас сейчас ничего '
+                'не нужно.',
+                style: const TextStyle(
+                  color: textSecondary,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -22,6 +22,8 @@ class OneCState {
     required this.processorReady,
     required this.docsUrl,
     required this.docsReady,
+    required this.waitingGroups,
+    required this.waitingItems,
     required this.catalogLastAt,
     required this.catalogItems,
     required this.pricesLastAt,
@@ -67,6 +69,14 @@ class OneCState {
   /// и признак полной выгрузки.
   final String docsUrl;
   final bool docsReady;
+
+  /// Сколько групп товаров ждёт, пока площадка сопоставит их со своими
+  /// разделами, и сколько позиций из-за этого не завелось.
+  ///
+  /// Компании это нужно, чтобы не искать причину у себя: товары не
+  /// пропали и выгрузка не сломана, их разбирают на нашей стороне.
+  final int waitingGroups;
+  final int waitingItems;
 
   /// Состояние каналов ПОРОЗНЬ: каталог ходит раз в сутки, цены каждые
   /// четверть часа, и общее «последний обмен» врало бы про оба.
@@ -125,6 +135,7 @@ class OneCState {
     final billing = (data['billing'] as Map?) ?? const {};
     final processor = (data['processor'] as Map?) ?? const {};
     final docs = (data['docs'] as Map?) ?? const {};
+    final waiting = (data['waiting'] as Map?) ?? const {};
 
     return OneCState(
       shopId: _int(shop['id']),
@@ -139,6 +150,8 @@ class OneCState {
       processorReady: processor['ready'] == true,
       docsUrl: '${docs['url'] ?? ''}',
       docsReady: docs['ready'] == true,
+      waitingGroups: _int(waiting['groups']),
+      waitingItems: _int(waiting['items']),
       catalogLastAt: '${catalog['last_at'] ?? ''}',
       catalogItems: _int(catalog['items']),
       pricesLastAt: '${prices['last_at'] ?? ''}',
