@@ -80,6 +80,33 @@ class OneCState {
   final String subscriptionStatus;
   final String endsAt;
 
+  /// Имя сервера без схемы и пути: ровно то, что вставляют в поле «Сервер»
+  /// готовой обработки.
+  ///
+  /// Берём его ИЗ АДРЕСА, который уже пришёл с сервера, а не из настроек
+  /// сборки. Так в приложении, собранном на дев, покажется дев, а на проде
+  /// прод, и расходиться им негде.
+  String get serverHost {
+    final uri = Uri.tryParse(pingUrl);
+
+    return uri == null ? '' : uri.host;
+  }
+
+  /// Ключ обмена, вынутый из адреса `/v1/1c/{ключ}/ping`.
+  ///
+  /// Отдельным полем сервер его не отдаёт, и заводить это поле ради экрана
+  /// незачем: ключ и так стоит в каждом адресе.
+  String get token {
+    final uri = Uri.tryParse(pingUrl);
+
+    if (uri == null) return '';
+
+    final parts = uri.pathSegments;
+    final at = parts.indexOf('1c');
+
+    return (at >= 0 && at + 1 < parts.length) ? parts[at + 1] : '';
+  }
+
   static OneCState fromJson(Map<String, dynamic> data) {
     final shop = (data['shop'] as Map?) ?? const {};
     final urls = (data['urls'] as Map?) ?? const {};

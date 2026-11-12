@@ -299,7 +299,85 @@ class _OneCScreenState extends State<OneCScreen> {
           _step(4, '1С спросит, можно ли открывать этот файл. Нажмите Да.'),
           _step(5, 'В открывшемся окне нажмите Что нашлось в базе: обработка сама '
               'покажет, где у вас лежат цены и остатки.'),
-          _step(6, 'Вставьте ключ, выберите вид цены и нажмите Выгрузить на ЛИДЛ.'),
+          _step(6, 'Впишите адрес сервера и ключ из полей ниже, выберите вид цены '
+              'и нажмите Выгрузить на ЛИДЛ.'),
+
+          /*
+           * АДРЕС СЕРВЕРА И КЛЮЧ ПРЯМО ЗДЕСЬ, ПОД ПАМЯТКОЙ.
+           *
+           * Продавец открыл обработку и видит пустое поле «Сервер». Откуда ему
+           * знать наш адрес? Ниже в карточке адресов он есть, но внутри длинной
+           * ссылки вместе с ключом, и выковырять из неё хост человек не должен.
+           *
+           * Поэтому показываем ровно два значения, ровно в том виде, в каком их
+           * вставляют в обработку. Хост берётся из адреса, пришедшего с
+           * сервера, поэтому на дев-сборке покажется дев, на проде прод.
+           */
+          // До подключения обмена ключа ещё нет, и показывать пустые поля
+          // незачем: человек решит, что чего-то не хватает.
+          if (state.token.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            _title('Что вставить в обработку'),
+            const SizedBox(height: 2),
+            const Text(
+              'Два поля в открывшемся окне 1С. Больше ничего вводить не нужно.',
+              style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+            ),
+            _copyRow('Сервер', state.serverHost, 'Адрес сервера скопирован'),
+            _copyRow('Ключ', state.token, 'Ключ скопирован'),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Строка «подпись, значение, кнопка скопировать».
+  ///
+  /// Отдельно от `_urlRow`: там значение это длинная ссылка мелким шрифтом, а
+  /// здесь короткое значение, которое человек сверяет глазами с тем, что
+  /// вставил в 1С.
+  Widget _copyRow(String label, String value, String said) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(color: textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SelectableText(
+                    value.isEmpty ? 'нет данных' : value,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: value.isEmpty
+                ? null
+                : () {
+                    Clipboard.setData(ClipboardData(text: value));
+                    _say(said);
+                  },
+            child: const Text(
+              'Скопировать',
+              style: TextStyle(color: accentColor, fontSize: 13),
+            ),
+          ),
         ],
       ),
     );
@@ -341,23 +419,43 @@ class _OneCScreenState extends State<OneCScreen> {
     );
   }
 
+  /// Три адреса целиком, с ключом внутри.
+  ///
+  /// СПРЯТАНЫ ПОД РАСКРЫВАШКУ НАРОЧНО (12.11.2026). С готовой обработкой они
+  /// не нужны: она собирает адреса сама из имени сервера и ключа, которые
+  /// стоят выше. Раскрытыми они отвечали на вопрос, которого у продавца нет,
+  /// и мешали найти то, что ему правда нужно.
+  ///
+  /// Но и убирать их нельзя. Компания с переделанной базой, где обработка не
+  /// найдёт поля, пишет выгрузку сама, и тогда адреса единственный способ их
+  /// узнать. Отдельно нужен и адрес цен: обработка гонит цены вместе с
+  /// каталогом, а своя выгрузка может обновлять их каждые четверть часа
+  /// отдельно.
   Widget _urlsCard(OneCState state) {
     return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _title('Адреса для вашей 1С'),
-          const SizedBox(height: 6),
-          const Text(
-            'Передайте их программисту. Ключ уже внутри адреса, отдельно '
-            'ничего вставлять не нужно.',
-            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.zero,
+          iconColor: textSecondary,
+          collapsedIconColor: textSecondary,
+          title: _title('Если выгрузку пишет ваш программист'),
+          subtitle: const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              'Адреса для своей выгрузки, ключ уже внутри. С готовым файлом '
+              'они не нужны.',
+              style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+            ),
           ),
-          const SizedBox(height: 10),
-          _urlRow('Проверка ключа', state.pingUrl),
-          _urlRow('Каталог, раз в сутки', state.catalogUrl),
-          _urlRow('Цены и остатки, часто', state.pricesUrl),
-        ],
+          children: [
+            _urlRow('Проверка ключа', state.pingUrl),
+            _urlRow('Каталог, раз в сутки', state.catalogUrl),
+            _urlRow('Цены и остатки, часто', state.pricesUrl),
+            const SizedBox(height: 6),
+          ],
+        ),
       ),
     );
   }
