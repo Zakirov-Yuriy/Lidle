@@ -252,7 +252,7 @@ class _HomePageState extends State<HomePage>
     _isShareInProgress = true;
     try {
       await Share.share(
-        'Присоединяйся к ЛИДЛ LIDLE! 🚀\n\n'
+        'Присоединяйся к ЛИДЛЕ LIDLE! 🚀\n\n'
         'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
         'Скачай приложение и получи эксклюзивные предложения!\n\n'
         '${AppConfig().websiteUrl}',

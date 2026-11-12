@@ -1,5 +1,5 @@
 // ============================================================
-// "Хелперы: TextSpan заголовки в стиле ЛИДЛ LIDLE"
+// "Хелперы: TextSpan заголовки в стиле ЛИДЛЕ LIDLE"
 // ============================================================
 // Функции для создания фирменных заголовков где prefix
 // отображается белым, а "LIDLE" — синим акцентным цветом.
@@ -8,15 +8,15 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 
-/// Универсальная функция для заголовков в стиле "ТЕКСТ ЛИДЛ [LIDLE]".
+/// Универсальная функция для заголовков в стиле "ТЕКСТ ЛИДЛЕ [LIDLE]".
 ///
-/// [prefix] — текст перед LIDLE (например 'Поддержка ЛИДЛ ')
+/// [prefix] — текст перед LIDLE (например 'Поддержка ЛИДЛЕ ')
 /// [fontSize] — размер шрифта prefix (по умолчанию 16)
 /// [fontWeight] — вес шрифта (по умолчанию w400)
 ///
 /// Пример:
 /// ```dart
-/// RichText(text: TextSpan(children: getLidleTitleSpans('Поддержка ЛИДЛ ')))
+/// RichText(text: TextSpan(children: getLidleTitleSpans('Поддержка ЛИДЛЕ ')))
 /// ```
 List<TextSpan> getLidleTitleSpans(
   String prefix, {
@@ -46,13 +46,13 @@ List<TextSpan> getLidleTitleSpans(
 // ── Обёртки для удобства ──────────────────────────────────────
 
 List<TextSpan> getCapabilitiesTitleSpans() =>
-    getLidleTitleSpans('Возможности ЛИДЛ ');
+    getLidleTitleSpans('Возможности ЛИДЛЕ ');
 
 List<TextSpan> getAppTitleSpans() =>
-    getLidleTitleSpans('ЛИДЛ ');
+    getLidleTitleSpans('ЛИДЛЕ ');
 
 List<TextSpan> getSupportTitleSpans() =>
-    getLidleTitleSpans('Поддержка ЛИДЛ ', fontSize: 18, fontWeight: FontWeight.w500);
+    getLidleTitleSpans('Поддержка ЛИДЛЕ ', fontSize: 18, fontWeight: FontWeight.w500);
 
 List<TextSpan> getCategoriesTitleSpans() =>
-    getLidleTitleSpans('Предложения на ЛИДЛ ');
+    getLidleTitleSpans('Предложения на ЛИДЛЕ ');

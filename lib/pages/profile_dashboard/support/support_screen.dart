@@ -100,7 +100,7 @@ class SupportScreen extends StatelessWidget {
                           imagePath: 'assets/support/support.png',
                           iconBg: Color(0xFF4DA3FF),
                           title: 'Поддержка',
-                          subtitle: 'Все вопросы про  ЛИДЛ Lidle \nможете задать тут',
+                          subtitle: 'Все вопросы про  ЛИДЛЕ Lidle \nможете задать тут',
                           onTap: () => Navigator.pushNamed(context, SupportContactFormPage.routeName),
                         ),
                       ],

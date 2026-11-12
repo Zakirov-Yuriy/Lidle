@@ -1489,7 +1489,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     return tp.width;
   }
 
-  /// Строка «На ЛИДЛ LIDLE c ДАТА · Оценка: ⭐ 5».
+  /// Строка «На ЛИДЛЕ LIDLE c ДАТА · Оценка: ⭐ 5».
   /// Адаптив: если не помещается по ширине — «LIDLE» уменьшается с 10 до 7,
   /// а если и тогда не влезает — «LIDLE» скрывается совсем.
   Widget _buildRegistrationRow() {
@@ -1513,7 +1513,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
     // Спаны даты без «LIDLE».
     const prefixSpan = TextSpan(
-      text: 'На ЛИДЛ ',
+      text: 'На ЛИДЛЕ ',
       style: TextStyle(color: textSecondary, fontSize: fs),
     );
     // Полная дата («дд.мм.гггг») и компактная — только год («гггг»).

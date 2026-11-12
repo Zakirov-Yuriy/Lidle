@@ -157,8 +157,8 @@ class SupportChatPage extends StatelessWidget {
             //     spacing: 8,
             //     runSpacing: 8,
             //     children: const [
-            //       _QuickChip(title: 'Что такое ЛИДЛ'),
-            //       _QuickChip(title: 'Что может ЛИДЛ'),
+            //       _QuickChip(title: 'Что такое ЛИДЛЕ'),
+            //       _QuickChip(title: 'Что может ЛИДЛЕ'),
             //       _QuickChip(title: 'Как вернуть деньги'),
             //       _QuickChip(title: 'Как забрать товар'),
             //     ],

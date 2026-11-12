@@ -58,9 +58,9 @@ const double bottomNavPaddingBottom = 0.0;
 //  Текстовые строки
 // ============================================================
 
-const String appTitle = 'ЛИДЛ LIDLE';
+const String appTitle = 'ЛИДЛЕ LIDLE';
 const String searchPlaceholder = 'Поиск';
-const String categoriesTitle = 'Предложения на ЛИДЛ LIDLE';
+const String categoriesTitle = 'Предложения на ЛИДЛЕ LIDLE';
 const String viewAll = 'Смотреть все';
 const String latestTitle = 'Самое новое';
 
