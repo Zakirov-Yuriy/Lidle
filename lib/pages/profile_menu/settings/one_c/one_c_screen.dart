@@ -278,6 +278,64 @@ class _OneCScreenState extends State<OneCScreen> {
 
             if (!ok) _say('Не удалось открыть ссылку');
           }),
+          const SizedBox(height: 14),
+          _title('Что делать со скачанным файлом'),
+          const SizedBox(height: 8),
+
+          /*
+           * ПАМЯТКА ПОКАЗАНА СРАЗУ, А НЕ СПРЯТАНА ПОД ССЫЛКОЙ.
+           *
+           * Продавец видит файл обработки впервые в жизни и не знает про него
+           * ничего: ни что его открывают через меню, ни что 1С спросит про
+           * безопасность. Проверено 11.11.2026 на человеке, который точно
+           * знал, чего хочет, и всё равно не открыл файл с первого раза.
+           *
+           * Шесть строк мелким шрифтом дешевле одного звонка в поддержку.
+           */
+          _step(1, 'Откройте свою 1С, ту базу, товары из которой нужны на витрине.'),
+          _step(2, 'Нажмите Ctrl и латинскую O. Если не сработало, нажмите три '
+              'полоски слева вверху, выберите Файл, потом Открыть.'),
+          _step(3, 'Укажите скачанный файл VygruzkaNaLidl.epf, обычно он в Загрузках.'),
+          _step(4, '1С спросит, можно ли открывать этот файл. Нажмите Да.'),
+          _step(5, 'В открывшемся окне нажмите Что нашлось в базе: обработка сама '
+              'покажет, где у вас лежат цены и остатки.'),
+          _step(6, 'Вставьте ключ, выберите вид цены и нажмите Выгрузить на ЛИДЛ.'),
+        ],
+      ),
+    );
+  }
+
+  /// Шаг памятки: номер в кружке и текст.
+  Widget _step(int number, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$number',
+              style: const TextStyle(color: accentColor, fontSize: 12),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: textSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
         ],
       ),
     );
