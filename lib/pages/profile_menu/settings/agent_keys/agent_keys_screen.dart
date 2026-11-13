@@ -20,6 +20,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lidle/services/agent_keys_service.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/components/help_tile.dart';
+import 'package:lidle/services/help_service.dart';
 
 class AgentKeysScreen extends StatefulWidget {
   const AgentKeysScreen({super.key});
@@ -123,6 +125,12 @@ class _AgentKeysScreenState extends State<AgentKeysScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(25, 16, 25, 24),
                 children: [
+                  // Инструкция по подключению (задача 94, 13.11.2026).
+                  // Текст лежит на сервере и правится в админке.
+                  const HelpTile(
+                    slug: HelpService.mcp,
+                    margin: EdgeInsets.only(bottom: 20),
+                  ),
                   const Text(
                     'Ключ нужен, чтобы ваш помощник работал на площадке за вас: '
                     'искал, бронировал, подавал объявления и оформлял заказы. '

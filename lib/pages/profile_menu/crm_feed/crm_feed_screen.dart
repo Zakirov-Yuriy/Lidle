@@ -27,6 +27,8 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/widgets/components/help_tile.dart';
+import 'package:lidle/services/help_service.dart';
 
 class CrmFeedScreen extends StatefulWidget {
   static const routeName = '/crm_feed';
@@ -572,6 +574,19 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
                     color: Colors.white70,
                     height: 1.4,
                   ),
+                ),
+              ),
+
+              // ───── Инструкция (задача 94, 13.11.2026) ─────
+              //
+              // Над полем ввода, а не под ним: человек приходит сюда с
+              // вопросом, где брать ссылку, и ответ должен попасться
+              // раньше пустого поля.
+              const Padding(
+                padding: EdgeInsets.only(top: 16),
+                child: HelpTile(
+                  slug: HelpService.feeds,
+                  margin: EdgeInsets.fromLTRB(25, 0, 25, 0),
                 ),
               ),
 

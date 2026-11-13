@@ -15,6 +15,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lidle/services/crm_connections_service.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/components/help_tile.dart';
+import 'package:lidle/services/help_service.dart';
 
 class CrmConnectionsScreen extends StatefulWidget {
   const CrmConnectionsScreen({super.key});
@@ -126,6 +128,11 @@ class _CrmConnectionsScreenState extends State<CrmConnectionsScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(25, 16, 25, 24),
                 children: [
+                  // Инструкция по подключению (задача 94, 13.11.2026).
+                  const HelpTile(
+                    slug: HelpService.crm,
+                    margin: EdgeInsets.only(bottom: 20),
+                  ),
                   const Text(
                     'Мы будем присылать в вашу систему обращения по вашим объявлениям: '
                     'нажали «Позвонить», открыли контакты, предложили цену, откликнулись, '

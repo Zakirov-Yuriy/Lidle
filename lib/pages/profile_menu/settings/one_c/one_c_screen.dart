@@ -24,6 +24,8 @@ import 'package:flutter/services.dart';
 import 'package:lidle/services/one_c_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:lidle/widgets/components/help_tile.dart';
+import 'package:lidle/services/help_service.dart';
 
 class OneCScreen extends StatefulWidget {
   const OneCScreen({super.key});
@@ -138,6 +140,12 @@ class _OneCScreenState extends State<OneCScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
         children: [
+          // Инструкция по подключению (задача 94, 13.11.2026). Текст на
+          // сервере, правится в админке, один на приложение и на сайт.
+          const HelpTile(
+            slug: HelpService.oneC,
+            margin: EdgeInsets.only(bottom: 12),
+          ),
           _shopCard(state),
           const SizedBox(height: 12),
           if (state.processorReady) ...[
