@@ -103,7 +103,7 @@ class HelpService {
     } catch (e) {
       // Справка не повод ломать рабочий экран: человек пришёл подключать
       // выгрузку, а не читать инструкцию.
-      logger.w('HelpService: не загрузил инструкцию $slug: $e');
+      log.w('HelpService: не загрузил инструкцию $slug: $e');
 
       _cache[slug] = null;
 
