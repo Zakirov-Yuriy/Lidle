@@ -269,7 +269,7 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
                 style: TextStyle(color: Colors.white, fontSize: 14),
               ),
               subtitle: const Text(
-                'Учебный контур службы. Посылки никуда не едут, свои ключи не нужны.',
+                'Учебный контур службы: посылки никуда не едут. Ключи для него служба выдаёт отдельно, боевые там не работают.',
                 style: TextStyle(color: textSecondary, fontSize: 12, height: 1.3),
               ),
             ),
@@ -387,9 +387,11 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
     final test = _test[provider.key] ?? false;
     final connection = _connectionOf(provider.key);
 
-    // В тестовом режиме ключи не нужны, их подставляет сервер. В боевом без
-    // них подключение бессмысленно, и лучше сказать это сразу.
-    if (!test && connection == null) {
+    // Ключи нужны всегда, и в тестовом режиме тоже: у учебного контура свои
+    // ключи, служба выдаёт их отдельно (проверено 16.11.2026). Проверяем
+    // только при первом подключении: дальше они уже сохранены, и человек
+    // может менять один тестовый режим, ничего не вводя.
+    if (connection == null) {
       for (final field in provider.fields) {
         if (field.required_ && credentials[field.key]!.trim().isEmpty) {
           _say('Заполните поле «${field.label}»');
