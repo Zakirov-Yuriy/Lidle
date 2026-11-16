@@ -359,6 +359,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'Подключение CRM',
                   onTap: () => Navigator.pushNamed(context, '/crm_connections'),
                 ),
+                // Службы доставки (задача 53, 16.11.2026). Здесь же, в ряду
+                // подключений: компания вставляет свои ключи от СДЭК и
+                // других служб, договор у неё с ними напрямую.
+                _settingsItem(
+                  const Icon(
+                    Icons.local_shipping_outlined,
+                    color: Colors.white,
+                    size: 21,
+                  ),
+                  'Службы доставки',
+                  onTap: () =>
+                      Navigator.pushNamed(context, '/delivery_connections'),
+                ),
                 // Обмен с 1С (задача 54, 10.11.2026). Рядом с автовыгрузкой
                 // и подключением CRM: это третий способ связать свою систему
                 // с площадкой, и искать его человек будет здесь же.
