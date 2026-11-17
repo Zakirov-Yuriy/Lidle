@@ -49,6 +49,10 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
   /// Тестовый режим по службе.
   final Map<String, bool> _test = {};
 
+  /// Поля, которые человек уже правил руками. Нужны, чтобы перерисовка не
+  /// затирала то, что он печатает прямо сейчас.
+  final Set<String> _tronuto = {};
+
   List<DeliveryConnection> _items = const [];
   bool _loading = true;
   bool _busy = false;
@@ -259,6 +263,23 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
             const SizedBox(height: 14),
             ...provider.fields.map((field) => _field(provider, field, connection)),
 
+            // Настройки отправителя: откуда везём. Без них служба считать
+            // не может, поэтому они тут же, а не в отдельном месте.
+            if (provider.settings.isNotEmpty) ...[
+              const Text(
+                'Откуда отправляете',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ...provider.settings.map(
+                (field) => _field(provider, field, connection, setting: true),
+              ),
+            ],
+
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               activeColor: accentColor,
@@ -328,9 +349,21 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
   Widget _field(
     DeliveryProviderInfo provider,
     DeliveryField field,
-    DeliveryConnection? connection,
-  ) {
+    DeliveryConnection? connection, {
+    bool setting = false,
+  }) {
     final saved = connection?.filled[field.key] == true;
+
+    final controller = _controller(provider.key, field.key);
+
+    // Настройки сервер отдаёт обратно, поэтому подставляем сохранённое
+    // значение: человек правит его, а не вводит заново. С ключами так
+    // нельзя, их сервер не отдаёт.
+    if (setting && !_tronuto.contains('${provider.key}.${field.key}')) {
+      final value = connection?.settings[field.key] ?? '';
+
+      if (controller.text != value) controller.text = value;
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -338,7 +371,8 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextField(
-            controller: _controller(provider.key, field.key),
+            onChanged: (_) => _tronuto.add('${provider.key}.${field.key}'),
+            controller: controller,
             obscureText: field.secret,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
@@ -369,12 +403,16 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
   Color _stateColor(DeliveryConnection? connection) {
     if (connection == null) return textSecondary;
 
-    return switch (connection.state) {
-      'работает' => okColor,
-      'служба ответила ошибкой' => dangerColor,
-      'не хватает ключей' => dangerColor,
-      _ => textSecondary,
-    };
+    // Состояние приходит строкой с сервера, и в ней может быть перечень
+    // незаполненных полей, поэтому сравниваем по началу, а не целиком.
+    if (connection.state == 'работает') return okColor;
+
+    if (connection.state == 'служба ответила ошибкой' ||
+        connection.state.startsWith('не заполнено')) {
+      return dangerColor;
+    }
+
+    return textSecondary;
   }
 
   Future<void> _save(DeliveryProviderInfo provider) async {
@@ -382,6 +420,12 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
 
     for (final field in provider.fields) {
       credentials[field.key] = _controller(provider.key, field.key).text;
+    }
+
+    final settings = <String, String>{};
+
+    for (final field in provider.settings) {
+      settings[field.key] = _controller(provider.key, field.key).text.trim();
     }
 
     final test = _test[provider.key] ?? false;
@@ -406,6 +450,7 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
     final error = await DeliveryConnectionsService.save(
       provider: provider.key,
       credentials: credentials,
+      settings: settings,
       isTest: test,
     );
 
@@ -419,9 +464,14 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
       return;
     }
 
-    // Поля чистим: ключи уже на сервере, и держать их на экране незачем.
+    // Чистим только ключи: они уже на сервере, и держать их на экране
+    // незачем. Настройки остаются на виду, их человек правит.
     for (final field in provider.fields) {
       _controller(provider.key, field.key).clear();
+    }
+
+    for (final field in provider.settings) {
+      _tronuto.remove('${provider.key}.${field.key}');
     }
 
     await _load();

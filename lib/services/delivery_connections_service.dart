@@ -51,6 +51,7 @@ class DeliveryProviderInfo {
     required this.title,
     this.about = '',
     this.fields = const [],
+    this.settings = const [],
   });
 
   factory DeliveryProviderInfo.fromJson(Map<String, dynamic> json) {
@@ -66,6 +67,12 @@ class DeliveryProviderInfo {
               .map(DeliveryField.fromJson)
               .toList()
           : const [],
+      settings: json['settings'] is List
+          ? (json['settings'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(DeliveryField.fromJson)
+              .toList()
+          : const [],
     );
   }
 
@@ -73,6 +80,10 @@ class DeliveryProviderInfo {
   final String title;
   final String about;
   final List<DeliveryField> fields;
+
+  /// Настройки отправителя: откуда везём и чем. Не секреты, приходят
+  /// обратно заполненными.
+  final List<DeliveryField> settings;
 }
 
 /// Подключение компании к службе.
@@ -87,6 +98,7 @@ class DeliveryConnection {
     this.ready = false,
     this.state = '',
     this.filled = const {},
+    this.settings = const {},
     this.lastOkAt,
     this.lastError,
   });
@@ -106,6 +118,10 @@ class DeliveryConnection {
       filled: filled is Map
           ? filled.map((k, v) => MapEntry(k.toString(), v == true))
           : const {},
+      settings: json['settings'] is Map
+          ? (json['settings'] as Map)
+              .map((k, v) => MapEntry(k.toString(), v?.toString() ?? ''))
+          : const {},
       lastOkAt: json['last_ok_at'] as String?,
       lastError: json['last_error'] as String?,
     );
@@ -121,12 +137,15 @@ class DeliveryConnection {
   /// Все обязательные ключи заполнены.
   final bool ready;
 
-  /// Готовая строка состояния с сервера: выключено, не хватает ключей,
+  /// Готовая строка состояния с сервера: выключено, не заполнено то-то,
   /// служба ответила ошибкой, не проверено, работает.
   final String state;
 
   /// Какие ключи уже сохранены. Сами значения сервер не отдаёт никогда.
   final Map<String, bool> filled;
+
+  /// Настройки отправителя: их сервер отдаёт как есть, это не секреты.
+  final Map<String, String> settings;
 
   final String? lastOkAt;
   final String? lastError;
@@ -167,6 +186,7 @@ class DeliveryConnectionsService {
   static Future<String?> save({
     required String provider,
     required Map<String, String> credentials,
+    Map<String, String> settings = const {},
     bool isTest = false,
     String? name,
   }) async {
@@ -177,6 +197,9 @@ class DeliveryConnectionsService {
         'credentials': Map<String, String>.fromEntries(
           credentials.entries.where((e) => e.value.trim().isNotEmpty),
         ),
+        // Настройки шлём целиком, включая пустые: пустое значение здесь
+        // означает «стереть», в отличие от ключей.
+        'settings': settings,
       };
 
       if (name != null && name.trim().isNotEmpty) {
