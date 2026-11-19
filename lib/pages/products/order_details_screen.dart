@@ -23,6 +23,7 @@ import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/products/order_courier_screen.dart';
 import 'package:lidle/pages/products/order_receipt_screen.dart';
+import 'package:lidle/services/delivery_quotes_service.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/dialogs/courier_review_dialog.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
@@ -232,11 +233,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
     if (min <= 0 && max <= 0) return '';
 
-    if (min > 0 && max > 0 && min != max) return 'срок от $min до $max дней';
+    if (min > 0 && max > 0 && min != max) {
+      return 'срок от $min до ${DeliveryQuote.dney(max)}';
+    }
 
-    final dney = max > 0 ? max : min;
+    final skolko = max > 0 ? max : min;
 
-    return dney == 1 ? 'срок день' : 'срок $dney дней';
+    return skolko == 1 ? 'срок день' : 'срок ${DeliveryQuote.dney(skolko)}';
   }
 
   /// Посылка: номер отслеживания и где она сейчас.

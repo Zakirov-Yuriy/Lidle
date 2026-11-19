@@ -63,12 +63,27 @@ class DeliveryQuote {
     if (daysMax <= 0 && daysMin <= 0) return '';
 
     if (daysMin > 0 && daysMax > 0 && daysMin != daysMax) {
-      return 'от $daysMin до $daysMax дней';
+      return 'от $daysMin до ${dney(daysMax)}';
     }
 
-    final dney = daysMax > 0 ? daysMax : daysMin;
+    final skolko = daysMax > 0 ? daysMax : daysMin;
 
-    return dney == 1 ? 'за день' : 'за $dney дней';
+    return skolko == 1 ? 'за день' : 'за ${dney(skolko)}';
+  }
+
+  /// Склонение: 1 день, 2 дня, 5 дней.
+  ///
+  /// Руками, а не библиотекой: ради одного слова тащить зависимость
+  /// незачем, а «за 2 дней» в цене доставки видно сразу.
+  static String dney(int n) {
+    final ost100 = n % 100;
+    final ost10 = n % 10;
+
+    if (ost100 >= 11 && ost100 <= 14) return '$n дней';
+    if (ost10 == 1) return '$n день';
+    if (ost10 >= 2 && ost10 <= 4) return '$n дня';
+
+    return '$n дней';
   }
 
   static double _double(dynamic value) {
