@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/common/user_avatar.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/services/delivery_quotes_service.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/products/order_courier_screen.dart';
 import 'package:lidle/pages/products/order_details_screen.dart';
@@ -78,7 +79,14 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
 
   OrderLine? get line => widget.line;
 
-  bool get _isPickup => order.deliveryType != 'courier';
+  bool get _isPickup =>
+      order.deliveryType != 'courier' && order.deliveryType != 'service';
+
+  /// Везёт служба доставки (задача 53, этап 5, 19.11.2026). Отдельно от
+  /// курьера: у службы свой курьер, свой пункт выдачи и своё отслеживание,
+  /// а карточка курьера продавца здесь ни при чём.
+  bool get _isService =>
+      order.deliveryIsService || order.deliveryType == 'service';
 
   /// Сохранить карточку с кодом в галерею.
   ///
@@ -585,6 +593,32 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
                 ],
               ),
             ),
+          ] else if (_isService) ...[
+            // Доставка службой: откуда забирают, куда везут и где посылка
+            // сейчас. Курьер здесь не наш, и карточки курьера нет.
+            _placeBlock(
+              title: 'Место забора',
+              onTap: _canOpenShop ? _openShop : null,
+              lines: [
+                if ((shop?.name ?? '').isNotEmpty)
+                  _PlaceLine('Магазина: «${shop!.name}»', white: false),
+                if ((shop?.address ?? '').isNotEmpty)
+                  _PlaceLine(shop!.address!, white: true),
+              ],
+            ),
+            _placeBlock(
+              title: 'Место доставки',
+              lines: [
+                if ((order.deliveryPointAddress ?? '').isNotEmpty)
+                  _PlaceLine('Пункт выдачи: ${order.deliveryPointAddress}',
+                      white: true)
+                else if ((order.deliveryAddress ?? '').isNotEmpty)
+                  _PlaceLine('Ваш адрес: ${order.deliveryAddress}', white: true),
+                if (_srokTitle.isNotEmpty)
+                  _PlaceLine(_srokTitle, white: false),
+              ],
+            ),
+            _trackingBlock(),
           ] else ...[
             // Курьерская доставка (18.09.2026): кто везёт, откуда забирает и
             // куда привезёт. Порядок с макета: сначала человек, потом места.
@@ -615,6 +649,81 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  /// Обещанный при заказе срок. Служба сегодня скажет другое, а человек
+  /// спросит именно про обещание.
+  String get _srokTitle {
+    final min = order.deliveryDaysMin ?? 0;
+    final max = order.deliveryDaysMax ?? 0;
+
+    if (min <= 0 && max <= 0) return '';
+
+    if (min > 0 && max > 0 && min != max) {
+      return 'Срок доставки: от $min до ${DeliveryQuote.dney(max)}';
+    }
+
+    final skolko = max > 0 ? max : min;
+
+    return skolko == 1
+        ? 'Срок доставки: день'
+        : 'Срок доставки: ${DeliveryQuote.dney(skolko)}';
+  }
+
+  /// Где посылка сейчас.
+  ///
+  /// ПОКА ПРОДАВЕЦ НЕ ПЕРЕДАЛ ЕЁ СЛУЖБЕ, говорим это словами. Пустое место
+  /// выглядит поломкой, а человек просто ждёт.
+  Widget _trackingBlock() {
+    final shipments = order.shipments;
+
+    if (shipments.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 4),
+        child: Text(
+          'Продавец ещё не передал посылку службе. Номер для отслеживания '
+          'появится здесь, как только он это сделает.',
+          style: TextStyle(color: textSecondary, fontSize: 14, height: 1.4),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final entry in shipments.asMap().entries) ...[
+          Padding(
+            padding: EdgeInsets.only(top: entry.key == 0 ? 4 : 12),
+            child: Text(
+              entry.value.trackingNumber == null
+                  ? '${entry.value.providerTitle}: номер появится через '
+                      'несколько минут'
+                  : '${entry.value.providerTitle}, номер '
+                      '${entry.value.trackingNumber}',
+              style: const TextStyle(color: Colors.white, fontSize: 15),
+            ),
+          ),
+          if (entry.value.statusTitle.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Состояние: ${entry.value.statusTitle}',
+                style: const TextStyle(color: textSecondary, fontSize: 14),
+              ),
+            ),
+
+          // Наш номер рядом: по нему нас находят в поддержке, а трек службы
+          // живёт только у службы.
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Наш номер отправления: ${entry.value.number}',
+              style: const TextStyle(color: textSecondary, fontSize: 13),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
