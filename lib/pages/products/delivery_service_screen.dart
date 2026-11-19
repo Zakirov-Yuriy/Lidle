@@ -26,8 +26,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lidle/constants.dart';
 import 'package:lidle/services/delivery_quotes_service.dart';
-import 'package:lidle/widgets/components/header.dart';
 
 /// Что человек выбрал: служба, тариф, куда везти и сколько это стоит.
 class DeliveryServiceChoice {
@@ -88,11 +88,6 @@ class DeliveryServiceScreen extends StatefulWidget {
 }
 
 class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
-  static const bgColor = Color(0xFF243241);
-  static const cardColor = Color(0xFF1F2C3A);
-  static const accentColor = Color(0xFF00B7FF);
-  static const textSecondary = Colors.white54;
-
   final TextEditingController _cityController = TextEditingController();
 
   /// Отложенный поиск города: человек печатает быстрее, чем отвечает служба,
@@ -370,93 +365,74 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: primaryBackground,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 20, right: 23),
-              child: Row(children: [Header()]),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context),
-                behavior: HitTestBehavior.opaque,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.arrow_back_ios, color: Colors.white, size: 16),
-                    SizedBox(width: 8),
-                    Text(
-                      'Доставка',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _topBar(),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(25, 16, 25, 24),
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                 children: [
                   Text(
                     'Заказ из «${widget.shopName}» повезёт служба доставки. '
                     'Укажите город, и мы покажем цены и сроки.',
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
+                      color: textSecondary,
+                      fontSize: 13,
                       height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+                  _sectionTitle('Город доставки'),
                   _cityBlock(),
                   if (_city != null) ...[
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    _sectionTitle('Как получить'),
                     _wayBlock(),
                   ],
                   if (_toDoor == false) ...[
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    _sectionTitle('Пункт выдачи'),
                     _pointsBlock(),
                   ],
                   if (_toDoor == true) ...[
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    _sectionTitle('Адрес доставки'),
                     _addressBlock(),
                   ],
                   // Цены показываем последними: Яндекс считает их только
-                  // после выбора пункта выдачи.
+                  // после выбора пункта выдачи или адреса.
                   if (_toDoor == true || _point != null) ...[
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    _sectionTitle('Цена и срок'),
                     _quotesBlock(),
                   ],
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(25, 0, 25, 16),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: SizedBox(
                 width: double.infinity,
+                height: 48,
                 child: ElevatedButton(
                   onPressed: _ready ? _done : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
-                    disabledBackgroundColor: cardColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: activeIconColor,
+                    disabledBackgroundColor: formBackground,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: Text(
                     _ready ? 'Выбрать' : 'Выберите доставку',
                     style: TextStyle(
-                      color: _ready ? Colors.white : textSecondary,
+                      color: _ready ? Colors.white : textMuted,
                       fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -468,74 +444,114 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
     );
   }
 
+  Widget _topBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 20, 8),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            behavior: HitTestBehavior.opaque,
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.arrow_back_ios, color: Colors.white, size: 18),
+            ),
+          ),
+          const Expanded(
+            child: Text(
+              'Доставка',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            behavior: HitTestBehavior.opaque,
+            child: const Text(
+              'Отмена',
+              style: TextStyle(color: activeIconColor, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   Widget _cityBlock() {
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Город доставки',
-            style: TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          const SizedBox(height: 10),
-          TextField(
+          _field(
             controller: _cityController,
+            hint: 'Начните вводить название',
             onChanged: _onCityTyped,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Начните вводить название',
-              hintStyle: const TextStyle(color: textSecondary),
-              filled: true,
-              fillColor: bgColor,
-              suffixIcon: _citiesLoading
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: accentColor,
-                        ),
+            suffix: _citiesLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: activeIconColor,
                       ),
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-            ),
+                    ),
+                  )
+                : null,
           ),
           for (final city in _cities)
-            ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                city.full,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-              ),
+            InkWell(
               onTap: () => _pickCity(city),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined,
+                        color: textSecondary, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        city.full,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
         ],
       ),
     );
   }
 
-  /// Как получать: в пункте выдачи или дома.
-  ///
-  /// СПРАШИВАЕМ ДО ЦЕН, потому что Яндекс считает цену только для
-  /// конкретного пункта. Заодно так понятнее человеку: он думает «заберу
-  /// сам» или «пусть привезут», а не кодами тарифов.
   Widget _wayBlock() {
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Как получить',
-            style: TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          const SizedBox(height: 4),
           _radioRow(
             selected: _toDoor == false,
             title: 'В пункте выдачи',
@@ -565,7 +581,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
                       'другой пункт выдачи.'
                   : 'Для этого города доставки нет. Попробуйте другой город '
                       'или выберите самовывоз.'),
-          style: const TextStyle(color: textSecondary, fontSize: 14, height: 1.4),
+          style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
         ),
       );
     }
@@ -574,11 +590,6 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Цена и срок',
-            style: TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          const SizedBox(height: 4),
           for (final quote in _quotes)
             _radioRow(
               selected: _quote?.provider == quote.provider &&
@@ -604,7 +615,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
         child: const Text(
           'В этом городе у службы нет пунктов выдачи. Выберите другой способ '
           'доставки.',
-          style: TextStyle(color: textSecondary, fontSize: 14, height: 1.4),
+          style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
         ),
       );
     }
@@ -614,8 +625,8 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Пункт выдачи, всего ${_points.length}',
-            style: const TextStyle(color: Colors.white, fontSize: 15),
+            'Всего пунктов: ${_points.length}',
+            style: const TextStyle(color: textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 4),
 
@@ -637,7 +648,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
               padding: EdgeInsets.only(top: 8),
               child: Text(
                 'Показаны первые 20 пунктов. Уточните город, если нужного нет.',
-                style: TextStyle(color: textSecondary, fontSize: 12),
+                style: TextStyle(color: textSecondary, fontSize: 13),
               ),
             ),
         ],
@@ -647,42 +658,26 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
 
   Widget _addressBlock() {
     return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Адрес доставки',
-            style: TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _addressController,
-            onChanged: _onAddressTyped,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Улица, дом, квартира',
-              hintStyle: const TextStyle(color: textSecondary),
-              filled: true,
-              fillColor: bgColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-        ],
+      child: _field(
+        controller: _addressController,
+        hint: 'Улица, дом, квартира',
+        onChanged: _onAddressTyped,
       ),
     );
   }
 
   // ── Мелочи ─────────────────────────────────────────────────────────
 
+  /// Карточка блока. Те же цвета и скругления, что на экране оформления:
+  /// человек переходит сюда прямо оттуда, и другой вид выглядел бы чужим
+  /// экраном.
   Widget _card({required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
+        color: formBackground,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: child,
     );
@@ -695,10 +690,13 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
           const SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: accentColor),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: activeIconColor,
+            ),
           ),
           const SizedBox(width: 12),
-          Text(text, style: const TextStyle(color: textSecondary, fontSize: 14)),
+          Text(text, style: const TextStyle(color: textSecondary, fontSize: 13)),
         ],
       ),
     );
@@ -710,18 +708,36 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
     required String hint,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              selected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: selected ? accentColor : textSecondary,
-              size: 20,
+            Container(
+              width: 20,
+              height: 20,
+              margin: const EdgeInsets.only(top: 1),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? activeIconColor : Colors.white70,
+                  width: 2,
+                ),
+              ),
+              child: selected
+                  ? Center(
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: activeIconColor,
+                        ),
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -730,23 +746,54 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
                   ),
                   if (hint.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
                       hint,
-                      style: const TextStyle(
-                        color: textSecondary,
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
+                      style: const TextStyle(color: textSecondary, fontSize: 13),
                     ),
                   ],
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Поле ввода в том же виде, что на экране оформления.
+  Widget _field({
+    required TextEditingController controller,
+    required String hint,
+    ValueChanged<String>? onChanged,
+    Widget? suffix,
+  }) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      style: const TextStyle(color: Colors.white, fontSize: 15),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: textMuted, fontSize: 15),
+        filled: true,
+        fillColor: secondaryBackground,
+        suffixIcon: suffix,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF3A4654)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: activeIconColor),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF3A4654)),
         ),
       ),
     );
