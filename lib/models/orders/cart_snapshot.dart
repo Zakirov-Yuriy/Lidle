@@ -266,6 +266,13 @@ class CartShopGroup {
   /// плюс доставка, которую продавец завёл в публикациях этих товаров.
   final List<CartDeliveryOption> deliveryOptions;
 
+  /// Подключил ли продавец службы доставки (задача 53, этап 5, 19.11.2026).
+  ///
+  /// ПРИЗНАК, А НЕ ЦЕНА: посчитать её здесь нельзя, нужен город покупателя,
+  /// а он его ещё не выбрал. Но показывать ли сам пункт «Служба доставки»,
+  /// экран должен знать сразу.
+  final bool hasDeliveryServices;
+
   final List<CartLine> items;
   final double total;
 
@@ -284,6 +291,7 @@ class CartShopGroup {
     this.cookingTimeMinutes,
     this.paymentMethods = const [],
     this.deliveryOptions = const [],
+    this.hasDeliveryServices = false,
   });
 
   factory CartShopGroup.fromJson(Map<String, dynamic> data) {
@@ -325,6 +333,9 @@ class CartShopGroup {
               .map(CartDeliveryOption.fromJson)
               .toList()
           : const [],
+      // Старый сервер признака не присылает: тогда способ не показываем, и
+      // экран работает как раньше.
+      hasDeliveryServices: data['has_delivery_services'] == true,
     );
   }
 }

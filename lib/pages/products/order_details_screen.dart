@@ -53,7 +53,12 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
   OrderModel get order => _fresh ?? widget.order;
 
-  bool get _isPickup => order.deliveryType != 'courier';
+  bool get _isPickup =>
+      order.deliveryType != 'courier' && order.deliveryType != 'service';
+
+  /// Везёт служба доставки (задача 53, этап 5, 19.11.2026).
+  bool get _isService =>
+      order.deliveryIsService || order.deliveryType == 'service';
 
   Future<void> _reload() async {
     final fresh = await OrdersService.details(order.id);
@@ -97,7 +102,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       _deliveryCard(),
                       const SizedBox(height: 10),
                       _shopCard(context),
-                      if (!_isPickup) ...[
+                      // У службы свой курьер и свой адрес: показывать
+                      // карточку курьера продавца здесь незачем, человек
+                      // ждёт номер для отслеживания.
+                      if (_isService) ...[
+                        const SizedBox(height: 10),
+                        _shipmentCard(),
+                      ] else if (!_isPickup) ...[
                         const SizedBox(height: 10),
                         _courierCard(context),
                         const SizedBox(height: 10),
@@ -192,8 +203,92 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           _choiceRow(
             title: 'Курьером',
             hint: 'Доставку товара осуществляет курьер на указанный адрес',
-            selected: !_isPickup,
+            selected: !_isPickup && !_isService,
           ),
+          if (_isService) ...[
+            const SizedBox(height: 12),
+            _choiceRow(
+              title: order.deliveryTitle ?? 'Служба доставки',
+              hint: [
+                if ((order.deliveryPointAddress ?? '').isNotEmpty)
+                  'Пункт выдачи: ${order.deliveryPointAddress}'
+                else if ((order.deliveryAddress ?? '').isNotEmpty)
+                  'По адресу: ${order.deliveryAddress}',
+                if (_srokTitle.isNotEmpty) _srokTitle,
+              ].where((s) => s.isNotEmpty).join(' · '),
+              selected: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Обещанный при заказе срок. Служба сегодня скажет другое, а человек
+  /// спросит именно про обещание.
+  String get _srokTitle {
+    final min = order.deliveryDaysMin ?? 0;
+    final max = order.deliveryDaysMax ?? 0;
+
+    if (min <= 0 && max <= 0) return '';
+
+    if (min > 0 && max > 0 && min != max) return 'срок от $min до $max дней';
+
+    final dney = max > 0 ? max : min;
+
+    return dney == 1 ? 'срок день' : 'срок $dney дней';
+  }
+
+  /// Посылка: номер отслеживания и где она сейчас.
+  ///
+  /// ПОКА ПРОДАВЕЦ НЕ ПЕРЕДАЛ ПОСЫЛКУ СЛУЖБЕ, показываем это словами. Пустая
+  /// карточка выглядит поломкой, а человек просто ждёт.
+  Widget _shipmentCard() {
+    final shipments = order.shipments;
+
+    if (shipments.isEmpty) {
+      return _card(
+        title: 'Отслеживание',
+        child: const Text(
+          'Продавец ещё не передал посылку службе. Номер для отслеживания '
+          'появится здесь, как только он это сделает.',
+          style: TextStyle(color: textSecondary, fontSize: 14, height: 1.4),
+        ),
+      );
+    }
+
+    return _card(
+      title: shipments.length == 1 ? 'Отслеживание' : 'Посылки',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final entry in shipments.asMap().entries) ...[
+            if (entry.key > 0) const SizedBox(height: 14),
+            Text(
+              entry.value.trackingNumber == null
+                  ? '${entry.value.providerTitle}, номер появится через несколько минут'
+                  : '${entry.value.providerTitle}, номер ${entry.value.trackingNumber}',
+              style: const TextStyle(color: Colors.white, fontSize: 15),
+            ),
+            if (entry.value.statusTitle.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Состояние: ${entry.value.statusTitle}',
+                  style: const TextStyle(color: textSecondary, fontSize: 14),
+                ),
+              ),
+
+            // Наш номер показываем рядом: по нему нас находят в поддержке,
+            // а трек службы живёт только у службы.
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Наш номер отправления: ${entry.value.number}',
+                style: const TextStyle(color: textSecondary, fontSize: 12),
+              ),
+            ),
+          ],
         ],
       ),
     );

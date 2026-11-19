@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/services/orders_service.dart';
+import 'package:lidle/services/shipments_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -37,11 +38,63 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
   /// Что-то поменяли: список на прошлом экране надо перечитать.
   bool _changed = false;
 
+  // ── Посылки в службе доставки (задача 53, этап 5, 19.11.2026) ──────
+
+  List<Shipment> _shipments = const [];
+  bool _shipmentsBusy = false;
+
   @override
   void initState() {
     super.initState();
 
     if (_order.isCourier) _loadCouriers();
+    if (_order.deliveryIsService) _loadShipments();
+  }
+
+  Future<void> _loadShipments() async {
+    final rows = await ShipmentsService.forOrder(_order.id);
+
+    if (!mounted) return;
+
+    setState(() => _shipments = rows);
+  }
+
+  /// Передать посылку службе.
+  ///
+  /// НИЧЕГО НЕ СПРАШИВАЕМ: службу, тариф и пункт выдачи выбрал покупатель
+  /// при оформлении, и всё это лежит в заказе. Продавцу остаётся нажать
+  /// кнопку, иначе он выбирал бы заново то, о чём уже договорились.
+  Future<void> _ship() async {
+    setState(() => _shipmentsBusy = true);
+
+    final result = await ShipmentsService.create(_order.id);
+
+    if (!mounted) return;
+
+    setState(() => _shipmentsBusy = false);
+
+    if (result.message != null) {
+      if (result.ok) {
+        SnackBarHelper.showSuccess(context, result.message!);
+      } else {
+        SnackBarHelper.showError(context, result.message!);
+      }
+    }
+
+    await _loadShipments();
+  }
+
+  /// Спросить службу, что с посылкой.
+  Future<void> _refreshShipment(Shipment shipment) async {
+    setState(() => _shipmentsBusy = true);
+
+    await ShipmentsService.refresh(shipment.id);
+
+    if (!mounted) return;
+
+    setState(() => _shipmentsBusy = false);
+
+    await _loadShipments();
   }
 
   Future<void> _loadCouriers() async {
@@ -168,6 +221,10 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
                       const SizedBox(height: 12),
                       _courierBlock(),
                     ],
+                    if (_order.deliveryIsService) ...[
+                      const SizedBox(height: 12),
+                      _shipmentBlock(),
+                    ],
                     const SizedBox(height: 12),
                     _codeBlock(),
                     const SizedBox(height: 18),
@@ -235,6 +292,101 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
           ),
         ),
       ),
+    ]);
+  }
+
+  /// Посылка в службе доставки.
+  ///
+  /// ПОКА ПОСЫЛКИ НЕТ, здесь одна кнопка. Когда она создана, видно её номер,
+  /// состояние и кнопка спросить службу заново: трек у СДЭК появляется
+  /// через несколько секунд после создания, а не сразу.
+  ///
+  /// ОТКАЗ СЛУЖБЫ ПОКАЗЫВАЕМ ПРОДАВЦУ СЛОВАМИ СЛУЖБЫ. Это его разговор с
+  /// ней, и ему нужно знать, что именно ей не понравилось. Покупателю этот
+  /// текст не показываем.
+  Widget _shipmentBlock() {
+    return _block(children: [
+      const Text(
+        'Доставка службой',
+        style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        _order.deliveryTitle ?? 'Служба доставки',
+        style: const TextStyle(color: textSecondary, fontSize: 14),
+      ),
+      if ((_order.deliveryPointAddress ?? '').isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            'Пункт выдачи: ${_order.deliveryPointAddress}',
+            style: const TextStyle(color: textSecondary, fontSize: 14),
+          ),
+        ),
+      for (final shipment in _shipments) ...[
+        const SizedBox(height: 12),
+        Text(
+          shipment.trackingNumber == null
+              ? '${shipment.providerTitle}: номер ещё не выдан'
+              : '${shipment.providerTitle}, номер ${shipment.trackingNumber}',
+          style: const TextStyle(color: Colors.white, fontSize: 15),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            'Наш номер ${shipment.number} · ${shipment.statusTitle}',
+            style: const TextStyle(color: textSecondary, fontSize: 13),
+          ),
+        ),
+        if (shipment.failed && (shipment.lastError ?? '').isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Служба ответила: ${shipment.lastError}',
+              style: const TextStyle(color: Color(0xFFE5484D), fontSize: 13),
+            ),
+          ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 40,
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: _shipmentsBusy ? null : () => _refreshShipment(shipment),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: activeIconColor),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text(
+              'Обновить состояние',
+              style: TextStyle(color: activeIconColor, fontSize: 14),
+            ),
+          ),
+        ),
+      ],
+      if (_shipments.isEmpty) ...[
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 44,
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: _shipmentsBusy ? null : _ship,
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: activeIconColor),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(
+              _shipmentsBusy ? 'Передаём службе...' : 'Передать службе',
+              style: const TextStyle(color: activeIconColor, fontSize: 15),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Службу, тариф и пункт выдачи выбрал покупатель при оформлении. '
+          'Нажмите, и мы заведём посылку в службе.',
+          style: TextStyle(color: textSecondary, fontSize: 12, height: 1.3),
+        ),
+      ],
     ]);
   }
 

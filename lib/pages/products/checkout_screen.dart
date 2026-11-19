@@ -10,6 +10,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
+import 'package:lidle/pages/products/delivery_service_screen.dart';
 import 'package:lidle/pages/products/order_payment_flow.dart';
 import 'package:lidle/pages/products/order_placed_screen.dart';
 import 'package:lidle/services/orders_service.dart';
@@ -87,6 +88,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   /// Адрес и комментарий для курьера, по точке.
   final Map<int, TextEditingController> _addresses = {};
   final Map<int, TextEditingController> _addressComments = {};
+
+  /// Доставка службой по точке (задача 53, этап 5, 19.11.2026). Выбирается
+  /// на отдельном экране: там город, цены служб и пункты выдачи, и в одну
+  /// строку это не умещается.
+  final Map<int, DeliveryServiceChoice> _serviceDelivery = {};
+
+  /// У каких точек выбрана служба. Отдельно от `_delivery`, потому что там
+  /// лежат способы ПРОДАВЦА, а служба к ним не относится.
+  final Set<int> _serviceChosen = {};
 
   // ── Покупатель: физлицо или компания (21.09.2026) ──────────────────
 
@@ -232,6 +242,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final result = <int, OrderDeliveryChoice>{};
 
     for (final group in widget.cart.shops) {
+      // Служба доставки главнее: если её выбрали, способы продавца уже не
+      // при чём.
+      if (_serviceChosen.contains(group.shopId)) {
+        final service = _serviceDelivery[group.shopId];
+
+        if (service != null) {
+          result[group.shopId] = OrderDeliveryChoice.service(
+            provider: service.quote.provider,
+            tariffCode: service.quote.code,
+            price: service.quote.price,
+            cityCode: service.cityCode,
+            city: service.cityName,
+            pointCode: service.point?.code,
+            pointAddress: service.point?.address,
+            address: service.address,
+          );
+
+          continue;
+        }
+      }
+
       final choice = _delivery[group.shopId];
 
       if (choice == null || !choice.isCourier) {
@@ -254,6 +285,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     var sum = 0.0;
 
     for (final shop in widget.cart.shops) {
+      if (_serviceChosen.contains(shop.shopId)) {
+        sum += _serviceDelivery[shop.shopId]?.price ?? 0;
+
+        continue;
+      }
+
       sum += _delivery[shop.shopId]?.price ?? 0;
     }
 
@@ -781,11 +818,67 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   if (option.price > 0) _money(option.price),
                 ].join(' · ')
               : 'Вы сами забираете заказ в магазине',
-          onTap: () => setState(
-            () => _delivery[group.shopId] = option.isCourier ? option : null,
-          ),
+          onTap: () => setState(() {
+            _delivery[group.shopId] = option.isCourier ? option : null;
+
+            // Выбрали способ продавца, значит служба больше не выбрана.
+            _serviceChosen.remove(group.shopId);
+          }),
         ),
+
+      // Служба доставки (задача 53, этап 5, 19.11.2026). Показываем только
+      // там, где продавец её подключил: пустой пункт, который ничего не
+      // открывает, хуже, чем его отсутствие.
+      if (group.hasDeliveryServices) _serviceRow(group),
     ];
+  }
+
+  /// Строка выбора доставки службой.
+  ///
+  /// ВЫБОР НА ОТДЕЛЬНОМ ЭКРАНЕ: там город, цены нескольких служб и сотни
+  /// пунктов выдачи. В строку это не умещается, а выбирать вслепую нельзя.
+  Widget _serviceRow(CartShopGroup group) {
+    final chosen = _serviceChosen.contains(group.shopId)
+        ? _serviceDelivery[group.shopId]
+        : null;
+
+    return _radioRow(
+      selected: chosen != null,
+      title: chosen == null
+          ? 'Служба доставки'
+          : '${chosen.quote.providerTitle}, ${chosen.quote.title}',
+      hint: chosen == null
+          ? 'СДЭК, Яндекс и другие: цена и срок посчитаются по вашему городу'
+          : [
+              _money(chosen.price),
+              if (chosen.quote.daysTitle.isNotEmpty) chosen.quote.daysTitle,
+              chosen.whereTitle,
+            ].join(' · '),
+      onTap: () => _chooseService(group),
+    );
+  }
+
+  Future<void> _chooseService(CartShopGroup group) async {
+    final result = await Navigator.push<DeliveryServiceChoice>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DeliveryServiceScreen(
+          shopId: group.shopId,
+          shopName: group.shopName,
+          initial: _serviceDelivery[group.shopId],
+        ),
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    setState(() {
+      _serviceDelivery[group.shopId] = result;
+      _serviceChosen.add(group.shopId);
+
+      // Способ продавца снимаем: получают заказ одним способом.
+      _delivery[group.shopId] = null;
+    });
   }
 
   List<Widget> _recipientFields() {
@@ -807,6 +900,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   /// Под выбором: адрес для курьера или магазин для самовывоза.
   List<Widget> _deliveryDetails(CartShopGroup group) {
+    // Служба везёт по своим правилам: адрес или пункт выдачи человек уже
+    // выбрал на её экране, и спрашивать здесь второй раз незачем.
+    if (_serviceChosen.contains(group.shopId)) {
+      final service = _serviceDelivery[group.shopId];
+
+      if (service != null) {
+        return [
+          const SizedBox(height: 6),
+          Text(
+            service.whereTitle,
+            style: const TextStyle(color: textSecondary, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Когда продавец передаст посылку службе, номер для отслеживания '
+            'появится в этом заказе.',
+            style: TextStyle(color: textSecondary, fontSize: 12, height: 1.4),
+          ),
+        ];
+      }
+    }
+
     final chosen = _delivery[group.shopId];
 
     if (chosen != null && chosen.isCourier) {

@@ -597,25 +597,78 @@ class OrderDeliveryChoice {
   final String? address;
   final String? comment;
 
+  // Доставка службой (задача 53, этап 5, 19.11.2026).
+  final String? provider;
+  final String? tariffCode;
+  final String? cityCode;
+  final String? city;
+  final String? pointCode;
+  final String? pointAddress;
+
+  /// Цена, которую человек ВИДЕЛ на экране.
+  ///
+  /// Отправляем её не для того, чтобы ею платили: сервер спрашивает цену у
+  /// службы заново и присланной не верит. Она нужна для сверки. Если служба
+  /// за это время подняла тариф, сервер не оформит заказ молча по новой
+  /// цене, а попросит выбрать заново.
+  final double? price;
+
   const OrderDeliveryChoice.pickup()
       : type = 'pickup',
         optionId = null,
         address = null,
-        comment = null;
+        comment = null,
+        provider = null,
+        tariffCode = null,
+        cityCode = null,
+        city = null,
+        pointCode = null,
+        pointAddress = null,
+        price = null;
 
   const OrderDeliveryChoice.courier({
     required this.optionId,
     required this.address,
     this.comment,
-  }) : type = 'courier';
+  })  : type = 'courier',
+        provider = null,
+        tariffCode = null,
+        cityCode = null,
+        city = null,
+        pointCode = null,
+        pointAddress = null,
+        price = null;
+
+  const OrderDeliveryChoice.service({
+    required this.provider,
+    required this.tariffCode,
+    required this.price,
+    this.cityCode,
+    this.city,
+    this.pointCode,
+    this.pointAddress,
+    this.address,
+    this.comment,
+  })  : type = 'service',
+        optionId = null;
 
   bool get isCourier => type == 'courier';
+
+  bool get isService => type == 'service';
 
   Map<String, dynamic> toJson() => {
         'type': type,
         if (optionId != null) 'option_id': optionId,
         if (address != null && address!.isNotEmpty) 'address': address,
         if (comment != null && comment!.isNotEmpty) 'comment': comment,
+        if (provider != null) 'provider': provider,
+        if (tariffCode != null) 'tariff_code': tariffCode,
+        if (cityCode != null && cityCode!.isNotEmpty) 'city_code': cityCode,
+        if (city != null && city!.isNotEmpty) 'city': city,
+        if (pointCode != null && pointCode!.isNotEmpty) 'point_code': pointCode,
+        if (pointAddress != null && pointAddress!.isNotEmpty)
+          'point_address': pointAddress,
+        if (price != null) 'price': price,
       };
 }
 

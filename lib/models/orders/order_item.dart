@@ -102,6 +102,23 @@ class OrderModel {
   /// Подъезд, этаж, домофон.
   final String? deliveryComment;
 
+  // ── Доставка службой (задача 53, этап 5, 19.11.2026) ───────────────
+
+  /// Везёт служба доставки, а не продавец.
+  final bool deliveryIsService;
+
+  /// Пункт выдачи, если везут туда.
+  final String? deliveryPointAddress;
+
+  /// Обещанный срок в днях на момент заказа. Служба сегодня скажет другое,
+  /// а человек спросит именно про обещание.
+  final int? deliveryDaysMin;
+  final int? deliveryDaysMax;
+
+  /// Посылки по заказу. Их может быть несколько: часть товара уехала
+  /// сегодня, часть на следующей неделе.
+  final List<OrderShipment> shipments;
+
   /// Кто везёт. Пусто, пока продавец не назначил курьера.
   final int? courierStaffId;
   final String? courierName;
@@ -144,6 +161,11 @@ class OrderModel {
     this.paymentLink,
     this.deliveryType = 'pickup',
     this.deliveryTitle,
+    this.deliveryIsService = false,
+    this.deliveryPointAddress,
+    this.deliveryDaysMin,
+    this.deliveryDaysMax,
+    this.shipments = const [],
     this.deliveryPrice = '0',
     this.deliveryAddress,
     this.deliveryComment,
@@ -228,6 +250,23 @@ class OrderModel {
       deliveryComment: data['delivery'] is Map
           ? data['delivery']['comment']?.toString()
           : null,
+      deliveryIsService:
+          data['delivery'] is Map && data['delivery']['is_service'] == true,
+      deliveryPointAddress: data['delivery'] is Map
+          ? data['delivery']['point_address']?.toString()
+          : null,
+      deliveryDaysMin:
+          data['delivery'] is Map ? _int(data['delivery']['days_min']) : null,
+      deliveryDaysMax:
+          data['delivery'] is Map ? _int(data['delivery']['days_max']) : null,
+      // Старый сервер посылок не присылает, и это не ошибка: заказ просто
+      // показывается без отслеживания, как раньше.
+      shipments: data['shipments'] is List
+          ? (data['shipments'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(OrderShipment.fromJson)
+              .toList()
+          : const [],
       courierStaffId:
           data['courier'] is Map ? _int(data['courier']['staff_id']) : null,
       courierName:
@@ -458,4 +497,62 @@ class OrderPaymentField {
   final String value;
 
   const OrderPaymentField({required this.label, required this.value});
+}
+
+/// Посылка в службе доставки (задача 53, этап 5, 19.11.2026).
+///
+/// ПОКУПАТЕЛЮ ПОКАЗЫВАЕМ ТОЛЬКО ТО, ЧТО ЕГО КАСАЕТСЯ: номер для
+/// отслеживания и состояние словами. Коды тарифов, ошибки службы и
+/// внутренние идентификаторы это разговор продавца со службой.
+class OrderShipment {
+  const OrderShipment({
+    required this.number,
+    this.provider = '',
+    this.trackingNumber,
+    this.status = '',
+    this.statusTitle = '',
+    this.statusAt,
+    this.pointCode,
+  });
+
+  factory OrderShipment.fromJson(Map<String, dynamic> data) {
+    return OrderShipment(
+      number: '${data['number'] ?? ''}',
+      provider: '${data['provider'] ?? ''}',
+      trackingNumber: data['tracking_number']?.toString(),
+      status: '${data['status'] ?? ''}',
+      statusTitle: '${data['status_title'] ?? ''}',
+      statusAt: data['status_at'] == null
+          ? null
+          : DateTime.tryParse('${data['status_at']}'),
+      pointCode: data['point_code']?.toString(),
+    );
+  }
+
+  /// Наш номер отправления. Есть всегда, с первой секунды.
+  final String number;
+
+  final String provider;
+
+  /// Номер службы. Появляется не сразу: СДЭК выдаёт его через несколько
+  /// секунд после создания, и до этого показывать нечего.
+  final String? trackingNumber;
+
+  final String status;
+  final String statusTitle;
+  final DateTime? statusAt;
+  final String? pointCode;
+
+  /// Название службы для человека.
+  String get providerTitle => switch (provider) {
+        'cdek' => 'СДЭК',
+        'yandex' => 'Яндекс.Доставка',
+        'ozon' => 'Озон',
+        'dellin' => 'Деловые линии',
+        _ => provider,
+      };
+
+  /// Доехала или вернулась: дальше ничего не произойдёт.
+  bool get finished =>
+      status == 'delivered' || status == 'returned' || status == 'failed';
 }
