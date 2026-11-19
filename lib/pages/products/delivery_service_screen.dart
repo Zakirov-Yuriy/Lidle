@@ -99,6 +99,9 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
   /// и запрос на каждую букву это и лишняя нагрузка, и мигающий список.
   Timer? _cityTimer;
 
+  /// То же для адреса при доставке до двери.
+  Timer? _addressTimer;
+
   List<DeliveryCity> _cities = const [];
   bool _citiesLoading = false;
 
@@ -144,6 +147,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
   @override
   void dispose() {
     _cityTimer?.cancel();
+    _addressTimer?.cancel();
     _cityController.dispose();
     _addressController.dispose();
 
@@ -210,7 +214,9 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
     });
 
     if (toDoor) {
-      await _loadQuotes();
+      // Цены появятся, когда человек наберёт адрес: без адреса служба
+      // доставку до двери не считает.
+      if (_addressController.text.trim().length >= 5) await _loadQuotes();
     } else {
       await _loadPoints();
     }
@@ -233,6 +239,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
       // Пункт выдачи передаём обязательно, если он уже выбран: Яндекс без
       // него цену не считает вовсе.
       pointCode: _point?.code,
+      address: _toDoor == true ? _addressController.text.trim() : null,
       weight: widget.weight,
     );
 
@@ -288,6 +295,23 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
     });
 
     await _loadQuotes();
+  }
+
+  /// Адрес набран: пересчитываем цену.
+  ///
+  /// С ЗАДЕРЖКОЙ, как и город: человек печатает быстрее, чем отвечает
+  /// служба, а запрос на каждую букву это и нагрузка, и мигающие цены.
+  void _onAddressTyped(String value) {
+    _addressTimer?.cancel();
+
+    setState(() {
+      _quote = null;
+      _quotes = const [];
+    });
+
+    if (value.trim().length < 5) return;
+
+    _addressTimer = Timer(const Duration(milliseconds: 700), _loadQuotes);
   }
 
   Future<void> _loadPoints() async {
@@ -633,7 +657,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
           const SizedBox(height: 10),
           TextField(
             controller: _addressController,
-            onChanged: (_) => setState(() {}),
+            onChanged: _onAddressTyped,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Улица, дом, квартира',

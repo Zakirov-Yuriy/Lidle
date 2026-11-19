@@ -188,6 +188,7 @@ class DeliveryQuotesService {
     String? cityCode,
     String? city,
     String? pointCode,
+    String? address,
     int weight = 1000,
   }) async {
     final params = <String, String>{
@@ -196,6 +197,9 @@ class DeliveryQuotesService {
       if (cityCode != null && cityCode.isNotEmpty) 'city_code': cityCode,
       if (city != null && city.isNotEmpty) 'city': city,
       if (pointCode != null && pointCode.isNotEmpty) 'point_code': pointCode,
+      // Для доставки до двери службе нужен адрес: Яндекс считает её только
+      // по нему, город его не устраивает.
+      if (address != null && address.isNotEmpty) 'address': address,
     };
 
     try {
