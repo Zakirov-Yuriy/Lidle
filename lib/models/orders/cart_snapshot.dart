@@ -168,6 +168,12 @@ class CartSnapshot {
           // корзину целиком, а отобранные галочками позиции.
           deliveryOptions: shop.deliveryOptions,
 
+          // И признак служб доставки по той же причине (задача 53, этап 5,
+          // 19.11.2026). Пункт «Служба доставки» показывается только по
+          // нему, и без переноса он пропадал ровно так же, как когда-то
+          // пропадал выбор курьера.
+          hasDeliveryServices: shop.hasDeliveryServices,
+
           items: lines,
           total: shopSum,
         ),
