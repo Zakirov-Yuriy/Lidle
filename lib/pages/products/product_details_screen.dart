@@ -683,6 +683,32 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   /// Текст берём с сервера: одна и та же фраза нужна сайту, приложению и
   /// админке, и написанная в трёх местах она разойдётся. Свой запасной
   /// вариант оставлен на случай старого сервера, который поле не присылает.
+  /// Подпись вместо кнопки у собственного товара.
+  Widget _buildOwnNotice() {
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(25, 8, 25, 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.storefront_outlined, color: textSecondary, size: 20),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Это ваш товар. Покупать в собственной точке нельзя.',
+                style: TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildOfflineNotice(ProductItem product) {
     final shopName = product.shop?.name;
 
@@ -2216,6 +2242,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     // решит, что сломалось приложение. Вместо неё объяснение с сервера.
     if (!product.canOrder) {
       return _buildOfflineNotice(product);
+    }
+
+    // Свой товар не покупают. Кнопку не рисуем: сервер всё равно откажет
+    // при оформлении, и человек решит, что сломалось приложение.
+    if (product.isOwn) {
+      return _buildOwnNotice();
     }
 
     final canBuy = _canBuy;

@@ -102,6 +102,11 @@ class ProductItem {
   /// должно вести себя как раньше, а не прятать кнопку у всех подряд.
   final bool canOrder;
 
+  /// Это товар самого смотрящего (19.11.2026). Свой товар не покупают, и
+  /// сказать об этом надо сразу в карточке, а не отказом на последнем шаге
+  /// оформления, когда человек уже ввёл имя, телефон и адрес.
+  final bool isOwn;
+
   /// Готовый текст «почему заказа нет». Приходит с сервера, пустой когда
   /// заказ есть.
   final String? orderNotice;
@@ -143,6 +148,7 @@ class ProductItem {
     this.cookingTimeMinutes,
     this.attributes = const [],
     this.canOrder = true,
+    this.isOwn = false,
     this.orderNotice,
     this.variants = const [],
     this.date = '',
@@ -204,6 +210,8 @@ class ProductItem {
           : const [],
       cookingTimeMinutes: _int(data['cooking_time_minutes']),
       canOrder: data['can_order'] != false,
+      // Старый сервер признака не присылает: тогда ведём себя как раньше.
+      isOwn: data['is_own'] == true,
       canRespond: data['can_respond'] == true,
       isResponded: data['is_responded'] == true,
       orderNotice: () {
