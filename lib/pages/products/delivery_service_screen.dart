@@ -7,9 +7,15 @@
 // Покупатель выбирает город, видит цены и сроки служб, которые подключил
 // продавец, и выбирает пункт выдачи. Выбор возвращается на экран оформления.
 //
-// ПОРЯДОК ШАГОВ НЕ СЛУЧАЕН: город, потом варианты, потом пункт. Без города
-// служба не считает вообще, а пункты выдачи есть только в выбранном городе.
-// Поэтому шаги раскрываются по мере готовности, а не висят пустыми.
+// ПОРЯДОК ШАГОВ ДИКТУЮТ САМИ СЛУЖБЫ: город, потом способ, потом пункт
+// выдачи, и только потом цена.
+//
+// Так приходится делать из-за Яндекса: он считает цену ТОЛЬКО когда уже
+// известен конкретный пункт выдачи, а СДЭК считает по городу. Если сначала
+// показывать цены, как напрашивается, Яндекс не посчитает никогда и просто
+// не появится в списке. Поймано на проверке 19.11.2026.
+//
+// Для доставки до двери пункт не нужен, там после адреса сразу цены.
 //
 // ЦЕНА ЗДЕСЬ ДЛЯ ПОКАЗА. При оформлении сервер спросит службу заново: цена
 // могла измениться, пока человек выбирал.
@@ -98,6 +104,9 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
 
   DeliveryCity? _city;
 
+  /// Способ: в пункт выдачи или до двери. Пусто, пока не выбран.
+  bool? _toDoor;
+
   List<DeliveryQuote> _quotes = const [];
   String? _quotesMessage;
   bool _quotesLoading = false;
@@ -121,9 +130,14 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
       _city = DeliveryCity(code: was.cityCode, name: was.cityName);
       _cityController.text = was.cityName;
       _point = was.point;
+      _toDoor = was.quote.toDoor;
       _addressController.text = was.address ?? '';
 
-      unawaited(_loadQuotes(keep: was.quote));
+      if (was.quote.toDoor) {
+        unawaited(_loadQuotes(keep: was.quote));
+      } else {
+        unawaited(_loadPoints().then((_) => _loadQuotes(keep: was.quote)));
+      }
     }
   }
 
@@ -174,9 +188,32 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
       _quote = null;
       _point = null;
       _points = const [];
+      _quotes = const [];
+      _quotesMessage = null;
     });
 
-    await _loadQuotes();
+    if (_toDoor == true) {
+      await _loadQuotes();
+    } else if (_toDoor == false) {
+      await _loadPoints();
+    }
+  }
+
+  /// Выбрать способ: в пункт выдачи или до двери.
+  Future<void> _pickWay(bool toDoor) async {
+    setState(() {
+      _toDoor = toDoor;
+      _quote = null;
+      _point = null;
+      _quotes = const [];
+      _quotesMessage = null;
+    });
+
+    if (toDoor) {
+      await _loadQuotes();
+    } else {
+      await _loadPoints();
+    }
   }
 
   Future<void> _loadQuotes({DeliveryQuote? keep}) async {
@@ -193,13 +230,29 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
       shopId: widget.shopId,
       cityCode: city.code,
       city: city.name,
+      // Пункт выдачи передаём обязательно, если он уже выбран: Яндекс без
+      // него цену не считает вовсе.
+      pointCode: _point?.code,
       weight: widget.weight,
     );
 
     if (!mounted) return;
 
+    // Оставляем только то, что подходит выбранному способу, и, если пункт
+    // уже выбран, только службу этого пункта: везти в пункт Яндекса тарифом
+    // СДЭК нельзя, а список из обеих служб выглядел бы так, будто можно.
+    final podhodyashchie = answer.quotes.where((q) {
+      if (_toDoor != null && q.toDoor != _toDoor) return false;
+
+      final point = _point;
+
+      if (point != null && q.provider != point.provider) return false;
+
+      return true;
+    }).toList();
+
     setState(() {
-      _quotes = answer.quotes;
+      _quotes = podhodyashchie;
       _quotesMessage = answer.message;
       _quotesLoading = false;
 
@@ -207,7 +260,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
       // его больше не дают, человек увидит пустой выбор и выберет заново:
       // подставлять похожий тариф молча нельзя.
       if (keep != null) {
-        for (final quote in answer.quotes) {
+        for (final quote in podhodyashchie) {
           if (quote.provider == keep.provider && quote.code == keep.code) {
             _quote = quote;
 
@@ -222,28 +275,34 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
     }
   }
 
-  Future<void> _pickQuote(DeliveryQuote quote) async {
+  void _pickQuote(DeliveryQuote quote) {
+    setState(() => _quote = quote);
+  }
+
+  /// Выбрали пункт: теперь можно спросить цену. Для Яндекса это
+  /// единственный момент, когда он вообще считает.
+  Future<void> _pickPoint(DeliveryPoint point) async {
     setState(() {
-      _quote = quote;
-      _point = null;
+      _point = point;
+      _quote = null;
     });
 
-    if (!quote.toDoor) await _loadPoints();
+    await _loadQuotes();
   }
 
   Future<void> _loadPoints() async {
     final city = _city;
-    final quote = _quote;
 
-    if (city == null || quote == null) return;
+    if (city == null) return;
 
     setState(() => _pointsLoading = true);
 
+    // Пункты ВСЕХ служб продавца сразу: человек выбирает удобный адрес, а
+    // не службу. Какая служба повезёт, выяснится из цены следующим шагом.
     final found = await DeliveryQuotesService.points(
       shopId: widget.shopId,
       cityCode: city.code,
       city: city.name,
-      provider: quote.provider,
     );
 
     if (!mounted) return;
@@ -335,15 +394,21 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
                   _cityBlock(),
                   if (_city != null) ...[
                     const SizedBox(height: 20),
-                    _quotesBlock(),
+                    _wayBlock(),
                   ],
-                  if (_quote != null && !_quote!.toDoor) ...[
+                  if (_toDoor == false) ...[
                     const SizedBox(height: 20),
                     _pointsBlock(),
                   ],
-                  if (_quote != null && _quote!.toDoor) ...[
+                  if (_toDoor == true) ...[
                     const SizedBox(height: 20),
                     _addressBlock(),
+                  ],
+                  // Цены показываем последними: Яндекс считает их только
+                  // после выбора пункта выдачи.
+                  if (_toDoor == true || _point != null) ...[
+                    const SizedBox(height: 20),
+                    _quotesBlock(),
                   ],
                 ],
               ),
@@ -432,6 +497,38 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
     );
   }
 
+  /// Как получать: в пункте выдачи или дома.
+  ///
+  /// СПРАШИВАЕМ ДО ЦЕН, потому что Яндекс считает цену только для
+  /// конкретного пункта. Заодно так понятнее человеку: он думает «заберу
+  /// сам» или «пусть привезут», а не кодами тарифов.
+  Widget _wayBlock() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Как получить',
+            style: TextStyle(color: Colors.white, fontSize: 15),
+          ),
+          const SizedBox(height: 4),
+          _radioRow(
+            selected: _toDoor == false,
+            title: 'В пункте выдачи',
+            hint: 'Заберёте сами, обычно дешевле',
+            onTap: () => _pickWay(false),
+          ),
+          _radioRow(
+            selected: _toDoor == true,
+            title: 'Курьером до двери',
+            hint: 'Привезут по вашему адресу',
+            onTap: () => _pickWay(true),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _quotesBlock() {
     if (_quotesLoading) return _loader('Спрашиваем службы доставки');
 
@@ -439,8 +536,11 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
       return _card(
         child: Text(
           _quotesMessage ??
-              'Для этого города доставки нет. Попробуйте другой город или '
-                  'выберите самовывоз.',
+              (_point != null
+                  ? 'Служба не посчитала доставку в этот пункт. Выберите '
+                      'другой пункт выдачи.'
+                  : 'Для этого города доставки нет. Попробуйте другой город '
+                      'или выберите самовывоз.'),
           style: const TextStyle(color: textSecondary, fontSize: 14, height: 1.4),
         ),
       );
@@ -451,7 +551,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Как доставить',
+            'Цена и срок',
             style: TextStyle(color: Colors.white, fontSize: 15),
           ),
           const SizedBox(height: 4),
@@ -502,10 +602,11 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
               selected: _point?.code == point.code,
               title: point.address.isEmpty ? point.code : point.address,
               hint: [
+                if (point.providerTitle.isNotEmpty) point.providerTitle,
                 if (point.workTime.isNotEmpty) point.workTime,
                 if (point.card) 'можно картой',
               ].join(' · '),
-              onTap: () => setState(() => _point = point),
+              onTap: () => _pickPoint(point),
             ),
           if (_points.length > 20)
             const Padding(
