@@ -116,6 +116,9 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
 
   DeliveryPoint? _point;
 
+  /// Выбранная служба в списке пунктов. Пусто означает «показывать все».
+  String? _pointProvider;
+
   final TextEditingController _addressController = TextEditingController();
 
   @override
@@ -187,6 +190,9 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
       _quote = null;
       _point = null;
       _points = const [];
+      // И фильтр по службе тоже: в новом городе у неё может не быть ни
+      // одного пункта, а человек увидел бы пустой список.
+      _pointProvider = null;
       _quotes = const [];
       _quotesMessage = null;
     });
@@ -628,17 +634,21 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
             'Всего пунктов: ${_points.length}',
             style: const TextStyle(color: textSecondary, fontSize: 13),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
 
-          // Показываем первые двадцать: их бывают сотни, а карты у нас пока
-          // нет. Остальные ищутся полем ниже.
-          //
-          // СЕРВЕР ОТДАЁТ ИХ ВПЕРЕМЕШКУ, по одному от каждой службы по
-          // кругу, и это важно именно здесь. Подряд в двадцатку попадал
-          // только СДЭК со своей сотней московских пунктов, а Яндекс и
-          // Деловые линии стояли за ней в очереди и человеку не показывались
-          // вовсе. Поймано на проверке 20.11.2026.
-          for (final point in _points.take(20))
+          _providerChips(),
+
+          /*
+           * ПОКАЗЫВАЕМ ВСЕ, А НЕ ПЕРВЫЕ ДВАДЦАТЬ.
+           *
+           * Раньше список обрезался, и человек видел надпись «всего пунктов
+           * 142», а под ней двадцать строк, причём все одной службы: у СДЭК
+           * в Москве сто сорок с лишним пунктов, и остальные службы просто
+           * не помещались. Обрезать чужой выбор, не дав его даже
+           * пролистать, нельзя. Карты у нас пока нет, зато есть фильтр по
+           * службам выше.
+           */
+          for (final point in _vidnye())
             _radioRow(
               selected: _point?.code == point.code,
               title: point.address.isEmpty ? point.code : point.address,
@@ -649,16 +659,97 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
               ].join(' · '),
               onTap: () => _pickPoint(point),
             ),
-          if (_points.length > 20)
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text(
-                'Показаны первые 20 пунктов, по очереди от каждой службы. '
-                'Уточните город, если нужного нет.',
-                style: TextStyle(color: textSecondary, fontSize: 13),
-              ),
+        ],
+      ),
+    );
+  }
+
+  /// Пункты, которые сейчас показываем: все или одной службы.
+  List<DeliveryPoint> _vidnye() {
+    if (_pointProvider == null) return _points;
+
+    return _points.where((p) => p.provider == _pointProvider).toList();
+  }
+
+  /// Выбор службы над списком пунктов.
+  ///
+  /// У служб очень разное число пунктов: в Москве у СДЭК их полторы сотни, у
+  /// Деловых линий четыре. В общем списке мелкие теряются, а человек часто
+  /// уже знает, куда ему удобно ехать. Поэтому даём выбрать службу и
+  /// показываем, сколько у неё пунктов в этом городе.
+  Widget _providerChips() {
+    final nazvania = <String, String>{};
+    final skolko = <String, int>{};
+
+    for (final point in _points) {
+      if (point.provider.isEmpty) continue;
+
+      nazvania.putIfAbsent(
+        point.provider,
+        () => point.providerTitle.isEmpty ? point.provider : point.providerTitle,
+      );
+      skolko[point.provider] = (skolko[point.provider] ?? 0) + 1;
+    }
+
+    // Одна служба: выбирать не из чего, лишний ряд кнопок только мешает.
+    if (nazvania.length < 2) return const SizedBox(height: 4);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          _chip(
+            title: 'Все, ${_points.length}',
+            selected: _pointProvider == null,
+            onTap: () => _pickProvider(null),
+          ),
+          for (final entry in nazvania.entries)
+            _chip(
+              title: '${entry.value}, ${skolko[entry.key] ?? 0}',
+              selected: _pointProvider == entry.key,
+              onTap: () => _pickProvider(entry.key),
             ),
         ],
+      ),
+    );
+  }
+
+  void _pickProvider(String? provider) {
+    setState(() {
+      _pointProvider = provider;
+
+      // Выбранный пункт чужой службы просто исчез бы из списка, и человек
+      // не понял бы, что именно он везёт. Поэтому снимаем выбор.
+      if (provider != null && _point != null && _point!.provider != provider) {
+        _point = null;
+        _quote = null;
+      }
+    });
+  }
+
+  Widget _chip({
+    required String title,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? activeIconColor : secondaryBackground,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: selected ? Colors.white : textSecondary,
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
       ),
     );
   }
