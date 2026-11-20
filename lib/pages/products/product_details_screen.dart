@@ -1501,8 +1501,19 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
     if (shop?.userId == null) return const SizedBox.shrink();
 
+    /*
+     * ОТСТУП СНИЗУ КАК НА КАРТОЧКЕ ОБЪЯВЛЕНИЯ, пятьдесят точек (правка
+     * 20.11.2026). Там этот ряд закреплён именно так, и человек привык к
+     * его месту на экране; прижатый к самому краю он выглядел чужим.
+     *
+     * Когда под рядом идёт кнопка корзины, отступ маленький: большой
+     * оставил бы дыру между двумя рядами, а нижний край держит уже сама
+     * кнопка, у неё свой отступ и своя безопасная зона.
+     */
+    final estKorzina = product.canOrder && !product.isOwn;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(25, 0, 25, 8),
+      padding: EdgeInsets.fromLTRB(25, 0, 25, estKorzina ? 8 : 50),
       child: Row(
         children: [
           Expanded(
