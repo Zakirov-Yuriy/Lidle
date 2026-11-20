@@ -119,6 +119,11 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
   /// Выбранная служба в списке пунктов. Пусто означает «показывать все».
   String? _pointProvider;
 
+  /// Поиск по адресу внутри списка пунктов.
+  String _pointSearch = '';
+
+  final TextEditingController _pointSearchController = TextEditingController();
+
   final TextEditingController _addressController = TextEditingController();
 
   @override
@@ -147,6 +152,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
     _cityTimer?.cancel();
     _addressTimer?.cancel();
     _cityController.dispose();
+    _pointSearchController.dispose();
     _addressController.dispose();
 
     super.dispose();
@@ -191,8 +197,11 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
       _point = null;
       _points = const [];
       // И фильтр по службе тоже: в новом городе у неё может не быть ни
-      // одного пункта, а человек увидел бы пустой список.
+      // одного пункта, а человек увидел бы пустой список. Поиск по улице
+      // по той же причине: улица осталась от прошлого города.
       _pointProvider = null;
+      _pointSearch = '';
+      _pointSearchController.clear();
       _quotes = const [];
       _quotesMessage = null;
     });
@@ -639,6 +648,21 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
           _providerChips(),
 
           /*
+           * ПОИСК ПО АДРЕСУ. В большом городе пунктов полторы сотни, и
+           * листать их все, чтобы найти тот, что у дома, занятие на
+           * несколько минут. Человек обычно знает свою улицу, поэтому ищем
+           * по ней.
+           */
+          if (_points.length > 8) ...[
+            _field(
+              controller: _pointSearchController,
+              hint: 'Поиск по улице или адресу',
+              onChanged: (value) => setState(() => _pointSearch = value),
+            ),
+            const SizedBox(height: 8),
+          ],
+
+          /*
            * ПОКАЗЫВАЕМ ВСЕ, А НЕ ПЕРВЫЕ ДВАДЦАТЬ.
            *
            * Раньше список обрезался, и человек видел надпись «всего пунктов
@@ -648,6 +672,16 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
            * пролистать, нельзя. Карты у нас пока нет, зато есть фильтр по
            * службам выше.
            */
+          if (_vidnye().isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'По этому запросу пунктов нет. Попробуйте другую улицу или '
+                'выберите другую службу.',
+                style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+              ),
+            ),
+
           for (final point in _vidnye())
             _radioRow(
               selected: _point?.code == point.code,
@@ -664,11 +698,21 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
     );
   }
 
-  /// Пункты, которые сейчас показываем: все или одной службы.
+  /// Пункты, которые сейчас показываем: с учётом службы и поиска.
   List<DeliveryPoint> _vidnye() {
-    if (_pointProvider == null) return _points;
+    final iskomoe = _pointSearch.trim().toLowerCase();
 
-    return _points.where((p) => p.provider == _pointProvider).toList();
+    return _points.where((p) {
+      if (_pointProvider != null && p.provider != _pointProvider) return false;
+
+      if (iskomoe.isEmpty) return true;
+
+      // Ищем и по адресу, и по названию службы: человек может набрать
+      // «деловые» и увидеть их пункты, не разбираясь с кнопками.
+      return p.address.toLowerCase().contains(iskomoe) ||
+          p.city.toLowerCase().contains(iskomoe) ||
+          p.providerTitle.toLowerCase().contains(iskomoe);
+    }).toList();
   }
 
   /// Выбор службы над списком пунктов.
