@@ -3,9 +3,9 @@ description: "LIDLE - современное кроссплатформенно�
 publish_to: 'none' # Удалить эту строку, если хотите опубликовать в pub.dev
 
 # Rustore
-version: 1.0.0+48
+version: 1.0.0+49
 # Google
-# version: 1.0.0+8
+# version: 1.0.0+9
 
 environment:
   sdk: ^3.9.2

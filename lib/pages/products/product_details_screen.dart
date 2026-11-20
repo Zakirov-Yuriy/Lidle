@@ -20,6 +20,8 @@ import 'package:lidle/models/message_model.dart';
 import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/common/share_action_button.dart';
+import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/widgets/dialogs/report_product_dialog.dart';
 import 'package:lidle/widgets/common/video_review_slide.dart';
 
@@ -300,7 +302,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _product == null ? null : _buildBottomBar(_product!),
+      // Внизу два ряда: связь с продавцом и корзина. Ряд связи сверху,
+      // потому что кнопка покупки должна оставаться последней и самой
+      // близкой к пальцу (правка 20.11.2026).
+      bottomNavigationBar: _product == null
+          ? null
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildContactRow(_product!),
+                _buildBottomBar(_product!),
+              ],
+            ),
     );
   }
 
@@ -1404,6 +1417,115 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           sourceType: 'product',
           sourceId: widget.productId,
         ),
+      ),
+    );
+  }
+
+  /// Телефоны продавца (правка 20.11.2026).
+  ///
+  /// ВХОД НЕ ТРЕБУЕТСЯ, как и на карточке объявления: человек нашёл товар и
+  /// готов позвонить сейчас, а просьба завести профиль ровно в этот момент
+  /// отсекает самых решительных. Контакты продавца и так открыты на сайте.
+  Future<void> _callSeller(ShopBrief shop) async {
+    final userId = shop.userId;
+
+    if (userId == null) {
+      SnackBarHelper.showWarning(context, 'Информация о продавце недоступна');
+
+      return;
+    }
+
+    final phones = await ApiService.getUserPhones(userId: userId);
+
+    if (!mounted) return;
+
+    if (phones.isEmpty) {
+      SnackBarHelper.showInfo(context, 'Номера телефонов не найдены');
+
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      builder: (_) => PhoneDialog(
+        phoneNumbers: phones,
+        authToken: TokenService.currentToken,
+      ),
+    );
+  }
+
+  /// Поделиться товаром из нижнего ряда.
+  ///
+  /// Тот же текст и та же ссылка, что в карточке «Поделиться товаром»: два
+  /// разных текста об одном товаре сбивали бы с толку того, кому его
+  /// переслали.
+  void _shareProduct(ProductItem product) {
+    Share.share(
+      '${product.name}\n'
+      'Цена: ${product.priceLabel}\n\n'
+      'Присоединяйся к LIDLE!\n'
+      '${_productUrl(product)}',
+    );
+  }
+
+  /// Закреплённый ряд связи с продавцом (правка 20.11.2026).
+  ///
+  /// ЗАЧЕМ ОН НА ТОВАРЕ. У объявления такой ряд есть давно, и человек к нему
+  /// привык: у товара вопросы к продавцу те же, про размер, состояние и
+  /// сроки, а спросить было негде, кроме как уйти на страницу продавца.
+  ///
+  /// РЯД ЗАКРЕПЛЁН ВНИЗУ, а не стоит в списке: значок в шапке уезжает при
+  /// прокрутке, и к середине длинной карточки связаться с продавцом уже
+  /// нечем.
+  Widget _buildContactRow(ProductItem product) {
+    final shop = product.shop;
+
+    if (shop?.userId == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(25, 0, 25, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _callSeller(shop!),
+              child: Container(
+                height: 43,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF19D849),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text(
+                    'Позвонить',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _writeSeller(shop!),
+              child: Container(
+                height: 43,
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text(
+                    'Написать',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          ShareActionButton(onTap: () => _shareProduct(product)),
+        ],
       ),
     );
   }
