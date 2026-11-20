@@ -744,14 +744,16 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
         spacing: 8,
         runSpacing: 8,
         children: [
+          // Двоеточие, а не запятая: «СДЭК: 142» читается как подпись с
+          // числом, а «СДЭК, 142» выглядит продолжением перечисления.
           _chip(
-            title: 'Все, ${_points.length}',
+            title: 'Все: ${_points.length}',
             selected: _pointProvider == null,
             onTap: () => _pickProvider(null),
           ),
           for (final entry in nazvania.entries)
             _chip(
-              title: '${entry.value}, ${skolko[entry.key] ?? 0}',
+              title: '${entry.value}: ${skolko[entry.key] ?? 0}',
               selected: _pointProvider == entry.key,
               onTap: () => _pickProvider(entry.key),
             ),
