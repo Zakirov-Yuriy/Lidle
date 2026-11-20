@@ -122,6 +122,14 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
   /// Поиск по адресу внутри списка пунктов.
   String _pointSearch = '';
 
+  /// Раскрыт ли список пунктов.
+  ///
+  /// У Яндекса в Москве почти тысяча пунктов. Если оставить список
+  /// раскрытым после выбора, человеку придётся пролистать его целиком,
+  /// чтобы добраться до цен, которые идут следом. Поэтому выбранный пункт
+  /// сворачивается в одну строку.
+  bool _pointsOpen = true;
+
   final TextEditingController _pointSearchController = TextEditingController();
 
   final TextEditingController _addressController = TextEditingController();
@@ -202,6 +210,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
       _pointProvider = null;
       _pointSearch = '';
       _pointSearchController.clear();
+      _pointsOpen = true;
       _quotes = const [];
       _quotesMessage = null;
     });
@@ -302,6 +311,7 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
     setState(() {
       _point = point;
       _quote = null;
+      _pointsOpen = false;
     });
 
     await _loadQuotes();
@@ -609,7 +619,12 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
             _radioRow(
               selected: _quote?.provider == quote.provider &&
                   _quote?.code == quote.code,
-              title: '${quote.providerTitle}, ${quote.title}',
+              // Название тарифа показываем, только когда оно что-то
+              // добавляет. У Яндекса тариф один и зовётся как сама служба,
+              // и строка выходила «Яндекс Доставка, Яндекс Доставка».
+              title: quote.title.isEmpty || quote.title == quote.providerTitle
+                  ? quote.providerTitle
+                  : '${quote.providerTitle}, ${quote.title}',
               hint: [
                 '${quote.price.toStringAsFixed(0)} ₽',
                 if (quote.daysTitle.isNotEmpty) quote.daysTitle,
@@ -631,6 +646,53 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
           'В этом городе у службы нет пунктов выдачи. Выберите другой способ '
           'доставки.',
           style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+        ),
+      );
+    }
+
+    /*
+     * ВЫБРАННЫЙ ПУНКТ СВОРАЧИВАЕМ В ОДНУ СТРОКУ.
+     *
+     * У Яндекса в Москве почти тысяча пунктов. Раньше после выбора список
+     * оставался раскрытым, и чтобы добраться до цен, которые идут следом,
+     * человеку надо было пролистать все эти адреса до конца. Он уже выбрал,
+     * листать ему больше нечего.
+     */
+    if (_point != null && !_pointsOpen) {
+      return _card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _point!.address.isEmpty ? _point!.code : _point!.address,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              [
+                if (_point!.providerTitle.isNotEmpty) _point!.providerTitle,
+                if (_point!.workTime.isNotEmpty) _point!.workTime,
+              ].join(' · '),
+              style: const TextStyle(
+                color: textSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => setState(() => _pointsOpen = true),
+              behavior: HitTestBehavior.opaque,
+              child: const Text(
+                'Выбрать другой пункт',
+                style: TextStyle(color: activeIconColor, fontSize: 15),
+              ),
+            ),
+          ],
         ),
       );
     }
