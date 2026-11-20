@@ -632,6 +632,12 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
 
           // Показываем первые двадцать: их бывают сотни, а карты у нас пока
           // нет. Остальные ищутся полем ниже.
+          //
+          // СЕРВЕР ОТДАЁТ ИХ ВПЕРЕМЕШКУ, по одному от каждой службы по
+          // кругу, и это важно именно здесь. Подряд в двадцатку попадал
+          // только СДЭК со своей сотней московских пунктов, а Яндекс и
+          // Деловые линии стояли за ней в очереди и человеку не показывались
+          // вовсе. Поймано на проверке 20.11.2026.
           for (final point in _points.take(20))
             _radioRow(
               selected: _point?.code == point.code,
@@ -647,7 +653,8 @@ class _DeliveryServiceScreenState extends State<DeliveryServiceScreen> {
             const Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
-                'Показаны первые 20 пунктов. Уточните город, если нужного нет.',
+                'Показаны первые 20 пунктов, по очереди от каждой службы. '
+                'Уточните город, если нужного нет.',
                 style: TextStyle(color: textSecondary, fontSize: 13),
               ),
             ),
