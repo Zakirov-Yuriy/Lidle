@@ -488,6 +488,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         // их, когда уже посмотрел цену, размеры и описание.
         const SizedBox(height: 12),
         _buildReviews(product),
+
+        // Почему этот товар не купить: раздел без оплаты или собственный
+        // товар. В самом конце, после отзывов, и прокручивается вместе со
+        // всем остальным (правка 20.11.2026).
+        if (!product.canOrder)
+          _buildOfflineNotice(product)
+        else if (product.isOwn)
+          _buildOwnNotice(),
       ],
     );
   }
@@ -697,10 +705,16 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   /// админке, и написанная в трёх местах она разойдётся. Свой запасной
   /// вариант оставлен на случай старого сервера, который поле не присылает.
   /// Подпись вместо кнопки у собственного товара.
+  /// Подпись у собственного товара.
+  ///
+  /// ЖИВЁТ В СПИСКЕ, А НЕ ВНИЗУ ЭКРАНА (правка 20.11.2026). Закреплённой она
+  /// занимала место на каждом экране прокрутки, а сказать это достаточно
+  /// один раз, в конце карточки. Внизу закреплены только кнопки связи с
+  /// продавцом: они нужны в любой момент.
   Widget _buildOwnNotice() {
-    return SafeArea(
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(25, 8, 25, 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: formBackground,
@@ -722,12 +736,17 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 
+  /// Объяснение, почему товар не заказывают через приложение.
+  ///
+  /// ЖИВЁТ В СПИСКЕ, А НЕ ВНИЗУ ЭКРАНА (правка 20.11.2026): текст длинный, и
+  /// закреплённым он съедал нижнюю треть экрана на всём протяжении
+  /// карточки.
   Widget _buildOfflineNotice(ProductItem product) {
     final shopName = product.shop?.name;
 
-    return SafeArea(
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(25, 8, 25, 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: formBackground,
@@ -2359,17 +2378,15 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   Widget _buildBottomBar(ProductItem product) {
-    // Раздел без атрибута оплаты не заказывается вовсе. Кнопку не рисуем:
-    // нажать её всё равно нельзя, сервер откажет при оформлении, и человек
-    // решит, что сломалось приложение. Вместо неё объяснение с сервера.
-    if (!product.canOrder) {
-      return _buildOfflineNotice(product);
-    }
-
-    // Свой товар не покупают. Кнопку не рисуем: сервер всё равно откажет
-    // при оформлении, и человек решит, что сломалось приложение.
-    if (product.isOwn) {
-      return _buildOwnNotice();
+    // Раздел без атрибута оплаты не заказывается вовсе, и свой товар не
+    // покупают. Кнопку не рисуем: нажать её всё равно нельзя, сервер
+    // откажет при оформлении, и человек решит, что сломалось приложение.
+    //
+    // Объяснение при этом стоит не здесь, а в конце карточки, рядом с
+    // отзывами: закреплённым оно занимало нижнюю треть экрана на всём
+    // протяжении прокрутки (правка 20.11.2026).
+    if (!product.canOrder || product.isOwn) {
+      return const SizedBox.shrink();
     }
 
     final canBuy = _canBuy;
