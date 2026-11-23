@@ -18,6 +18,7 @@ import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/services/shipments_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class OrderAcceptScreen extends StatefulWidget {
   final OrderModel order;
@@ -95,6 +96,41 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
     setState(() => _shipmentsBusy = false);
 
     await _loadShipments();
+  }
+
+  /// Открыть печатную форму.
+  ///
+  /// ОТКРЫВАЕМ ВНЕШНИМ БРАУЗЕРОМ, а не внутри приложения: там человеку
+  /// доступна и печать на принтер, и отправка в мессенджер, и сохранение.
+  /// Своей смотрелки PDF у нас нет, и тащить её ради накладной незачем.
+  Future<void> _printLabel(Shipment shipment, String kind) async {
+    setState(() => _shipmentsBusy = true);
+
+    final result = await ShipmentsService.label(shipment.id, kind: kind);
+
+    if (!mounted) return;
+
+    setState(() => _shipmentsBusy = false);
+
+    if (!result.ok) {
+      // Служба часто отвечает «документ формируется, нажмите ещё раз», и
+      // это не ошибка, а инструкция: показываем её словами службы.
+      SnackBarHelper.showError(
+        context,
+        result.message ?? 'Документ пока недоступен.',
+      );
+
+      return;
+    }
+
+    final ok = await launchUrl(
+      Uri.parse(result.url!),
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!ok && mounted) {
+      SnackBarHelper.showError(context, 'Не удалось открыть документ.');
+    }
   }
 
   Future<void> _loadCouriers() async {
@@ -362,6 +398,59 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
             ),
           ),
         ),
+
+        /*
+         * ПЕЧАТЬ ПОЯВЛЯЕТСЯ ТОЛЬКО У ПРИНЯТОЙ ПОСЫЛКИ. Пока служба
+         * отказала, печатать нечего, и кнопка только путала бы.
+         */
+        if (!shipment.failed) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: OutlinedButton(
+                    onPressed: _shipmentsBusy
+                        ? null
+                        : () => _printLabel(shipment, 'waybill'),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF3A4654)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Накладная',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: OutlinedButton(
+                    onPressed: _shipmentsBusy
+                        ? null
+                        : () => _printLabel(shipment, 'barcode'),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF3A4654)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Наклейка',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
       if (_shipments.isEmpty) ...[
         const SizedBox(height: 10),

@@ -83,6 +83,16 @@ class ShipmentResult {
   final Shipment? shipment;
 }
 
+/// Ответ на запрос печатной формы: ссылка или причина отказа.
+class LabelResult {
+  const LabelResult({this.url, this.message});
+
+  final String? url;
+  final String? message;
+
+  bool get ok => url != null;
+}
+
 class ShipmentsService {
   /// Посылки по заказу.
   static Future<List<Shipment>> forOrder(int orderId) async {
@@ -159,18 +169,31 @@ class ShipmentsService {
     }
   }
 
-  /// Ссылка на квитанцию. Пусто, если служба их у нас не печатает.
-  static Future<String?> label(int shipmentId) async {
+  /// Ссылка на печатную форму.
+  ///
+  /// ДВА ВИДА. `waybill` это накладная или квитанция, бумага для водителя.
+  /// `barcode` это наклейка на коробку.
+  ///
+  /// ВОЗВРАЩАЕМ И ПРИЧИНУ ОТКАЗА. Служба нередко отвечает не «нельзя», а
+  /// «подождите, документ формируется», и человеку надо это прочитать, а
+  /// не гадать над молчащей кнопкой.
+  static Future<LabelResult> label(int shipmentId, {String kind = 'waybill'}) async {
     try {
-      final response = await ApiService.get('/me/shipments/$shipmentId/label');
+      final response = await ApiService.get('/me/shipments/$shipmentId/label?kind=$kind');
 
       final data = response['data'];
+      final url = data is Map ? data['url']?.toString() : null;
 
-      return data is Map ? data['url']?.toString() : null;
+      return LabelResult(
+        url: url == null || url.isEmpty ? null : url,
+        message: response['message']?.toString(),
+      );
     } catch (e) {
-      log.e('Квитанция не получена: $e');
+      log.e('Печатная форма не получена: $e');
 
-      return null;
+      return const LabelResult(
+        message: 'Не удалось получить документ. Попробуйте ещё раз.',
+      );
     }
   }
 }
