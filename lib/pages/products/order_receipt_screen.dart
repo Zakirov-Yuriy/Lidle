@@ -47,7 +47,14 @@ class _OrderReceiptScreenState extends State<OrderReceiptScreen> {
 
   OrderModel get order => widget.order;
 
-  bool get _isPickup => order.deliveryType != 'courier';
+  /*
+   * САМОВЫВОЗ ЭТО ТОЛЬКО САМОВЫВОЗ. Раньше здесь стояло «всё, что не
+   * курьер», и с появлением третьего способа, доставки службой, чек стал
+   * писать покупателю «получение: самовывоз» на заказ, который везут из
+   * Омска в Москву. Поймано на проверке 23.11.2026.
+   */
+  bool get _isPickup => order.deliveryType == 'pickup';
+
 
   Future<void> _save() async {
     if (_saving) return;
@@ -290,7 +297,11 @@ class _OrderReceiptScreenState extends State<OrderReceiptScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Text(
-              _isPickup ? 'Получение: самовывоз' : 'Получение: доставка курьером',
+              switch (order.deliveryType) {
+                'pickup' => 'Получение: самовывоз',
+                'service' => 'Получение: ${order.deliveryTitle ?? 'доставка службой'}',
+                _ => 'Получение: доставка курьером',
+              },
               style: const TextStyle(color: Colors.black87, fontSize: 13),
             ),
           ),

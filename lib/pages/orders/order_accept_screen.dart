@@ -452,6 +452,40 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
           ),
         ],
       ],
+      /*
+       * ПОВТОРИТЬ ПОСЛЕ ОТКАЗА. Служба отказывает по понятным причинам:
+       * не заполнено поле в настройках, не тот формат телефона. Человек
+       * идёт, дописывает и возвращается, а кнопки нет: она показывалась,
+       * только пока отправлений нет вовсе. Приходилось заводить новый
+       * заказ. Поймано на проверке 23.11.2026.
+       */
+      if (_shipments.isNotEmpty && _shipments.every((s) => s.failed)) ...[
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 44,
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _shipmentsBusy ? null : _ship,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: activeIconColor,
+              disabledBackgroundColor: formBackground,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              _shipmentsBusy ? 'Передаём службе...' : 'Передать службе ещё раз',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+
       if (_shipments.isEmpty) ...[
         const SizedBox(height: 10),
         SizedBox(
