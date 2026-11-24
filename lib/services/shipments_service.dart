@@ -65,8 +65,8 @@ class Shipment {
 
   String get providerTitle => switch (provider) {
         'cdek' => 'СДЭК',
-        'yandex' => 'Яндекс.Доставка',
-        'ozon' => 'Озон',
+        'yandex' => 'Яндекс Доставка',
+        'ozon' => 'Озон Доставка',
         'dellin' => 'Деловые линии',
         _ => provider,
       };
