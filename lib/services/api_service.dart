@@ -1856,6 +1856,30 @@ class ApiService {
     }
   }
 
+  /// Зарегистрировать звонок по товару (нажатие на номер в окне телефонов).
+  static Future<void> saveProductCall(int productId, {String? token}) async {
+    try {
+      await post('/products/$productId/call', {}, token: token);
+    } catch (e) {
+      // Некритично.
+    }
+  }
+
+  /// Зарегистрировать обращение по товару.
+  ///
+  /// source: message, manager_link, offer, response. По умолчанию переписка.
+  static Future<void> saveProductContact(
+    int productId, {
+    String source = 'message',
+    String? token,
+  }) async {
+    try {
+      await post('/products/$productId/contact', {'source': source}, token: token);
+    } catch (e) {
+      // Некритично.
+    }
+  }
+
   /// Зарегистрировать контакт по объявлению (первое сообщение по объявлению
   /// или клик по внешней ссылке менеджера в магазине).
   /// source: 'message' | 'manager_link'. Некритично: ошибки глушим.

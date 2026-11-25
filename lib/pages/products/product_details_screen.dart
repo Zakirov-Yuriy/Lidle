@@ -1495,6 +1495,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       context: context,
       builder: (_) => PhoneDialog(
         phoneNumbers: phones,
+        // Номер товара, чтобы звонок засчитался (задача 94, 25.11.2026).
+        // Раньше окно открывалось без него, и нажатие «Позвонить» на
+        // товаре не считалось нигде.
+        productId: widget.productId,
         authToken: TokenService.currentToken,
       ),
     );
@@ -1506,6 +1510,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   /// разных текста об одном товаре сбивали бы с толку того, кому его
   /// переслали.
   void _shareProduct(ProductItem product) {
+    // Засчитываем репост (задача 94, 25.11.2026). Тот же счётчик, что у
+    // кнопки в карточке «Поделиться товаром»: это одно и то же действие,
+    // просто из двух мест.
+    ApiService.shareProduct(product.id, token: TokenService.currentToken);
+
     Share.share(
       '${product.name}\n'
       'Цена: ${product.priceLabel}\n\n'
@@ -2238,7 +2247,16 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-            child: ShareIconsRow(url: url, text: product.name),
+            child: ShareIconsRow(
+              url: url,
+              text: product.name,
+              // Нажатие на значок соцсети тоже репост (задача 94,
+              // 25.11.2026).
+              onShared: () => ApiService.shareProduct(
+                product.id,
+                token: TokenService.currentToken,
+              ),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),

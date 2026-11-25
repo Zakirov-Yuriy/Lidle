@@ -20,7 +20,16 @@ class ShareIconsRow extends StatelessWidget {
     super.key,
     required this.url,
     required this.text,
+    this.onShared,
   });
+
+  /// Вызывается при нажатии любой плитки (задача 94, 25.11.2026).
+  ///
+  /// ЗАЧЕМ. Репосты считались только по большой кнопке «Поделиться
+  /// ссылкой», а нажатие на значок соцсети не считалось нигде, ни у
+  /// объявления, ни у товара. Со стороны это выглядело так, будто значками
+  /// никто не пользуется.
+  final VoidCallback? onShared;
 
   /// Порядок плиток — как на макете.
   static const _socials = [
@@ -53,7 +62,10 @@ class ShareIconsRow extends StatelessWidget {
                 label: s.$1,
                 asset: s.$2,
                 size: tile,
-                onTap: () => _shareVia(s.$3),
+                onTap: () {
+                  onShared?.call();
+                  _shareVia(s.$3);
+                },
               ),
           ],
         );

@@ -2007,6 +2007,15 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             child: ShareIconsRow(
               url: _generateAdvertisementUrl(widget.listing),
               text: widget.listing.title,
+              // Нажатие на значок соцсети тоже репост (задача 94,
+              // 25.11.2026): раньше считалась только большая кнопка.
+              onShared: () {
+                final id = int.tryParse(_listing.id);
+
+                if (id != null) {
+                  ApiService.shareAdvert(id, token: TokenService.currentToken);
+                }
+              },
             ),
           ),
           // Кнопка — открывает экран с QR-кодом объявления.

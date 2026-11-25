@@ -18,6 +18,16 @@ class PhoneDialog extends StatelessWidget {
   final int? advertId;
   final String? authToken;
 
+  /// Id товара, если звонят по товару (задача 94, 25.11.2026).
+  ///
+  /// ОТДЕЛЬНО ОТ `advertId`, И ЭТО ВАЖНО. Номера объявлений и товаров
+  /// совпадают сплошь и рядом, и передать номер товара как номер
+  /// объявления значит накрутить чужую статистику.
+  ///
+  /// Проверка 25.11.2026: звонок с карточки товара не считался нигде, окно
+  /// открывалось вообще без номера, и отмечать было нечего.
+  final int? productId;
+
   /// Вызывается после того, как пользователь реально инициировал звонок
   /// (нажал на номер и открылся диалер). По нему вызывающий экран показывает
   /// диалог отзыва «после звонка».
@@ -27,6 +37,7 @@ class PhoneDialog extends StatelessWidget {
     super.key,
     required this.phoneNumbers,
     this.advertId,
+    this.productId,
     this.authToken,
     this.onCallInitiated,
   });
@@ -66,6 +77,11 @@ class PhoneDialog extends StatelessWidget {
       // Некритично: ошибки глушатся внутри saveAdvertCall, ответ не ждём.
       if (advertId != null) {
         ApiService.saveAdvertCall(advertId!, token: authToken);
+      }
+
+      // Звонок по товару считается своей ручкой (задача 94, 25.11.2026).
+      if (productId != null) {
+        ApiService.saveProductCall(productId!, token: authToken);
       }
 
       // Очищаем номер от всех символов кроме цифр и +
