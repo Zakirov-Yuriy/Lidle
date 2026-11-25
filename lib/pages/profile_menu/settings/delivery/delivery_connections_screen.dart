@@ -261,6 +261,23 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
 
           if (open) ...[
             const SizedBox(height: 14),
+
+            // Инструкция именно по этой службе (задача 53, 25.11.2026).
+            //
+            // ЗАЧЕМ ОНА ЗДЕСЬ, А НЕ ОДНА СВЕРХУ. Общая инструкция наверху
+            // отвечает на вопрос «что вообще происходит», а человек,
+            // нажавший «Подключить», уже спрашивает другое: где у ЭТОЙ
+            // службы лежат ключи. Раньше подробно был описан только СДЭК,
+            // и про остальные три спрашивали в поддержке.
+            //
+            // Текст приходит с сервера и правится в админке: кабинеты
+            // служб меняются чаще, чем наш код.
+            if (provider.help.isNotEmpty)
+              HelpTile(
+                slug: provider.help,
+                margin: const EdgeInsets.only(bottom: 16),
+              ),
+
             ...provider.fields.map((field) => _field(provider, field, connection)),
 
             // Настройки отправителя: откуда везём. Без них служба считать

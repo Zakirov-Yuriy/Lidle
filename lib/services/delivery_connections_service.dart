@@ -52,6 +52,7 @@ class DeliveryProviderInfo {
     this.about = '',
     this.fields = const [],
     this.settings = const [],
+    this.help = '',
   });
 
   factory DeliveryProviderInfo.fromJson(Map<String, dynamic> json) {
@@ -73,6 +74,7 @@ class DeliveryProviderInfo {
               .map(DeliveryField.fromJson)
               .toList()
           : const [],
+      help: (json['help'] as String?) ?? '',
     );
   }
 
@@ -84,6 +86,13 @@ class DeliveryProviderInfo {
   /// Настройки отправителя: откуда везём и чем. Не секреты, приходят
   /// обратно заполненными.
   final List<DeliveryField> settings;
+
+  /// Тема инструкции по этой службе (задача 53, 25.11.2026).
+  ///
+  /// Сам текст лежит в справке на сервере и правится в админке: кабинеты
+  /// служб меняются чаще нашего кода. Пусто у старого сервера, тогда
+  /// инструкции просто нет.
+  final String help;
 }
 
 /// Подключение компании к службе.
