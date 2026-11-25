@@ -219,15 +219,6 @@ class MiniPropertyDetailsScreen extends StatefulWidget {
 }
 
 class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
-  /// Есть ли что показать в строке значков под фотографией (задача 94,
-  /// 25.11.2026). Нули не показываем, и у свежего объявления строки нет.
-  bool get _hasStats =>
-      _listing.viewsCount > 0 ||
-      _listing.clickCount > 0 ||
-      _listing.favoritesCount > 0 ||
-      _listing.commentsCount > 0 ||
-      _listing.shareCount > 0;
-
   // Блок «Поделиться объявлением» по умолчанию свёрнут: иконки видны
   // всегда, по шеврону раскрывается текст-подсказка. Как в блоке
   // «Поделиться компанией» на экране продавца.
@@ -766,18 +757,12 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               _buildImageCarousel(),
 
                               // Показатели карточки под фотографией (задача
-                              // 94, 25.11.2026). Здесь полный ряд из пяти:
-                              // просмотры, переходы, избранное, отзывы и
-                              // репосты. Место позволяет, а продавцу важно
-                              // видеть их все в одном взгляде.
-                              //
-                              // Пустые числа не показываем, поэтому у
-                              // свежего объявления строки нет вовсе, и
-                              // отступ под каруселью остаётся прежним.
-                              if (_hasStats) ...[
-                                const SizedBox(height: 12),
-                                AdvertStatsRow(listing: _listing),
-                              ],
+                              // 94, 25.11.2026): просмотры, переходы,
+                              // избранное, отзывы и репосты, по середине
+                              // ширины. Значки стоят всегда, число
+                              // появляется рядом с тем, где событие было.
+                              const SizedBox(height: 12),
+                              AdvertStatsRow(listing: _listing),
 
                               const SizedBox(height: 16),
                               _buildMainInfoCard(),

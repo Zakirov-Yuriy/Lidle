@@ -19,15 +19,16 @@ import 'package:lidle/models/home_models.dart';
 /// под карточкой не помещаются ни на одном телефоне, а значок с числом
 /// читается с одного взгляда.
 ///
-/// НОЛЬ НЕ ПОКАЗЫВАЕМ. Ряд из нулей под свежим объявлением выглядит хуже
-/// пустого места: он сообщает, что вещью никто не интересовался, хотя она
-/// просто только что появилась. Если нулевые все пять, ряда нет совсем, и
-/// карточка выглядит как раньше.
+/// ЗНАЧКИ СТОЯТ ВСЕГДА, А НОЛЬ НЕ ПИШЕТСЯ (правка заказчика 25.11.2026).
+/// Сначала нулевые показатели прятались целиком, и у свежего объявления ряд
+/// получался рваный: сегодня один значок, завтра три, послезавтра пять, и
+/// каждый раз на новом месте. Теперь набор постоянный, а число появляется
+/// рядом со значком, когда ему есть что показать. Пустой значок при этом
+/// приглушён, чтобы ряд читался с одного взгляда: где число, там и было
+/// событие.
 ///
-/// В ЛЕНТЕ ТРИ ЗНАЧКА, В КАРТОЧКЕ ПЯТЬ. В сетке по две карточки на ширину
-/// телефона пять чисел с запасом не помещаются, и остаются те, что важнее
-/// покупателю: просмотры, избранное и отзывы. Переходы и репосты это больше
-/// про продвижение, их видно внутри объявления.
+/// ПЯТЬ ЗНАЧКОВ ВЕЗДЕ, и в ленте тоже: заказчик 25.11.2026 посмотрел на
+/// живом экране и сказал, что помещаются. В ленте они просто мельче.
 class AdvertStatsRow extends StatelessWidget {
   const AdvertStatsRow({
     super.key,
@@ -38,7 +39,8 @@ class AdvertStatsRow extends StatelessWidget {
 
   final Listing listing;
 
-  /// Короткий ряд для ленты: просмотры, избранное, отзывы.
+  /// Мелкий вид для ленты: тот же набор значков, но меньше размером и по
+  /// левому краю, как остальные строки карточки.
   final bool compact;
 
   /// Множитель размеров, как у остальной карточки в ленте.
@@ -46,31 +48,76 @@ class AdvertStatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = <_Stat>[
-      _Stat('assets/product_card/stat_eye.svg', listing.viewsCount),
-      if (!compact) _Stat('assets/product_card/stat_click.svg', listing.clickCount),
-      _Stat('assets/product_card/stat_heart.svg', listing.favoritesCount),
-      _Stat('assets/product_card/stat_comment.svg', listing.commentsCount),
-      if (!compact) _Stat('assets/product_card/stat_share.svg', listing.shareCount),
-    ].where((item) => item.value > 0).toList();
+    const items = <_Stat>[
+      _Stat('assets/product_card/stat_eye.svg', _Kind.views),
+      _Stat('assets/product_card/stat_click.svg', _Kind.clicks),
+      _Stat('assets/product_card/stat_heart.svg', _Kind.favorites),
+      _Stat('assets/product_card/stat_comment.svg', _Kind.comments),
+      _Stat('assets/product_card/stat_share.svg', _Kind.shares),
+    ];
 
-    if (items.isEmpty) return const SizedBox.shrink();
-
-    final iconSize = (compact ? 12.0 : 16.0) * scale;
+    final iconSize = (compact ? 12.0 : 17.0) * scale;
     final fontSize = (compact ? 10.0 : 13.0) * scale;
-    final gap = (compact ? 8.0 : 14.0) * scale;
+    final gap = (compact ? 6.0 : 16.0) * scale;
+
+    if (compact) {
+      /*
+       * В ЛЕНТЕ РЯД ЖИВЁТ В ОДНОЙ СТРОКЕ, И ЭТО ЖЁСТКО. Карточка в сетке
+       * идёт впритык по высоте: со строкой звёзд она однажды уже начала
+       * обрезать дату снизу, 28.09.2026. У ходового объявления числа
+       * длинные, пять значков с ними в узкую карточку не влезут, и перенос
+       * на вторую строку отнял бы место у цены и даты.
+       *
+       * Поэтому здесь не Wrap, а строка в неподвижной полосе: что не
+       * поместилось, уезжает за правый край. Теряется при этом хвост ряда,
+       * то есть репосты, самое малоинтересное из пяти. Полоса не
+       * прокручивается пальцем нарочно: по карточке водят, чтобы листать
+       * ленту, а не её мелкие числа.
+       */
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) SizedBox(width: gap),
+              _cell(items[i], _value(items[i].kind), iconSize, fontSize),
+            ],
+          ],
+        ),
+      );
+    }
 
     return Wrap(
       spacing: gap,
       runSpacing: 4 * scale,
+      // По середине ширины (правка заказчика 25.11.2026): под рядом широкая
+      // фотография, и прижатый к левому краю ряд выглядел обрезком.
+      alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: items
-          .map((item) => _cell(item, iconSize, fontSize))
+          .map((item) => _cell(item, _value(item.kind), iconSize, fontSize))
           .toList(),
     );
   }
 
-  Widget _cell(_Stat item, double iconSize, double fontSize) {
+  int _value(_Kind kind) {
+    return switch (kind) {
+      _Kind.views => listing.viewsCount,
+      _Kind.clicks => listing.clickCount,
+      _Kind.favorites => listing.favoritesCount,
+      _Kind.comments => listing.commentsCount,
+      _Kind.shares => listing.shareCount,
+    };
+  }
+
+  Widget _cell(_Stat item, int value, double iconSize, double fontSize) {
+    // Пустой показатель: значок на месте, но тусклее и без числа. Так ряд
+    // не прыгает от карточки к карточке, а взгляд всё равно цепляется за
+    // то, где события были.
+    final color = value > 0 ? textSecondary : textMuted;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -78,17 +125,19 @@ class AdvertStatsRow extends StatelessWidget {
           item.asset,
           width: iconSize,
           height: iconSize,
-          colorFilter: const ColorFilter.mode(textSecondary, BlendMode.srcIn),
+          colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
         ),
-        SizedBox(width: 3 * scale),
-        Text(
-          _short(item.value),
-          style: TextStyle(
-            color: textSecondary,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w400,
+        if (value > 0) ...[
+          SizedBox(width: 3 * scale),
+          Text(
+            _short(value),
+            style: TextStyle(
+              color: color,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w400,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -117,9 +166,11 @@ class AdvertStatsRow extends StatelessWidget {
   }
 }
 
+enum _Kind { views, clicks, favorites, comments, shares }
+
 class _Stat {
-  const _Stat(this.asset, this.value);
+  const _Stat(this.asset, this.kind);
 
   final String asset;
-  final int value;
+  final _Kind kind;
 }
