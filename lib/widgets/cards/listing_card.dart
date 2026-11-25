@@ -313,9 +313,11 @@ class _ListingCardState extends State<ListingCard> {
                 compact: true,
                 scale: scale,
               ),
-              SizedBox(height: 2 * scale),
-
-              SizedBox(height: 5),
+              // Отступ от значков до названия вдвое меньше прежнего
+              // (25.11.2026, просьба заказчика): со строкой значков воздуха
+              // между снимком и текстом стало слишком много. Прежних
+              // отступов тут было два подряд, 2 и 5 точек, теперь один.
+              SizedBox(height: 3 * scale),
 
               Expanded(
                 child: Column(
