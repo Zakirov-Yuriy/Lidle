@@ -974,7 +974,24 @@ class ApiService {
       reviewsCount: item['reviews_count'] is int
           ? item['reviews_count'] as int
           : int.tryParse('${item['reviews_count'] ?? 0}') ?? 0,
+
+      // Показатели под фотографией (задача 94, 25.11.2026). У товара они
+      // приходят теми же ключами, что у объявления: карточка в ленте одна
+      // на оба вида, и разбирать два набора имён пришлось бы дважды.
+      viewsCount: _int(item['views_count']),
+      clickCount: _int(item['click_count']),
+      commentsCount: _int(item['comments_count']),
+      favoritesCount: _int(item['favorites_count']),
+      shareCount: _int(item['share_count']),
     );
+  }
+
+  /// Целое из ответа, каким бы оно ни пришло: числом, строкой или пусто.
+  static int _int(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+
+    return int.tryParse('${value ?? ''}') ?? 0;
   }
 
   /// Товары раздела: витрина категории или каталога (14.09.2026).
@@ -1786,6 +1803,56 @@ class ApiService {
       await post('/adverts/$advertId/click', {}, token: token);
     } catch (e) {
       // log.d('Failed to save advert click: $e');
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Показатели товара (задача 94, 25.11.2026)                           */
+  /* ------------------------------------------------------------------ */
+
+  /// Показы товаров, уже отправленные за эту сессию приложения.
+  ///
+  /// Свой набор, отдельно от объявлений: номера у них совпадают сплошь и
+  /// рядом, и общий набор молча съедал бы показ товара с тем же номером.
+  static final Set<int> _viewedProductIdsThisSession = <int>{};
+
+  /// Зарегистрировать ПОКАЗ товара в ленте или выдаче.
+  ///
+  /// За сессию по одному товару шлётся один раз, как у объявлений: прокрутка
+  /// ленты туда-сюда иначе дала бы десятки запросов. Дневной дедуп на
+  /// человека всё равно есть на сервере.
+  static Future<void> saveProductViewOnce(int productId, {String? token}) async {
+    if (productId <= 0) return;
+    if (!_viewedProductIdsThisSession.add(productId)) return;
+
+    await saveProductView(productId, token: token);
+  }
+
+  /// Сохранить просмотр товара. Ошибки глушим: это фоновая статистика, и
+  /// падать из-за неё экран не должен.
+  static Future<void> saveProductView(int productId, {String? token}) async {
+    try {
+      await post('/products/$productId/view', {}, token: token);
+    } catch (e) {
+      // Некритично.
+    }
+  }
+
+  /// Зарегистрировать переход по товару, то есть открытие его карточки.
+  static Future<void> saveProductClick(int productId, {String? token}) async {
+    try {
+      await post('/products/$productId/click', {}, token: token);
+    } catch (e) {
+      // Некритично.
+    }
+  }
+
+  /// Зарегистрировать, что товаром поделились.
+  static Future<void> shareProduct(int productId, {String? token}) async {
+    try {
+      await post('/products/$productId/share', {}, token: token);
+    } catch (e) {
+      // Некритично.
     }
   }
 

@@ -762,7 +762,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               // ширины. Значки стоят всегда, число
                               // появляется рядом с тем, где событие было.
                               const SizedBox(height: 12),
-                              AdvertStatsRow(listing: _listing),
+                              AdvertStatsRow.listing(_listing),
 
                               const SizedBox(height: 16),
                               _buildMainInfoCard(),

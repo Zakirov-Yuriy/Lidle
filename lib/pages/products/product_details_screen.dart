@@ -24,6 +24,7 @@ import 'package:lidle/widgets/common/share_action_button.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/widgets/dialogs/report_product_dialog.dart';
 import 'package:lidle/widgets/common/video_review_slide.dart';
+import 'package:lidle/widgets/common/advert_stats_row.dart';
 
 /// Карточка товара.
 class ProductDetailsScreen extends StatefulWidget {
@@ -111,6 +112,19 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   void initState() {
     super.initState();
     _load();
+
+    // Переход по товару, то есть открытие карточки (задача 94, 25.11.2026).
+    // Дедуп по дню на сервере, ответа не ждём: это фоновая статистика.
+    //
+    // ПОКАЗ ЗДЕСЬ НЕ ШЛЁМ: показ это карточка в ленте, его отправляет
+    // ListingCard. Открытие карточки это переход, а не показ, и путать их
+    // значит считать одно событие дважды.
+    if (widget.productId > 0) {
+      ApiService.saveProductClick(
+        widget.productId,
+        token: TokenService.currentToken,
+      );
+    }
   }
 
   @override
@@ -376,6 +390,19 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       padding: const EdgeInsets.fromLTRB(25, 8, 25, 24),
       children: [
         if (images.isNotEmpty) _buildGallery(images),
+
+        // Показатели под фотографией (задача 94, 25.11.2026): тот же ряд,
+        // что у объявления, по середине ширины. Значки стоят всегда, число
+        // появляется рядом с тем, где событие было.
+        const SizedBox(height: 12),
+        AdvertStatsRow(
+          views: product.viewsCount,
+          clicks: product.clickCount,
+          favorites: product.favoritesCount,
+          comments: product.commentsCount,
+          shares: product.shareCount,
+        ),
+
         const SizedBox(height: 16),
         Text(
           // Цена ВЫБРАННОГО варианта: у 46-го и 54-го она бывает разной, и
@@ -2225,7 +2252,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                onPressed: () => Share.share(text),
+                onPressed: () {
+                  // Засчитываем, что товаром поделились (задача 94,
+                  // 25.11.2026). Без дедупликации по дню: поделиться это
+                  // намеренное действие. Ответа не ждём, окно отправки
+                  // должно открыться сразу.
+                  ApiService.shareProduct(
+                    product.id,
+                    token: TokenService.currentToken,
+                  );
+
+                  Share.share(text);
+                },
                 icon: const Icon(Icons.share, color: Colors.white, size: 18),
                 label: const Text(
                   'Поделиться ссылкой',

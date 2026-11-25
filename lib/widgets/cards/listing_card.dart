@@ -96,10 +96,21 @@ class _ListingCardState extends State<ListingCard> {
     super.initState();
     _isFavorite = HiveService.getFavorites().contains(widget.listing.id);
 
-    // Товар в ленте главной (09.09.2026) — не объявление: ни просмотров, ни
-    // избранного у него здесь нет. Счётчик просмотров объявлений принял бы
-    // номер товара за номер объявления и накрутил чужую статистику.
+    /*
+     * У ТОВАРА СВОЙ СЧЁТЧИК, И ЭТО ВАЖНО. Номера объявлений и товаров
+     * совпадают сплошь и рядом, и отправить показ товара в ручку объявлений
+     * значит накрутить чужую статистику. Раньше показ товара не считался
+     * вовсе: своих счётчиков у товаров не было до задачи 94, 25.11.2026.
+     */
     if (widget.listing.isProduct) {
+      if (widget.countImpression) {
+        final productId = widget.listing.productId;
+
+        if (productId != null) {
+          ApiService.saveProductViewOnce(productId);
+        }
+      }
+
       return;
     }
 
@@ -308,8 +319,8 @@ class _ListingCardState extends State<ListingCard> {
               // 25.11.2026). Все пять, как и внутри объявления, только
               // мельче: заказчик посмотрел на живом экране и сказал, что
               // помещаются.
-              AdvertStatsRow(
-                listing: widget.listing,
+              AdvertStatsRow.listing(
+                widget.listing,
                 compact: true,
                 scale: scale,
               ),
@@ -527,6 +538,17 @@ class _ListingCardState extends State<ListingCard> {
                 SizedBox(height: 3 * scale),
               ] else
                 SizedBox(height: (cartButtonOverhang + 3) * scale),
+
+              // Показатели товара под снимком (задача 94, 25.11.2026). Тот
+              // же ряд, что у объявления: заказчик попросил, чтобы карточки
+              // товара и объявления в ленте выглядели одинаково, а не так,
+              // что у одной значки есть, а у другой нет.
+              AdvertStatsRow.listing(
+                widget.listing,
+                compact: true,
+                scale: scale,
+              ),
+              SizedBox(height: 3 * scale),
 
               // Сначала НАЗВАНИЕ, потом цена (15.09.2026, просьба заказчика).
               //

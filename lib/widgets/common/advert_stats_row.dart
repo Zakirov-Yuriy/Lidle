@@ -29,15 +29,39 @@ import 'package:lidle/models/home_models.dart';
 ///
 /// ПЯТЬ ЗНАЧКОВ ВЕЗДЕ, и в ленте тоже: заказчик 25.11.2026 посмотрел на
 /// живом экране и сказал, что помещаются. В ленте они просто мельче.
+/// ОДИН РЯД НА ОБЪЯВЛЕНИЯ И ТОВАРЫ (25.11.2026). Поэтому виджет принимает
+/// числа, а не модель: у товара и объявления они лежат в разных классах, а
+/// выглядеть ряд должен одинаково. Для карточки из ленты есть короткий
+/// способ, `AdvertStatsRow.listing(...)`.
 class AdvertStatsRow extends StatelessWidget {
   const AdvertStatsRow({
     super.key,
-    required this.listing,
+    this.views = 0,
+    this.clicks = 0,
+    this.favorites = 0,
+    this.comments = 0,
+    this.shares = 0,
     this.compact = false,
     this.scale = 1.0,
   });
 
-  final Listing listing;
+  /// Ряд по карточке ленты: объявление или товар, у них общая модель.
+  AdvertStatsRow.listing(
+    Listing listing, {
+    super.key,
+    this.compact = false,
+    this.scale = 1.0,
+  })  : views = listing.viewsCount,
+        clicks = listing.clickCount,
+        favorites = listing.favoritesCount,
+        comments = listing.commentsCount,
+        shares = listing.shareCount;
+
+  final int views;
+  final int clicks;
+  final int favorites;
+  final int comments;
+  final int shares;
 
   /// Мелкий вид для ленты: тот же набор значков, но меньше размером и по
   /// левому краю, как остальные строки карточки.
@@ -109,11 +133,11 @@ class AdvertStatsRow extends StatelessWidget {
 
   int _value(_Kind kind) {
     return switch (kind) {
-      _Kind.views => listing.viewsCount,
-      _Kind.clicks => listing.clickCount,
-      _Kind.favorites => listing.favoritesCount,
-      _Kind.comments => listing.commentsCount,
-      _Kind.shares => listing.shareCount,
+      _Kind.views => views,
+      _Kind.clicks => clicks,
+      _Kind.favorites => favorites,
+      _Kind.comments => comments,
+      _Kind.shares => shares,
     };
   }
 

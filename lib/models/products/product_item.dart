@@ -43,6 +43,21 @@ class ProductItem {
   final double? rating;
   final int reviewsCount;
 
+  /// Показатели карточки под фотографией (задача 94, 25.11.2026).
+  ///
+  /// Те же пять, что у объявления: сколько посмотрели, сколько перешли,
+  /// сколько оставили отзывов, сколько сохранили и сколько раз поделились.
+  /// До этой задачи у товара их не было вовсе, ни на экране, ни в базе.
+  final int viewsCount;
+
+  final int clickCount;
+
+  final int commentsCount;
+
+  final int favoritesCount;
+
+  final int shareCount;
+
   /// Можно ли откликнуться на товар (09.10.2026, задача 15).
   ///
   /// Решает сервер: отклики включаются пометкой характеристики категории в
@@ -145,6 +160,11 @@ class ProductItem {
     this.shop,
     this.rating,
     this.reviewsCount = 0,
+    this.viewsCount = 0,
+    this.clickCount = 0,
+    this.commentsCount = 0,
+    this.favoritesCount = 0,
+    this.shareCount = 0,
     this.cookingTimeMinutes,
     this.attributes = const [],
     this.canOrder = true,
@@ -190,6 +210,12 @@ class ProductItem {
       shop: ShopBrief.tryParse(data['shop']),
       rating: _double(data['rating']),
       reviewsCount: _int(data['reviews_count']) ?? 0,
+      // Показатели под фотографией (задача 94, 25.11.2026).
+      viewsCount: _int(data['views_count']) ?? 0,
+      clickCount: _int(data['click_count']) ?? 0,
+      commentsCount: _int(data['comments_count']) ?? 0,
+      favoritesCount: _int(data['favorites_count']) ?? 0,
+      shareCount: _int(data['share_count']) ?? 0,
       date: '${data['date'] ?? ''}'.trim(),
       isWishlisted: data['is_wishlisted'] == true,
       wishlistId: _int(data['wishlist_id']),
