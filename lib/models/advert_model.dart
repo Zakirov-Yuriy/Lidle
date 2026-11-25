@@ -15,6 +15,18 @@ class Advert {
   final int viewsCount;
   final int clickCount;
   final int shareCount;
+
+  /// Сколько человек добавили объявление в избранное и сколько оставили
+  /// отзывов (задача 94, 25.11.2026).
+  ///
+  /// Вместе с просмотрами, переходами и репостами выше это и есть ряд
+  /// значков под фотографией. Остальные три поля здесь были давно, но до
+  /// карточки не доезжали: лента собирает Listing методом toListing, а в нём
+  /// их не передавали.
+  final int favoritesCount;
+
+  final int commentsCount;
+
   final AdvertType type;
   final String? sellerName;
   final String? sellerAvatar;
@@ -85,6 +97,8 @@ class Advert {
     required this.viewsCount,
     required this.clickCount,
     required this.shareCount,
+    this.favoritesCount = 0,
+    this.commentsCount = 0,
     required this.type,
     this.sellerName,
     this.sellerAvatar,
@@ -330,6 +344,8 @@ class Advert {
       viewsCount: json['views_count'] ?? 0,
       clickCount: json['click_count'] ?? 0,
       shareCount: json['share_count'] ?? 0,
+      favoritesCount: (json['favorites_count'] as num?)?.toInt() ?? 0,
+      commentsCount: (json['comments_count'] as num?)?.toInt() ?? 0,
       type: json['type'] != null
           ? AdvertType.fromJson(json['type'] as Map<String, dynamic>)
           : AdvertType(id: 1, type: 'adverts', path: 'adverts'),
@@ -550,6 +566,14 @@ extension AdvertToListingExtension on Advert {
       isBargain: isBargain,
       rating: rating,
       reviewsCount: reviewsCount,
+      // Показатели под фотографией (задача 94, 25.11.2026). Карточка ленты
+      // собирается ИМЕННО здесь, а не разбором в Listing.fromJson:
+      // пропустить поля тут означает, что значков не будет вовсе.
+      viewsCount: viewsCount,
+      clickCount: clickCount,
+      commentsCount: commentsCount,
+      favoritesCount: favoritesCount,
+      shareCount: shareCount,
       showsRating: showsRating,
       hallsCount: hallsCount,
       sellerName: sellerName,

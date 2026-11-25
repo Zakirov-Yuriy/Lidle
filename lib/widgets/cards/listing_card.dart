@@ -18,6 +18,7 @@ import 'package:lidle/services/cart_service.dart';
 import 'package:lidle/widgets/dialogs/cart_folder_dialogs.dart';
 import 'package:lidle/services/product_favorites_service.dart';
 import 'package:lidle/pages/products/product_details_screen.dart';
+import 'package:lidle/widgets/common/advert_stats_row.dart';
 
 // ============================================================
 // "Утилиты для форматирования"
@@ -77,6 +78,17 @@ class ListingCard extends StatefulWidget {
 }
 
 class _ListingCardState extends State<ListingCard> {
+  /// Есть ли что показать в строке значков под снимком (задача 94,
+  /// 25.11.2026).
+  ///
+  /// Нужен до построения карточки: от него зависит высота снимка. Считаем
+  /// по тем же трём числам, которые лента и показывает, иначе место под
+  /// строку забиралось бы и у карточки, где строка окажется пустой.
+  bool get _hasStats =>
+      widget.listing.viewsCount > 0 ||
+      widget.listing.favoritesCount > 0 ||
+      widget.listing.commentsCount > 0;
+
   late bool _isFavorite;
 
   /// Кнопка «В корзину» нажата и ответ ещё не пришёл.
@@ -199,6 +211,14 @@ class _ListingCardState extends State<ListingCard> {
         final cardWidth = constraints.maxWidth;
 
         double imageProportion = cardWidth < 140 ? 0.50 : 0.58;
+
+        // Под строку значков забираем место у снимка, а не у текста (задача
+        // 94, 25.11.2026). Карточка в сетке и так шла впритык: со строкой
+        // звёзд она однажды уже начала обрезать дату снизу. Снимок эти
+        // четыре процента высоты переживает незаметно, а дата и цена нет.
+        // Когда показывать нечего, карточка остаётся прежней.
+        if (_hasStats) imageProportion -= 0.04;
+
         final imageHeight = cardHeight * imageProportion;
 
         final scale = cardHeight / 263;
@@ -295,6 +315,19 @@ class _ListingCardState extends State<ListingCard> {
                 SizedBox(height: 2 * scale),
               ] else
                 SizedBox(height: 4 * scale),
+
+              // Показатели карточки сразу под снимком (задача 94,
+              // 25.11.2026). В ленте короткий ряд: просмотры, избранное и
+              // отзывы. Переходы и репосты видно внутри объявления, в сетке
+              // по две карточки пять чисел не помещаются.
+              if (_hasStats) ...[
+                AdvertStatsRow(
+                  listing: widget.listing,
+                  compact: true,
+                  scale: scale,
+                ),
+                SizedBox(height: 2 * scale),
+              ],
 
               SizedBox(height: 5),
 

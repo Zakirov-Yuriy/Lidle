@@ -224,6 +224,25 @@ class Listing {
   /// Сколько оценок. Ноль означает то же самое, что пустая оценка.
   final int reviewsCount;
 
+  /// Показатели карточки под фотографией (задача 94, 25.11.2026).
+  ///
+  /// Те же числа, что видит продавец в админке: сколько раз карточку
+  /// посмотрели, сколько раз с неё перешли, сколько оставили отзывов,
+  /// сколько человек добавили в избранное и сколько раз ею поделились.
+  ///
+  /// НОЛЬ ЗНАЧИТ «НЕ ПОКАЗЫВАТЬ». Ряд из пяти нулей под свежим объявлением
+  /// выглядит хуже, чем пустое место: он сообщает, что вещью никто не
+  /// интересовался, хотя она просто только что появилась.
+  final int viewsCount;
+
+  final int clickCount;
+
+  final int commentsCount;
+
+  final int favoritesCount;
+
+  final int shareCount;
+
   /// Сколько у заведения залов (29.09.2026).
   ///
   /// Больше нуля — карточка в выдаче ведёт не в объявление, а к выбору зала:
@@ -305,6 +324,11 @@ class Listing {
     this.productId,
     this.rating,
     this.reviewsCount = 0,
+    this.viewsCount = 0,
+    this.clickCount = 0,
+    this.commentsCount = 0,
+    this.favoritesCount = 0,
+    this.shareCount = 0,
     this.showsRating = false,
     this.hallsCount = 0,
     this.categoryPath,
@@ -580,6 +604,14 @@ class Listing {
       // означает «рисуй звёзды».
       rating: (json['rating'] as num?)?.toDouble(),
       reviewsCount: (json['reviews_count'] as num?)?.toInt() ?? 0,
+      // Показатели карточки (задача 94, 25.11.2026). Имена ключей взяты с
+      // сервера как есть, включая разнобой: просмотры он отдаёт как
+      // views_count, а переходы как click_count.
+      viewsCount: (json['views_count'] as num?)?.toInt() ?? 0,
+      clickCount: (json['click_count'] as num?)?.toInt() ?? 0,
+      commentsCount: (json['comments_count'] as num?)?.toInt() ?? 0,
+      favoritesCount: (json['favorites_count'] as num?)?.toInt() ?? 0,
+      shareCount: (json['share_count'] as num?)?.toInt() ?? 0,
       showsRating: json.containsKey('rating'),
       hallsCount: (json['halls_count'] as num?)?.toInt() ?? 0,
     );

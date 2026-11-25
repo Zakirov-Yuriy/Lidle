@@ -38,6 +38,7 @@ import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/widgets/common/video_review_slide.dart';
+import 'package:lidle/widgets/common/advert_stats_row.dart';
 
 // ============================================================
 // "Утилиты для форматирования"
@@ -218,6 +219,15 @@ class MiniPropertyDetailsScreen extends StatefulWidget {
 }
 
 class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
+  /// Есть ли что показать в строке значков под фотографией (задача 94,
+  /// 25.11.2026). Нули не показываем, и у свежего объявления строки нет.
+  bool get _hasStats =>
+      _listing.viewsCount > 0 ||
+      _listing.clickCount > 0 ||
+      _listing.favoritesCount > 0 ||
+      _listing.commentsCount > 0 ||
+      _listing.shareCount > 0;
+
   // Блок «Поделиться объявлением» по умолчанию свёрнут: иконки видны
   // всегда, по шеврону раскрывается текст-подсказка. Как в блоке
   // «Поделиться компанией» на экране продавца.
@@ -646,6 +656,15 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 canRespond: state.listing.canRespond,
                 isResponded: state.listing.isResponded,
                 responsesCount: state.listing.responsesCount,
+                // Показатели под фотографией (задача 94, 25.11.2026). По
+                // той же причине, что фид и отклики выше: эта ветка
+                // собирает объявление заново, и без этих строк значки
+                // исчезали бы у объявлений без снимков.
+                viewsCount: state.listing.viewsCount,
+                clickCount: state.listing.clickCount,
+                commentsCount: state.listing.commentsCount,
+                favoritesCount: state.listing.favoritesCount,
+                shareCount: state.listing.shareCount,
               );
               log.d('📸 Сохранили изображения из предыдущих данных');
             }
@@ -745,6 +764,21 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                           ? [
                               // ✅ Основной контент (реальные данные)
                               _buildImageCarousel(),
+
+                              // Показатели карточки под фотографией (задача
+                              // 94, 25.11.2026). Здесь полный ряд из пяти:
+                              // просмотры, переходы, избранное, отзывы и
+                              // репосты. Место позволяет, а продавцу важно
+                              // видеть их все в одном взгляде.
+                              //
+                              // Пустые числа не показываем, поэтому у
+                              // свежего объявления строки нет вовсе, и
+                              // отступ под каруселью остаётся прежним.
+                              if (_hasStats) ...[
+                                const SizedBox(height: 12),
+                                AdvertStatsRow(listing: _listing),
+                              ],
+
                               const SizedBox(height: 16),
                               _buildMainInfoCard(),
                               const SizedBox(height: 16),
