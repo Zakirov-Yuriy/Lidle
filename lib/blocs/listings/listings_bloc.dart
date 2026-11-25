@@ -1405,7 +1405,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   // 7 с 19.10.2026: в кеше появились признак видео, само видео и признаки
   // товара. Шестая версия их не содержит, и значок видео в ленте не появился
   // бы, пока кеш не истечёт, сколько бы раз ни чинили сервер.
-  static const int _advertCacheVersion = 7;
+  // 8 с 25.11.2026: в кеше появились показатели карточки (просмотры,
+  // переходы, отзывы, избранное, репосты). Седьмая версия их не содержит, и
+  // под фотографией стояли бы пустые значки, хотя сервер числа отдаёт.
+  static const int _advertCacheVersion = 8;
 
   /// Конвертирует Listing в JSON для кеша.
   Map<String, dynamic> _listingToJson(home.Listing listing) {
@@ -1461,6 +1464,16 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       'canRespond': listing.canRespond,
       'isResponded': listing.isResponded,
       'responsesCount': listing.responsesCount,
+
+      // Показатели под фотографией (задача 94, 25.11.2026). Без них
+      // объявление, поднятое из кеша, показывало пустые значки: числа
+      // приходили с сервера, но до экрана не доезжали. Ровно та же беда,
+      // что была с видео и признаками товара 19.10.2026.
+      'viewsCount': listing.viewsCount,
+      'clickCount': listing.clickCount,
+      'commentsCount': listing.commentsCount,
+      'favoritesCount': listing.favoritesCount,
+      'shareCount': listing.shareCount,
     };
   }
 
@@ -1515,6 +1528,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       canRespond: json['canRespond'] == true,
       isResponded: json['isResponded'] == true,
       responsesCount: (json['responsesCount'] as num?)?.toInt(),
+
+      // Показатели под фотографией (задача 94, 25.11.2026).
+      viewsCount: (json['viewsCount'] as num?)?.toInt() ?? 0,
+      clickCount: (json['clickCount'] as num?)?.toInt() ?? 0,
+      commentsCount: (json['commentsCount'] as num?)?.toInt() ?? 0,
+      favoritesCount: (json['favoritesCount'] as num?)?.toInt() ?? 0,
+      shareCount: (json['shareCount'] as num?)?.toInt() ?? 0,
 
       // Товар и видео (19.10.2026).
       isProduct: json['isProduct'] == true,
