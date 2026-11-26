@@ -83,6 +83,14 @@ class LocationMapCard extends StatelessWidget {
          * открывается отдельный экран, где карту можно двигать и приближать.
          */
         GestureDetector(
+          /*
+           * ЛОВИМ НАЖАТИЕ ПО ВСЕЙ ПЛОЩАДИ. Без этой строки нажатие не
+           * срабатывало вовсе (26.11.2026): по умолчанию обёртка
+           * откликается, только если нажали по «плотному» ребёнку, а карта
+           * для нажатий нарочно прозрачная, значок в углу под
+           * IgnorePointer, и ловить событие оказалось некому.
+           */
+          behavior: HitTestBehavior.opaque,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => AdvertMapScreen(point: p, address: address),
