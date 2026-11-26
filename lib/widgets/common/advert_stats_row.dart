@@ -244,7 +244,11 @@ class AdvertStatsRow extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: tap,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 4 * scale, vertical: 3 * scale),
+        // Поля сверху и снизу урезаны вдвое (просьба заказчика
+        // 26.11.2026): ряд выглядел выше, чем нужно. Площадь нажатия от
+        // этого меньше, но по бокам она осталась, и попадать по-прежнему
+        // удобно.
+        padding: EdgeInsets.symmetric(horizontal: 4 * scale, vertical: 1.5 * scale),
         child: row,
       ),
     );
