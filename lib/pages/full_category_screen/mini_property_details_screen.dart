@@ -15,6 +15,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/bookings/booking_section.dart';
 import 'package:lidle/widgets/cards/advert_reviews_card.dart';
+import 'package:lidle/pages/full_category_screen/advert_reviews_screen.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:lidle/widgets/common/share_action_button.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
@@ -233,6 +234,19 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   /// объявление и решил сохранить его, а уходить ради этого обратно в ленту
   /// неудобно.
   bool _isFavorited = false;
+
+  /// На сколько сдвинулось число в избранном, пока человек на экране
+  /// (26.11.2026). Сервер своё число уже отдал, а нажатия считаем сами.
+  int _favoritesDelta = 0;
+
+  /// Сколько показать рядом с сердцем. Не уходим в минус: человек мог снять
+  /// сердце, поставленное в прошлый заход, и тогда поправка окажется больше
+  /// числа с сервера.
+  int get _favoritesShown {
+    final total = _listing.favoritesCount + _favoritesDelta;
+
+    return total < 0 ? 0 : total;
+  }
 
   /// Раскрыт ли блок «Дополнительно» с полями из фида (05.10.2026).
   bool _showAllFeedAttributes = false;
@@ -769,7 +783,23 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               // экране 26.11.2026, не трогать без просьбы:
                               // 2 до значков, 1 после, 16 под карточкой.
                               const SizedBox(height: 2),
-                              AdvertStatsRow.listing(_listing),
+
+                              // Три значка из пяти нажимаются (правка
+                              // заказчика 26.11.2026): сердце сохраняет,
+                              // пузырёк ведёт на отзывы, самолётик открывает
+                              // «Поделиться». Просмотры и переходы это
+                              // чистая статистика, нажимать там не на что.
+                              AdvertStatsRow(
+                                views: _listing.viewsCount,
+                                clicks: _listing.clickCount,
+                                favorites: _favoritesShown,
+                                comments: _listing.commentsCount,
+                                shares: _listing.shareCount,
+                                favorited: _isFavorited,
+                                onFavorite: _toggleFavorite,
+                                onComments: _openReviews,
+                                onShare: _shareAdvert,
+                              ),
 
                               const SizedBox(height: 1),
                               _buildMainInfoCard(),
@@ -1906,6 +1936,27 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   /// Сердечко закрашивается СРАЗУ, ответ сервера догоняет: иначе нажатие
   /// выглядит как «не сработало». Если запрос не прошёл, возвращаем вид
   /// обратно, чтобы человек не думал, будто сохранил.
+  /// Отзывы на это объявление (правка 26.11.2026).
+  ///
+  /// Тот же экран, что открывается из блока отзывов внизу карточки: два
+  /// разных списка одних и тех же отзывов сбивали бы с толку.
+  void _openReviews() {
+    final advertId = int.tryParse(_listing.id);
+
+    if (advertId == null) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdvertReviewsScreen(
+          advertId: advertId,
+          advertTitle: _listing.title,
+          ownerId: _listing.userId,
+        ),
+      ),
+    );
+  }
+
   void _toggleFavorite() {
     final id = _listing.id.isNotEmpty ? _listing.id : widget.listing.id;
     final listingId = int.tryParse(id);
@@ -1929,6 +1980,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
 
     setState(() {
       _isFavorited = FavoritesService.toggleFavorite(id);
+
+      // Число рядом с сердцем в ряду значков двигаем сразу (правка
+      // 26.11.2026). Сервер посчитает своё при следующем открытии, а
+      // человек должен увидеть ответ на своё нажатие немедленно.
+      if (_isFavorited != wasFavorited) {
+        _favoritesDelta += _isFavorited ? 1 : -1;
+      }
     });
 
     if (_isFavorited) {

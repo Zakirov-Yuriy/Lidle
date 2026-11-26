@@ -133,6 +133,43 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     super.dispose();
   }
 
+  /// На сколько сдвинулось число в избранном, пока человек на экране
+  /// (26.11.2026). Сервер своё число уже отдал, нажатия считаем сами.
+  int _favoritesDelta = 0;
+
+  /// Сохранить или убрать из избранного по нажатию на значок.
+  Future<void> _toggleFavoriteFromStats(ProductItem product) async {
+    final wasFavorite = ProductFavoritesService.isFavorite(product.id);
+
+    final error = await ProductFavoritesService.toggle(product.id);
+
+    if (!mounted) return;
+
+    if (error != null) {
+      SnackBarHelper.showError(context, error);
+
+      return;
+    }
+
+    setState(() => _favoritesDelta += wasFavorite ? -1 : 1);
+  }
+
+  /// Отзывы на этот товар: тот же экран, что открывается из блока отзывов
+  /// ниже по карточке.
+  void _openReviews(ProductItem product) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductReviewsScreen(
+          productId: product.id,
+          productName: product.name,
+          rating: product.rating,
+          reviewsCount: product.reviewsCount,
+        ),
+      ),
+    );
+  }
+
   Future<void> _load() async {
     final product = await ProductsService.details(widget.productId);
 
@@ -397,12 +434,38 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         // Плотнее прежнего (правка заказчика 26.11.2026), как и на
         // карточке объявления.
         const SizedBox(height: 6),
-        AdvertStatsRow(
-          views: product.viewsCount,
-          clicks: product.clickCount,
-          favorites: product.favoritesCount,
-          comments: product.commentsCount,
-          shares: product.shareCount,
+
+        // Три значка из пяти нажимаются (правка заказчика 26.11.2026), как
+        // и на карточке объявления: сердце сохраняет, пузырёк ведёт на
+        // отзывы, самолётик открывает «Поделиться».
+        //
+        // Сердце слушает общее хранилище избранного, а не своё состояние:
+        // тот же товар виден и в ленте, и в похожих предложениях, и
+        // собственная память карточки разошлась бы с правдой.
+        ValueListenableBuilder<Map<int, int?>>(
+          valueListenable: ProductFavoritesService.items,
+          builder: (context, _, __) {
+            final isFavorite = ProductFavoritesService.isFavorite(product.id);
+
+            // Не уходим в минус: человек мог снять сердце, поставленное в
+            // прошлый заход, и тогда наша поправка окажется больше числа
+            // с сервера.
+            final favorites = product.favoritesCount + _favoritesDelta;
+
+            return AdvertStatsRow(
+              views: product.viewsCount,
+              clicks: product.clickCount,
+              // Своё нажатие показываем сразу: сервер пересчитает при
+              // следующем открытии карточки.
+              favorites: favorites < 0 ? 0 : favorites,
+              comments: product.commentsCount,
+              shares: product.shareCount,
+              favorited: isFavorite,
+              onFavorite: () => _toggleFavoriteFromStats(product),
+              onComments: () => _openReviews(product),
+              onShare: () => _shareProduct(product),
+            );
+          },
         ),
 
         const SizedBox(height: 8),

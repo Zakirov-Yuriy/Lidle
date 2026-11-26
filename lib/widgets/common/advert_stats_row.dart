@@ -43,6 +43,10 @@ class AdvertStatsRow extends StatelessWidget {
     this.shares = 0,
     this.compact = false,
     this.scale = 1.0,
+    this.favorited = false,
+    this.onFavorite,
+    this.onComments,
+    this.onShare,
   });
 
   /// Ряд по карточке ленты: объявление или товар, у них общая модель.
@@ -55,7 +59,14 @@ class AdvertStatsRow extends StatelessWidget {
         clicks = listing.clickCount,
         favorites = listing.favoritesCount,
         comments = listing.commentsCount,
-        shares = listing.shareCount;
+        shares = listing.shareCount,
+        // В ленте значки не нажимаются: вся карточка это одна кнопка,
+        // ведущая в объявление, и значок внутри неё перехватывал бы
+        // нажатие.
+        favorited = false,
+        onFavorite = null,
+        onComments = null,
+        onShare = null;
 
   final int views;
   final int clicks;
@@ -69,6 +80,30 @@ class AdvertStatsRow extends StatelessWidget {
 
   /// Множитель размеров, как у остальной карточки в ленте.
   final double scale;
+
+  /*
+   * ТРИ ЗНАЧКА ИЗ ПЯТИ НАЖИМАЮТСЯ (правка заказчика 26.11.2026).
+   *
+   * Сердце добавляет в избранное и закрашивается красным, пузырёк ведёт на
+   * отзывы, самолётик открывает окно «Поделиться». Просмотры и переходы
+   * нажимать не на что: это чистая статистика, и делать их кнопками значит
+   * обещать действие, которого нет.
+   *
+   * В ЛЕНТЕ НИ ОДИН ИЗ НИХ НЕ НАЖИМАЕТСЯ, и это нарочно: там вся карточка
+   * это одна большая кнопка, ведущая в объявление. Значок внутри неё
+   * перехватывал бы нажатие, и человек, целясь в карточку, попадал бы в
+   * избранное.
+   *
+   * Экран сам решает, что делать: ряд только зовёт обратно. Поэтому здесь
+   * колбэки, а не знание про объявления и товары.
+   */
+  final bool favorited;
+
+  final VoidCallback? onFavorite;
+
+  final VoidCallback? onComments;
+
+  final VoidCallback? onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -145,17 +180,38 @@ class AdvertStatsRow extends StatelessWidget {
     };
   }
 
+  /// Что делает значок по нажатию. Пусто означает, что он не нажимается.
+  VoidCallback? _tap(_Kind kind) {
+    if (compact) return null;
+
+    return switch (kind) {
+      _Kind.favorites => onFavorite,
+      _Kind.comments => onComments,
+      _Kind.shares => onShare,
+      _ => null,
+    };
+  }
+
   Widget _cell(_Stat item, int value, double iconSize, double fontSize) {
     // Пустой показатель: значок на месте, но тусклее и без числа. Так ряд
     // не прыгает от карточки к карточке, а взгляд всё равно цепляется за
     // то, где события были.
-    final color = value > 0 ? textSecondary : textMuted;
+    var color = value > 0 ? textSecondary : textMuted;
 
-    return Row(
+    var asset = item.asset;
+
+    // Избранное закрашивается, как сердце в шапке карточки: человек должен
+    // видеть, что вещь у него сохранена, и отсюда тоже.
+    if (item.kind == _Kind.favorites && favorited) {
+      asset = 'assets/product_card/stat_heart_filled.svg';
+      color = Colors.red;
+    }
+
+    final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         SvgPicture.asset(
-          item.asset,
+          asset,
           width: iconSize,
           height: iconSize,
           colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
@@ -172,6 +228,25 @@ class AdvertStatsRow extends StatelessWidget {
           ),
         ],
       ],
+    );
+
+    final tap = _tap(item.kind);
+
+    if (tap == null) return row;
+
+    /*
+     * ПЛОЩАДЬ НАЖАТИЯ БОЛЬШЕ САМОГО ЗНАЧКА. Значок семнадцать точек в
+     * поперечнике, попасть в него пальцем трудно, поэтому вокруг добавлены
+     * поля, а нажатие ловится по всей площади, включая пустое место между
+     * значком и числом.
+     */
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: tap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 4 * scale, vertical: 3 * scale),
+        child: row,
+      ),
     );
   }
 
