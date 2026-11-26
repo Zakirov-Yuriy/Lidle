@@ -40,6 +40,7 @@ import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/widgets/common/video_review_slide.dart';
 import 'package:lidle/widgets/common/advert_stats_row.dart';
+import 'package:lidle/widgets/common/location_map_card.dart';
 
 // ============================================================
 // "Утилиты для форматирования"
@@ -670,6 +671,11 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 commentsCount: state.listing.commentsCount,
                 favoritesCount: state.listing.favoritesCount,
                 shareCount: state.listing.shareCount,
+                // Точка на карте (задача 71, 26.11.2026). Та же причина,
+                // что у показателей выше: эта ветка собирает объявление
+                // заново, и без этой строки карта исчезала бы у объявлений
+                // без снимков.
+                point: state.listing.point,
               );
               log.d('📸 Сохранили изображения из предыдущих данных');
             }
@@ -1348,6 +1354,18 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             _listing.location,
             style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
+          // Карта с точкой объявления (задача 71, 26.11.2026). Встраиваем в
+          // готовую карточку «Расположение», а не отдельным блоком: адрес и
+          // место на карте это одно и то же, и разносить их по разным
+          // карточкам значит заставлять человека листать туда-сюда.
+          //
+          // Своего заголовка у карты тут нет, он уже сверху. Если координат
+          // у объявления нет или карты выключены, виджет возвращает пустоту
+          // и карточка остаётся прежней.
+          if (_listing.point != null) ...[
+            const SizedBox(height: 12),
+            LocationMapCard(point: _listing.point, showTitle: false),
+          ],
           const SizedBox(height: 3),
         ],
       ),

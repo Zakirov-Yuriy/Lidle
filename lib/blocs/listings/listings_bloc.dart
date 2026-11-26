@@ -7,6 +7,7 @@ import 'listings_event.dart';
 import 'listings_state.dart';
 import '../../models/home_models.dart' as home;
 import '../../models/advert_model.dart';
+import '../../models/map_point.dart';
 import '../../models/video_review.dart';
 import '../../services/api_service.dart';
 import '../../services/token_service.dart';
@@ -1408,7 +1409,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   // 8 с 25.11.2026: в кеше появились показатели карточки (просмотры,
   // переходы, отзывы, избранное, репосты). Седьмая версия их не содержит, и
   // под фотографией стояли бы пустые значки, хотя сервер числа отдаёт.
-  static const int _advertCacheVersion = 8;
+  // 9 с 26.11.2026: в кеше появилась точка на карте (задача 71). Восьмая
+  // версия её не содержит, и блок «Месторасположение» не появился бы у
+  // карточек из кеша, хотя сервер координаты отдаёт.
+  static const int _advertCacheVersion = 9;
 
   /// Конвертирует Listing в JSON для кеша.
   Map<String, dynamic> _listingToJson(home.Listing listing) {
@@ -1474,6 +1478,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       'commentsCount': listing.commentsCount,
       'favoritesCount': listing.favoritesCount,
       'shareCount': listing.shareCount,
+
+      // Точка на карте (задача 71, 26.11.2026). Та же грабля, что со
+      // значками месяцем раньше: поле приходит с сервера, но без записи в
+      // кеш до экрана не доезжает.
+      'point': listing.point?.toJson(),
     };
   }
 
@@ -1535,6 +1544,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       commentsCount: (json['commentsCount'] as num?)?.toInt() ?? 0,
       favoritesCount: (json['favoritesCount'] as num?)?.toInt() ?? 0,
       shareCount: (json['shareCount'] as num?)?.toInt() ?? 0,
+
+      // Точка на карте (задача 71, 26.11.2026).
+      point: MapPoint.fromJson(json['point']),
 
       // Товар и видео (19.10.2026).
       isProduct: json['isProduct'] == true,

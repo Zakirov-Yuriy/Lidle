@@ -2,6 +2,7 @@
 /// Включает определения классов `Category` и `Listing`.
 import 'package:flutter/material.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/models/map_point.dart';
 import 'package:lidle/models/video_review.dart';
 
 /// Модель данных для категории.
@@ -243,6 +244,13 @@ class Listing {
 
   final int shareCount;
 
+  /// Где объявление находится на карте (задача 71, 26.11.2026).
+  ///
+  /// Пусто значит, что координат у объявления нет: такое бывает у старых
+  /// карточек и у адресов, которых нет на карте. Тогда блок с картой не
+  /// рисуется совсем, пустая карта хуже её отсутствия.
+  final MapPoint? point;
+
   /// Сколько у заведения залов (29.09.2026).
   ///
   /// Больше нуля — карточка в выдаче ведёт не в объявление, а к выбору зала:
@@ -329,6 +337,7 @@ class Listing {
     this.commentsCount = 0,
     this.favoritesCount = 0,
     this.shareCount = 0,
+    this.point,
     this.showsRating = false,
     this.hallsCount = 0,
     this.categoryPath,
@@ -612,6 +621,9 @@ class Listing {
       commentsCount: (json['comments_count'] as num?)?.toInt() ?? 0,
       favoritesCount: (json['favorites_count'] as num?)?.toInt() ?? 0,
       shareCount: (json['share_count'] as num?)?.toInt() ?? 0,
+      // Точка на карте (задача 71, 26.11.2026). Сервер кладёт её и в ленту
+      // тоже: по ленте строится карта выдачи.
+      point: MapPoint.fromJson(json['point']),
       showsRating: json.containsKey('rating'),
       hallsCount: (json['halls_count'] as num?)?.toInt() ?? 0,
     );

@@ -1,4 +1,5 @@
 import 'package:lidle/models/home_models.dart';
+import 'package:lidle/models/map_point.dart';
 import 'package:lidle/models/video_review.dart';
 import 'package:lidle/core/logger.dart';
 
@@ -26,6 +27,11 @@ class Advert {
   final int favoritesCount;
 
   final int commentsCount;
+
+  /// Точка объявления на карте (задача 71, 26.11.2026). Та же грабля, что
+  /// со значками месяцем раньше: лента собирает Listing методом toListing,
+  /// и поле, не переданное там, до экрана не доезжает.
+  final MapPoint? point;
 
   final AdvertType type;
   final String? sellerName;
@@ -99,6 +105,7 @@ class Advert {
     required this.shareCount,
     this.favoritesCount = 0,
     this.commentsCount = 0,
+    this.point,
     required this.type,
     this.sellerName,
     this.sellerAvatar,
@@ -346,6 +353,7 @@ class Advert {
       shareCount: json['share_count'] ?? 0,
       favoritesCount: (json['favorites_count'] as num?)?.toInt() ?? 0,
       commentsCount: (json['comments_count'] as num?)?.toInt() ?? 0,
+      point: MapPoint.fromJson(json['point']),
       type: json['type'] != null
           ? AdvertType.fromJson(json['type'] as Map<String, dynamic>)
           : AdvertType(id: 1, type: 'adverts', path: 'adverts'),
@@ -574,6 +582,8 @@ extension AdvertToListingExtension on Advert {
       commentsCount: commentsCount,
       favoritesCount: favoritesCount,
       shareCount: shareCount,
+      // Точка на карте (задача 71, 26.11.2026), по той же причине.
+      point: point,
       showsRating: showsRating,
       hallsCount: hallsCount,
       sellerName: sellerName,

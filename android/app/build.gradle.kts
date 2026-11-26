@@ -93,6 +93,11 @@ tasks.withType<JavaCompile> {
 dependencies {
     // Java 8 desugaring для поддержки flutter_local_notifications
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.0")
+
+    // Карты Яндекса (задача 71, 26.11.2026). Требование их же инструкции
+    // по подключению MapKit к Flutter: без этой библиотеки сборка падает
+    // на определении местоположения, которым пользуется карта.
+    implementation("com.google.android.gms:play-services-location:21.1.0")
 }
 
 flutter {

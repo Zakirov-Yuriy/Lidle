@@ -18,6 +18,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/services/cart_service.dart';
+import 'package:lidle/services/map_service.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
@@ -134,6 +135,14 @@ void main() async {
     await AppConfig.initialize(environmentValue: 'prod');
     // log.w('⚠️ Использован fallback - production сервер');
   }
+
+  // 🗺 ИНИЦИАЛИЗАЦИЯ: карты Яндекса (задача 71, 26.11.2026).
+  //
+  // Ключ отдаётся один раз на всё приложение, и только после чтения .env:
+  // он лежит там же, рядом с настройками окружения. Если ключа нет или он
+  // не подошёл, служба остаётся выключенной, и блоки с картой просто не
+  // рисуются. Приложение от этого не падает.
+  await MapService.init();
 
   // 🌙 ИНИЦИАЛИЗАЦИЯ: Workmanager для фоновых задач
   // Инициализируем callback dispatcher для обработки фоновых задач
