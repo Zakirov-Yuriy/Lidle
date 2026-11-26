@@ -1705,6 +1705,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.4"
+  yandex_maps_mapkit_lite:
+    dependency: "direct main"
+    description:
+      name: yandex_maps_mapkit_lite
+      sha256: "5f07c3268afb10ebb4f458174f025f86f73e8830ce607c3d949a12107ea02708"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.45.0"
 sdks:
   dart: ">=3.13.0 <4.0.0"
   flutter: ">=3.47.0"
