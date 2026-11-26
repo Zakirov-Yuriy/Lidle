@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/map_point.dart';
+import 'package:lidle/pages/map/advert_map_screen.dart';
 import 'package:lidle/services/map_service.dart';
 import 'package:yandex_maps_mapkit_lite/mapkit.dart' as ymk;
 import 'package:yandex_maps_mapkit_lite/yandex_map.dart';
@@ -33,14 +34,21 @@ class LocationMapCard extends StatelessWidget {
     this.address = '',
     this.height = 180,
     this.showTitle = true,
+    this.showAddress = true,
   });
 
   /// Где объект. Пусто означает, что блок не рисуется совсем: пустая карта
   /// хуже её отсутствия.
   final MapPoint? point;
 
-  /// Адрес строкой, под картой. Та же строка, что в шапке карточки.
+  /// Адрес строкой. Показывается под картой и уходит в шапку
+  /// полноэкранной карты.
   final String address;
+
+  /// Печатать ли адрес под картой. На экране объявления он уже стоит выше,
+  /// в той же карточке, и второй раз не нужен. Но на полный экран его всё
+  /// равно передаём, там он к месту.
+  final bool showAddress;
 
   final double height;
 
@@ -67,24 +75,45 @@ class LocationMapCard extends StatelessWidget {
           ),
           const SizedBox(height: 9),
         ],
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            height: height,
-            width: double.infinity,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                _MapPreview(point: p),
-                // Метку и круг рисуем поверх карты обычными средствами, а
-                // не объектами карты: карта здесь стоит неподвижно, и
-                // середина кадра это и есть наша точка.
-                IgnorePointer(child: _Mark(point: p)),
-              ],
+        /*
+         * НАЖАТИЕ ОТКРЫВАЕТ КАРТУ ВО ВЕСЬ ЭКРАН (правка заказчика
+         * 26.11.2026). Здесь карта неподвижна, и это правильно: живая карта
+         * посреди прокручиваемой карточки крадёт движение пальца. Но
+         * посмотреть окрестности людям нужно, поэтому по нажатию
+         * открывается отдельный экран, где карту можно двигать и приближать.
+         */
+        GestureDetector(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => AdvertMapScreen(point: p, address: address),
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: height,
+              width: double.infinity,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  _MapPreview(point: p),
+                  // Метку и круг рисуем поверх карты обычными средствами, а
+                  // не объектами карты: карта здесь стоит неподвижно, и
+                  // середина кадра это и есть наша точка.
+                  IgnorePointer(child: _Mark(point: p)),
+                  // Значок в углу: без него человек не догадается, что по
+                  // карте можно нажать, она же не шевелится.
+                  const Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IgnorePointer(child: _ExpandBadge()),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-        if (address.isNotEmpty) ...[
+        if (address.isNotEmpty && showAddress) ...[
           const SizedBox(height: 8),
           Text(
             address,
@@ -101,6 +130,23 @@ class LocationMapCard extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Значок «развернуть» в углу карты.
+class _ExpandBadge extends StatelessWidget {
+  const _ExpandBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(Icons.open_in_full, size: 16, color: Colors.white),
     );
   }
 }

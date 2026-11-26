@@ -1364,7 +1364,14 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           // и карточка остаётся прежней.
           if (_listing.point != null) ...[
             const SizedBox(height: 12),
-            LocationMapCard(point: _listing.point, showTitle: false),
+            LocationMapCard(
+              point: _listing.point,
+              address: _listing.location,
+              showTitle: false,
+              // Адрес стоит строкой выше, в этой же карточке. Под картой
+              // он не нужен, но на полный экран уходит: там его нет.
+              showAddress: false,
+            ),
           ],
           const SizedBox(height: 3),
         ],
