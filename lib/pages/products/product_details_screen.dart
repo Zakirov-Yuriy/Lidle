@@ -1886,7 +1886,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           ),
         ),
         if (total > 1) ...[
-          const SizedBox(height: 8),
+          // Точки ближе к снимку (просьба заказчика 26.11.2026): было
+          // восемь точек воздуха, стало четыре. Так же сделано на карточке
+          // объявления.
+          const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(

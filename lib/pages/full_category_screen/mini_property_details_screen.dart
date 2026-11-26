@@ -765,10 +765,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               // 26.11.2026): между точками листалки,
                               // значками и карточкой с ценой было слишком
                               // много воздуха, экран выглядел разреженным.
-                              const SizedBox(height: 6),
+                              // Значения подобраны заказчиком на живом
+                              // экране 26.11.2026, не трогать без просьбы:
+                              // 2 до значков, 1 после, 16 под карточкой.
+                              const SizedBox(height: 2),
                               AdvertStatsRow.listing(_listing),
 
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 1),
                               _buildMainInfoCard(),
                               const SizedBox(height: 16),
                               // 💰 Показываем кнопку "Предложить свою цену" 
@@ -1007,7 +1010,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        // Точки стоят ближе к снимку (просьба заказчика 26.11.2026): было
+        // десять точек воздуха, стало пять.
+        const SizedBox(height: 5),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
