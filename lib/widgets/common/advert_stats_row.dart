@@ -77,7 +77,11 @@ class AdvertStatsRow extends StatelessWidget {
       _Stat('assets/product_card/stat_click.svg', _Kind.clicks),
       _Stat('assets/product_card/stat_heart.svg', _Kind.favorites),
       _Stat('assets/product_card/stat_comment.svg', _Kind.comments),
-      _Stat('assets/product_card/stat_share.svg', _Kind.shares),
+      // Самолётик, а не три точки с линиями (правка заказчика
+      // 26.11.2026). Та же иконка, что на синей кнопке «Поделиться» в ряду
+      // действий: одно действие должно выглядеть одинаково везде, а
+      // прежний значок с этой кнопкой не перекликался никак.
+      _Stat('assets/product_card/stat_send.svg', _Kind.shares),
     ];
 
     final iconSize = (compact ? 12.0 : 17.0) * scale;

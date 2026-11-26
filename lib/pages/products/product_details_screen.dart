@@ -394,7 +394,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         // Показатели под фотографией (задача 94, 25.11.2026): тот же ряд,
         // что у объявления, по середине ширины. Значки стоят всегда, число
         // появляется рядом с тем, где событие было.
-        const SizedBox(height: 12),
+        // Плотнее прежнего (правка заказчика 26.11.2026), как и на
+        // карточке объявления.
+        const SizedBox(height: 6),
         AdvertStatsRow(
           views: product.viewsCount,
           clicks: product.clickCount,
@@ -403,7 +405,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           shares: product.shareCount,
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Text(
           // Цена ВЫБРАННОГО варианта: у 46-го и 54-го она бывает разной, и
           // показывать цену модели значит соврать о том, сколько человек

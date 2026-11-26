@@ -761,10 +761,14 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               // избранное, отзывы и репосты, по середине
                               // ширины. Значки стоят всегда, число
                               // появляется рядом с тем, где событие было.
-                              const SizedBox(height: 12),
+                              // Плотнее прежнего (правка заказчика
+                              // 26.11.2026): между точками листалки,
+                              // значками и карточкой с ценой было слишком
+                              // много воздуха, экран выглядел разреженным.
+                              const SizedBox(height: 6),
                               AdvertStatsRow.listing(_listing),
 
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 8),
                               _buildMainInfoCard(),
                               const SizedBox(height: 16),
                               // 💰 Показываем кнопку "Предложить свою цену" 

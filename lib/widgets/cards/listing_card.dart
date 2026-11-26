@@ -308,12 +308,16 @@ class _ListingCardState extends State<ListingCard> {
               // (28.09.2026): со строкой звёзд карточка перестала помещаться
               // и обрезала дату снизу. Забирать место у самого снимка или у
               // текста хуже, чем убрать воздух, которого тут было с запасом.
+              // Точки листалки и значки стоят плотно (правка заказчика
+              // 26.11.2026): между ними и до названия было слишком много
+              // воздуха, карточка выглядела разреженной. Ниже этого
+              // значения начинают слипаться, проверено на глаз.
               if (_productImages.length > 1) ...[
-                SizedBox(height: 2 * scale),
+                SizedBox(height: 1 * scale),
                 _productDots(),
-                SizedBox(height: 2 * scale),
+                SizedBox(height: 1 * scale),
               ] else
-                SizedBox(height: 4 * scale),
+                SizedBox(height: 2 * scale),
 
               // Показатели карточки сразу под снимком (задача 94,
               // 25.11.2026). Все пять, как и внутри объявления, только
@@ -324,11 +328,10 @@ class _ListingCardState extends State<ListingCard> {
                 compact: true,
                 scale: scale,
               ),
-              // Отступ от значков до названия вдвое меньше прежнего
-              // (25.11.2026, просьба заказчика): со строкой значков воздуха
-              // между снимком и текстом стало слишком много. Прежних
-              // отступов тут было два подряд, 2 и 5 точек, теперь один.
-              SizedBox(height: 3 * scale),
+              // Отступ от значков до названия (26.11.2026): ужат ещё
+              // вдвое, до полутора точек. Прежде тут было два отступа
+              // подряд, 2 и 5 точек, вчера стало три, сегодня полтора.
+              SizedBox(height: 1.5 * scale),
 
               Expanded(
                 child: Column(
@@ -532,12 +535,15 @@ class _ListingCardState extends State<ListingCard> {
               // снимке они спорят с самим снимком и теряются на светлом.
               // Показываем их только когда листать есть что: одинокая точка
               // под единственным снимком выглядит как недогруженная карточка.
+              // Отступ до точек держит свешенную кнопку корзины и меньше
+              // быть не может, а вот после точек воздух убран (правка
+              // заказчика 26.11.2026), как и у карточки объявления.
               if (_productImages.length > 1) ...[
                 SizedBox(height: cartButtonOverhang * scale),
                 _productDots(),
-                SizedBox(height: 3 * scale),
+                SizedBox(height: 1 * scale),
               ] else
-                SizedBox(height: (cartButtonOverhang + 3) * scale),
+                SizedBox(height: (cartButtonOverhang + 1) * scale),
 
               // Показатели товара под снимком (задача 94, 25.11.2026). Тот
               // же ряд, что у объявления: заказчик попросил, чтобы карточки
@@ -548,7 +554,7 @@ class _ListingCardState extends State<ListingCard> {
                 compact: true,
                 scale: scale,
               ),
-              SizedBox(height: 3 * scale),
+              SizedBox(height: 1.5 * scale),
 
               // Сначала НАЗВАНИЕ, потом цена (15.09.2026, просьба заказчика).
               //
