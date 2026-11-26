@@ -72,9 +72,21 @@ fun raiseCompileSdk(project: Project) {
 subprojects {
     project.evaluationDependsOn(":app")
     
+    /*
+     * Java 21 для всех модулей (задача 71, 26.11.2026). Было 11.
+     *
+     * ЗДЕСЬ ГЛАВНОЕ МЕСТО, а не в app/build.gradle.kts. Модуль app тоже
+     * подпадает под этот subprojects, и эта настройка перебивает его
+     * собственную: подняли Java в модуле, а сборка продолжала падать на
+     * «Inconsistent JVM-target: Java 11, Kotlin 21», потому что Java
+     * возвращалась сюда.
+     *
+     * Подняли из-за библиотеки карт Яндекса: она собрана под Java 21, и
+     * компилятор 11 её классы читать отказывается.
+     */
     tasks.withType<JavaCompile> {
-        sourceCompatibility = JavaVersion.VERSION_11.toString()
-        targetCompatibility = JavaVersion.VERSION_11.toString()
+        sourceCompatibility = JavaVersion.VERSION_21.toString()
+        targetCompatibility = JavaVersion.VERSION_21.toString()
         options.compilerArgs.add("-Xlint:-options")
     }
 
