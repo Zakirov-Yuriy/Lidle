@@ -1010,9 +1010,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             ),
           ),
         ),
-        // Точки стоят ближе к снимку (просьба заказчика 26.11.2026): было
-        // десять точек воздуха, стало пять.
-        const SizedBox(height: 5),
+        // Точки стоят вплотную к снимку (просьба заказчика 26.11.2026):
+        // было десять точек воздуха, потом пять, теперь два. Меньше уже
+        // нельзя, кружки начнут касаться края фотографии.
+        const SizedBox(height: 2),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
