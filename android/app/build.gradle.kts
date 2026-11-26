@@ -30,15 +30,23 @@ android {
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
+    /*
+     * Java 21 (задача 71, 26.11.2026). Было 11.
+     *
+     * ПОЧЕМУ ПОДНЯЛИ. Библиотека карт Яндекса собрана под Java 21, и сборка
+     * падала с «class file has wrong version 65.0, should be 61.0»: это и
+     * значит «класс из будущего, я такой читать не умею». Собственного кода
+     * это не касается, Java 21 совместима со всем, что написано раньше.
+     */
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
         // Java 8 desugaring для поддержки flutter_local_notifications
         isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_21.toString()
     }
 
     defaultConfig {
