@@ -81,6 +81,10 @@ class _MapScreenState extends State<MapScreen> {
   /// к найденным объявлениям.
   bool _firstLoad = true;
 
+  /// Камера уже встала на выбранный город, осталось подогнать масштаб под
+  /// его объявления, когда они приедут.
+  bool _fitAfterMove = false;
+
   /// Сколько точек нашлось в последний раз. По нему показываем, что здесь
   /// пусто, вместо молчаливой карты.
   int _found = 0;
@@ -308,7 +312,7 @@ class _MapScreenState extends State<MapScreen> {
      * объявления. Дальше человек двигает карту сам, и больше мы в это не
      * вмешиваемся.
      */
-    if (_firstLoad && items.isNotEmpty) {
+    if (_firstLoad) {
       _firstLoad = false;
 
       await _startView(map, items);
@@ -323,7 +327,24 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    _firstLoad = false;
+    /*
+     * ВТОРОЙ ШАГ: ПОДГОНЯЕМ МАСШТАБ ПОД ТО, ЧТО НАШЛОСЬ В ГОРОДЕ
+     * (правка 27.11.2026).
+     *
+     * Первым шагом камера просто встала на выбранный город, и мы ещё не
+     * знали, где в нём объявления. Теперь знаем: это и есть то, что
+     * приехало по кадру города. Подгоняем масштаб один раз, чтобы в кадр
+     * влезли все, и больше в движение карты не вмешиваемся.
+     */
+    if (_fitAfterMove) {
+      _fitAfterMove = false;
+
+      if (items.length > 1) {
+        _fit(map, _core(items));
+
+        return;
+      }
+    }
 
     points.clear();
     _shown.clear();
@@ -390,29 +411,29 @@ class _MapScreenState extends State<MapScreen> {
     final cityId = place.cityId;
     final regionId = place.regionId;
 
+    /*
+     * ГОРОД ЧЕЛОВЕКА ГЛАВНЕЕ ВСЕГО ОСТАЛЬНОГО (правка заказчика 27.11.2026).
+     *
+     * Раньше камера ехала на город только если его объявления нашлись в
+     * первой выдаче. А первая выдача приходит по кадру, в котором виден
+     * весь шар, и сервер отдаёт оттуда пятьсот точек, ближайших к середине
+     * кадра. Москва в эту пятьсот не попадала, Мариуполь попадал, и карта
+     * с выбранной Москвой открывалась на Мариуполе.
+     *
+     * Теперь проще и надёжнее: есть выбранный город, едем в него сразу, не
+     * заглядывая в то, что приехало. А масштаб подгоняем вторым шагом,
+     * когда придут объявления уже этого города.
+     */
     if (cityId != null) {
       final city = await ApiService.geoResolve(cityId: cityId);
 
       if (city != null && mounted) {
-        // Объявления этого города: всё, что в пределах примерно полусотни
-        // километров от его середины. Точной границы города у нас нет, да
-        // она и не нужна: соседнее село на карте не помешает.
-        final near = items.where((i) =>
-            (i.lat - city.lat).abs() < 0.45 &&
-            (i.lon - city.lon).abs() < 0.65).toList();
+        _fitAfterMove = true;
 
-        if (near.isNotEmpty) {
-          _fit(map, near, fallback: ymk.Point(latitude: city.lat, longitude: city.lon));
-
-          return;
-        }
-
-        // В городе человека объявлений этой категории нет совсем. Показываем
-        // его город, чтобы он это увидел сам, а не гадал.
         map.move(
           ymk.CameraPosition(
             ymk.Point(latitude: city.lat, longitude: city.lon),
-            zoom: 11.5,
+            zoom: 11.0,
             azimuth: 0.0,
             tilt: 0.0,
           ),
@@ -434,16 +455,7 @@ class _MapScreenState extends State<MapScreen> {
       final region = await ApiService.geoResolve(regionId: regionId);
 
       if (region != null && mounted) {
-        final near = items.where((i) =>
-            (i.lat - region.lat).abs() < 2.2 &&
-            (i.lon - region.lon).abs() < 3.2).toList();
-
-        if (near.isNotEmpty) {
-          _fit(map, near,
-              fallback: ymk.Point(latitude: region.lat, longitude: region.lon));
-
-          return;
-        }
+        _fitAfterMove = true;
 
         map.move(
           ymk.CameraPosition(
@@ -480,6 +492,10 @@ class _MapScreenState extends State<MapScreen> {
      * на экране появлялась Африка, а вся настоящая выдача сжималась в три
      * точки посередине (27.11.2026).
      */
+    if (items.isEmpty) {
+      return;
+    }
+
     _fit(map, _core(items));
   }
 
