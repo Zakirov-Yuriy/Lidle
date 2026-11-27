@@ -71,6 +71,14 @@ class _MapScreenState extends State<MapScreen> {
   Timer? _debounce;
   bool _loading = false;
 
+  /// Первая загрузка на этом экране: после неё камера один раз подъезжает
+  /// к найденным объявлениям.
+  bool _firstLoad = true;
+
+  /// Сколько точек нашлось в последний раз. По нему показываем, что здесь
+  /// пусто, вместо молчаливой карты.
+  int _found = 0;
+
   /// Что сейчас показано на карте. По нажатию на метку ищем здесь.
   final Map<int, MapItem> _shown = {};
 
@@ -151,6 +159,25 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
+          if (!_loading && _found == 0)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  margin: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    'Здесь объявлений нет, подвиньте карту',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              ),
+            ),
+
           if (_loading)
             SafeArea(
               child: Align(
@@ -220,17 +247,52 @@ class _MapScreenState extends State<MapScreen> {
 
     setState(() => _loading = true);
 
+    /*
+     * ЗАЖИМАЕМ ГРАНИЦЫ. На самом дальнем масштабе в кадр попадает весь шар,
+     * и карта честно отдаёт широты и долготы за пределами возможного:
+     * например, долготу 200 или широту 90 с хвостиком. Сервер такие числа
+     * не принимает и отвечает отказом, а человек видит пустую карту и не
+     * понимает, почему.
+     */
+    final north = lats.reduce(math.max).clamp(-85.0, 85.0);
+    final south = lats.reduce(math.min).clamp(-85.0, 85.0);
+    final east = lons.reduce(math.max).clamp(-180.0, 180.0);
+    final west = lons.reduce(math.min).clamp(-180.0, 180.0);
+
     final items = await ApiService.mapPoints(
-      north: lats.reduce(math.max),
-      south: lats.reduce(math.min),
-      east: lons.reduce(math.max),
-      west: lons.reduce(math.min),
+      north: north,
+      south: south,
+      east: east,
+      west: west,
       kind: widget.kind,
       categoryId: widget.categoryId,
       query: widget.query,
     );
 
     if (!mounted) return;
+
+    /*
+     * ПЕРВОЕ ОТКРЫТИЕ: ПОДЪЕЗЖАЕМ ТУДА, ГДЕ ЕСТЬ ОБЪЯВЛЕНИЯ.
+     *
+     * Карта открывается на весь шар, и объявления на ней выглядят как
+     * ничего: Мариуполь с такого расстояния меньше точки. Поэтому в первый
+     * раз сами подводим камеру к ближайшему найденному объявлению. Дальше
+     * человек двигает карту сам, и больше мы в это не вмешиваемся.
+     */
+    if (_firstLoad) {
+      _firstLoad = false;
+
+      if (items.isNotEmpty) {
+        map.move(
+          ymk.CameraPosition(
+            ymk.Point(latitude: items.first.lat, longitude: items.first.lon),
+            zoom: 11.0,
+            azimuth: 0.0,
+            tilt: 0.0,
+          ),
+        );
+      }
+    }
 
     points.clear();
     _shown.clear();
@@ -258,7 +320,10 @@ class _MapScreenState extends State<MapScreen> {
     // коллекция с группировкой.
     points.clusterPlacemarks(clusterRadius: 60, minZoom: 15);
 
-    setState(() => _loading = false);
+    setState(() {
+      _loading = false;
+      _found = items.length;
+    });
   }
 
   /// Нажали на метку: показываем, что это, и предлагаем открыть.
