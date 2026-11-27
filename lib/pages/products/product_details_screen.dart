@@ -6,7 +6,9 @@ import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
 import 'package:lidle/widgets/dialogs/response_dialog.dart';
+import 'package:lidle/models/map_point.dart';
 import 'package:lidle/models/products/product_item.dart';
+import 'package:lidle/widgets/common/location_map_card.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/products/cart_screen.dart';
 import 'package:lidle/pages/products/product_reviews_screen.dart';
@@ -507,7 +509,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         ],
         if (product.shop != null) ...[
           const SizedBox(height: 12),
-          _buildShop(product.shop!),
+          _buildShop(product.shop!, product.point),
         ],
         if (product.cookingTimeMinutes != null) ...[
           const SizedBox(height: 12),
@@ -2422,7 +2424,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 
-  Widget _buildShop(ShopBrief shop) {
+  Widget _buildShop(ShopBrief shop, MapPoint? point) {
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2445,6 +2447,27 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             Text(
               shop.address!,
               style: const TextStyle(color: textSecondary, fontSize: 14),
+            ),
+          ],
+          /*
+           * КАРТА ТУТ ЖЕ, ПОД АДРЕСОМ (задача 71, 27.11.2026).
+           *
+           * У товара своего адреса нет: он лежит в точке продаж, и человек
+           * поедет именно туда. Поэтому карта встраивается в блок «Где
+           * забрать», а не отдельной карточкой: адрес и место на карте это
+           * один и тот же ответ на один и тот же вопрос.
+           *
+           * Если у магазина координат ещё нет, виджет возвращает пустоту и
+           * блок остаётся прежним.
+           */
+          if (point != null) ...[
+            const SizedBox(height: 10),
+            LocationMapCard(
+              point: point,
+              address: shop.address ?? '',
+              showTitle: false,
+              // Адрес стоит строкой выше, в этой же карточке.
+              showAddress: false,
             ),
           ],
           const SizedBox(height: 6),

@@ -1,3 +1,4 @@
+import 'package:lidle/models/map_point.dart';
 import 'package:lidle/models/video_review.dart';
 
 /// Товар в витрине и в карточке.
@@ -37,6 +38,13 @@ class ProductItem {
   final String? categoryPath;
   final BrandBrief? brand;
   final ShopBrief? shop;
+
+  /// Где товар на карте (задача 71, 27.11.2026).
+  ///
+  /// Это точка его магазина: своего адреса у товара нет и быть не может, он
+  /// лежит в точке продаж, и именно её адрес человек поедет искать. Пусто,
+  /// если у магазина координат ещё нет: тогда блок с картой не рисуется.
+  final MapPoint? point;
 
   /// Оценка и число отзывов. `rating` пустой, если отзывов ещё нет: ноль
   /// означал бы плохую оценку, а не отсутствие оценок.
@@ -158,6 +166,7 @@ class ProductItem {
     this.categoryPath,
     this.brand,
     this.shop,
+    this.point,
     this.rating,
     this.reviewsCount = 0,
     this.viewsCount = 0,
@@ -208,6 +217,7 @@ class ProductItem {
           : null,
       brand: BrandBrief.tryParse(data['brand']),
       shop: ShopBrief.tryParse(data['shop']),
+      point: MapPoint.fromJson(data['point']),
       rating: _double(data['rating']),
       reviewsCount: _int(data['reviews_count']) ?? 0,
       // Показатели под фотографией (задача 94, 25.11.2026).

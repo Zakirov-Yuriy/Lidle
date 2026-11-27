@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:lidle/models/filter_models.dart'; // Import the new model
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/home_models.dart' show Listing;
+import 'package:lidle/models/map_point.dart';
 import 'package:lidle/models/catalog_model.dart' as catalog_models;
 import 'package:lidle/models/create_advert_model.dart';
 import 'package:lidle/hive_service.dart';
@@ -983,6 +984,10 @@ class ApiService {
       commentsCount: _int(item['comments_count']),
       favoritesCount: _int(item['favorites_count']),
       shareCount: _int(item['share_count']),
+
+      // Точка товара на карте это точка его магазина (задача 71,
+      // 27.11.2026). Сервер кладёт её в ленту там, где магазин подгружен.
+      point: MapPoint.fromJson(item['point']),
     );
   }
 
