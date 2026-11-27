@@ -376,15 +376,19 @@ class _MapScreenState extends State<MapScreen> {
   ///
   /// - город у человека выбран: показываем ЕГО ГОРОД ЦЕЛИКОМ, со всеми
   ///   объявлениями, которые в нём есть;
-  /// - город не выбран: показываем всё, что нашлось, так, чтобы основная
-  ///   масса объявлений была видна.
+  /// - выбран регион: показываем объявления этого региона;
+  /// - не выбрано ничего («все регионы»): показываем ВСЁ, что нашлось, от
+  ///   края до края.
   ///
   /// ПОЧЕМУ НЕ ПРОСТО «КАМЕРА В ЦЕНТР ГОРОДА». Так и было, и в кадр
   /// попадала половина: в Мариуполе одиннадцать объявлений недвижимости, а
   /// на экране оставалось шесть, остальные за краем. Масштаб нельзя
   /// задавать наугад, его надо считать по самим объявлениям.
   Future<void> _startView(ymk.Map map, List<MapItem> items) async {
-    final cityId = SelectedCityService().cityId;
+    final place = SelectedCityService();
+
+    final cityId = place.cityId;
+    final regionId = place.regionId;
 
     if (cityId != null) {
       final city = await ApiService.geoResolve(cityId: cityId);
@@ -418,25 +422,60 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
-    // Города нет: берём самое большое скопление, чтобы не показывать
-    // половину страны из-за одного объявления на краю.
-    const double cell = 0.5;
+    /*
+     * ВЫБРАН РЕГИОН, А НЕ ГОРОД.
+     *
+     * Такой выбор у нас тоже есть: «Ростовская область» целиком. Границы
+     * области мы не храним, поэтому берём объявления в пределах примерно
+     * двухсот километров от её середины: для области это весь её размер с
+     * запасом, и соседний район на карте не мешает.
+     */
+    if (regionId != null) {
+      final region = await ApiService.geoResolve(regionId: regionId);
 
-    final groups = <String, List<MapItem>>{};
+      if (region != null && mounted) {
+        final near = items.where((i) =>
+            (i.lat - region.lat).abs() < 2.2 &&
+            (i.lon - region.lon).abs() < 3.2).toList();
 
-    for (final item in items) {
-      final key = '${(item.lat / cell).floor()}:${(item.lon / cell).floor()}';
+        if (near.isNotEmpty) {
+          _fit(map, near,
+              fallback: ymk.Point(latitude: region.lat, longitude: region.lon));
 
-      groups.putIfAbsent(key, () => []).add(item);
+          return;
+        }
+
+        map.move(
+          ymk.CameraPosition(
+            ymk.Point(latitude: region.lat, longitude: region.lon),
+            zoom: 7.5,
+            azimuth: 0.0,
+            tilt: 0.0,
+          ),
+        );
+
+        return;
+      }
     }
 
-    var best = <MapItem>[];
-
-    for (final group in groups.values) {
-      if (group.length > best.length) best = group;
-    }
-
-    _fit(map, best.isEmpty ? items : best);
+    /*
+     * НЕ ВЫБРАНО НИЧЕГО: ПОКАЗЫВАЕМ ВСЁ (правка заказчика 27.11.2026).
+     *
+     * Человек нажал «Сбросить» на главном экране, то есть сказал «покажи
+     * мне всю площадку». Значит и карта должна открыться на всей площадке,
+     * а не на одном городе.
+     *
+     * До этой правки здесь искалось самое большое скопление объявлений, и
+     * карта всё равно открывалась на Мариуполе: объявлений там больше
+     * всего. Со стороны это выглядело так, будто сброшенный город никуда
+     * не делся.
+     *
+     * Сколько объявлений попадёт в такой кадр, решает потолок ручки: она
+     * отдаёт пятьсот ближайших к середине кадра. На дальнем масштабе они
+     * слипаются в группы, и это правильно: разглядеть пятьсот отдельных
+     * меток на карте страны всё равно нельзя.
+     */
+    _fit(map, items);
   }
 
   /// Подводит камеру так, чтобы все переданные объявления попали в кадр.
@@ -467,9 +506,15 @@ class _MapScreenState extends State<MapScreen> {
     // вертикали в него влезает примерно вдвое больше градусов.
     final span = math.max(east - west, (north - south) / 1.8);
 
+    /*
+     * Нижняя граница 2, а не 4 (правка 27.11.2026). Когда город сброшен, в
+     * кадр должна влезть вся страна от Калининграда до Владивостока, а это
+     * почти полторы сотни градусов по долготе: на масштабе 4 половина
+     * объявлений оставалась за краем экрана.
+     */
     final zoom = span <= 0.004
         ? 15.5
-        : (math.log(360 / (span * 1.6)) / math.ln2).clamp(4.0, 16.0);
+        : (math.log(360 / (span * 1.6)) / math.ln2).clamp(2.0, 16.0);
 
     map.move(
       ymk.CameraPosition(
