@@ -15,7 +15,6 @@ import 'package:lidle/pages/full_category_screen/mini_property_details_screen.da
 import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/map_service.dart';
-import 'package:lidle/services/selected_city_service.dart';
 import 'package:yandex_maps_mapkit_lite/image.dart' as ymk_image;
 import 'package:yandex_maps_mapkit_lite/mapkit.dart' as ymk;
 import 'package:yandex_maps_mapkit_lite/yandex_map.dart';
@@ -197,6 +196,27 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+
+          // Сколько объявлений в кадре. Без этой строки непонятно, пусто
+          // тут или карта просто не доехала.
+          if (!_loading && _found > 0)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  margin: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'В этой области: $_found',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -284,7 +304,7 @@ class _MapScreenState extends State<MapScreen> {
     if (_firstLoad && items.isNotEmpty) {
       _firstLoad = false;
 
-      await _startView(map, items);
+      _startView(map, items);
 
       // Камера уехала, значит в кадре теперь другое. Спросим точки заново
       // и на этом успокоимся: дальше карту двигает человек.
@@ -331,38 +351,38 @@ class _MapScreenState extends State<MapScreen> {
 
   /// Куда смотреть при открытии карты.
   ///
-  /// СНАЧАЛА ГОРОД ЧЕЛОВЕКА. Объявления разбросаны по всей стране: в выдаче
-  /// есть и Мариуполь, и Москва, и Сибирь. Если показать их все разом,
-  /// карта открывается видом на половину Евразии, и это бесполезно: своего
-  /// города на ней не разглядеть.
+  /// К САМОМУ ПЛОТНОМУ СКОПЛЕНИЮ, а не ко всем точкам разом. Объявления
+  /// разбросаны по всей стране: Мариуполь, Москва, Пенза, Сибирь. Если
+  /// показать их все, карта открывается видом на Евразию, и дома на ней
+  /// выглядят пылью. Человеку нужен город, а не глобус.
   ///
-  /// Поэтому, если человек выбрал город в приложении, карта открывается на
-  /// нём. Координаты города спрашиваем у той же ручки, что и форма подачи:
-  /// держать их список в приложении незачем.
+  /// Плотность считаем грубо: делим мир на клетки размером примерно с
+  /// область и берём клетку, где точек больше всего. Точность тут не нужна,
+  /// нужен осмысленный первый кадр, дальше человек двигает карту сам.
   ///
-  /// ЕСЛИ ГОРОД НЕ ВЫБРАН, показываем все найденные объявления разом: это
-  /// хотя бы честно отвечает на вопрос «а где они вообще есть».
-  Future<void> _startView(ymk.Map map, List<MapItem> items) async {
-    final cityId = SelectedCityService().cityId;
+  /// ГОРОД ЧЕЛОВЕКА НЕ БЕРЁМ НАРОЧНО: в нём объявлений этой категории может
+  /// не быть вовсе, и карта открылась бы пустым полем. Это хуже, чем
+  /// показать, где они есть.
+  void _startView(ymk.Map map, List<MapItem> items) {
+    const double cell = 1.0;
 
-    if (cityId != null) {
-      final city = await ApiService.geoResolve(cityId: cityId);
+    final counts = <String, List<MapItem>>{};
 
-      if (city != null) {
-        map.move(
-          ymk.CameraPosition(
-            ymk.Point(latitude: city.lat, longitude: city.lon),
-            zoom: 11.5,
-            azimuth: 0.0,
-            tilt: 0.0,
-          ),
-        );
+    for (final item in items) {
+      final key = '${(item.lat / cell).floor()}:${(item.lon / cell).floor()}';
 
-        return;
+      counts.putIfAbsent(key, () => []).add(item);
+    }
+
+    var best = items;
+
+    for (final group in counts.values) {
+      if (group.length > best.length || best == items) {
+        best = group;
       }
     }
 
-    _fitAll(map, items);
+    _fitAll(map, best);
   }
 
   /// Подводит камеру так, чтобы в кадр попали все найденные объявления.
