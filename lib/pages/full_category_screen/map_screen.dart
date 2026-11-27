@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart' show Factory;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/home_models.dart' as home;
 import 'package:lidle/models/map_item.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
@@ -285,6 +286,9 @@ class _MapScreenState extends State<MapScreen> {
     final east = lons.reduce(math.max).clamp(-180.0, 180.0);
     final west = lons.reduce(math.min).clamp(-180.0, 180.0);
 
+    log.w('КАРТА: кадр $south..$north по широте, $west..$east по долготе, '
+        'категория ${widget.categoryId}, каталог ${widget.catalogId}');
+
     final items = await ApiService.mapPoints(
       north: north,
       south: south,
@@ -309,6 +313,8 @@ class _MapScreenState extends State<MapScreen> {
      */
     if (_firstLoad && items.isNotEmpty) {
       _firstLoad = false;
+
+      log.w('КАРТА: первое открытие, веду камеру по ${items.length} точкам');
 
       _startView(map, items);
 
@@ -348,6 +354,8 @@ class _MapScreenState extends State<MapScreen> {
 
     // Без этого вызова ни метки, ни группы не нарисуются: так устроена
     // коллекция с группировкой.
+    log.w('КАРТА: нарисовано меток ${items.length}');
+
     points.clusterPlacemarks(clusterRadius: 60, minZoom: 15);
 
     setState(() {
@@ -375,6 +383,8 @@ class _MapScreenState extends State<MapScreen> {
     final lons = items.map((i) => i.lon).toList()..sort();
 
     final middle = items.length ~/ 2;
+
+    log.w('КАРТА: ставлю камеру в ${lats[middle]}, ${lons[middle]}');
 
     map.move(
       ymk.CameraPosition(

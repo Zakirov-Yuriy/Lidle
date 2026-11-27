@@ -1916,19 +1916,33 @@ class ApiService {
           .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
           .join('&');
 
+      log.w('КАРТА: спрашиваю /geo/points?$suffix');
+
       final response = await get('/geo/points?$suffix', token: token);
 
       final data = response['data'];
 
-      if (data is! List) return const [];
+      if (data is! List) {
+        log.w('КАРТА: сервер ответил без списка точек: $response');
 
-      return data
-          .map(MapItem.fromJson)
-          .whereType<MapItem>()
-          .toList();
+        return const [];
+      }
+
+      final items = data.map(MapItem.fromJson).whereType<MapItem>().toList();
+
+      log.w('КАРТА: пришло точек ${items.length}'
+          '${items.isEmpty ? '' : ', первая ${items.first.lat}, ${items.first.lon}'}');
+
+      return items;
     } catch (e) {
-      // Карта не должна падать из-за одного неудачного запроса: человек
-      // подвинет её, и точки придут снова.
+      /*
+       * ОШИБКУ ПИШЕМ, А НЕ ПРЯЧЕМ. Сначала здесь стоял молчаливый возврат
+       * пустого списка, и неудачный запрос выглядел на экране ровно так
+       * же, как «тут ничего нет»: полдня ушло на поиски того, чего не
+       * было.
+       */
+      log.e('КАРТА: запрос точек не удался: $e');
+
       return const [];
     }
   }
