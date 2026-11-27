@@ -276,23 +276,23 @@ class _MapScreenState extends State<MapScreen> {
      *
      * Карта открывается на весь шар, и объявления на ней выглядят как
      * ничего: Мариуполь с такого расстояния меньше точки. Поэтому в первый
-     * раз сами подводим камеру к ближайшему найденному объявлению. Дальше
-     * человек двигает карту сам, и больше мы в это не вмешиваемся.
+     * раз сами подводим камеру так, чтобы в кадр попали все найденные
+     * объявления. Дальше человек двигает карту сам, и больше мы в это не
+     * вмешиваемся.
      */
-    if (_firstLoad) {
+    if (_firstLoad && items.isNotEmpty) {
       _firstLoad = false;
 
-      if (items.isNotEmpty) {
-        map.move(
-          ymk.CameraPosition(
-            ymk.Point(latitude: items.first.lat, longitude: items.first.lon),
-            zoom: 11.0,
-            azimuth: 0.0,
-            tilt: 0.0,
-          ),
-        );
-      }
+      _fitAll(map, items);
+
+      // Камера уехала, значит в кадре теперь другое. Спросим точки заново
+      // и на этом успокоимся: дальше карту двигает человек.
+      _load();
+
+      return;
     }
+
+    _firstLoad = false;
 
     points.clear();
     _shown.clear();
@@ -324,6 +324,46 @@ class _MapScreenState extends State<MapScreen> {
       _loading = false;
       _found = items.length;
     });
+  }
+
+
+  /// Подводит камеру так, чтобы в кадр попали все найденные объявления.
+  ///
+  /// ПОЧЕМУ НЕ К ПЕРВОЙ ТОЧКЕ. Сначала так и было, и выходило глупо: с
+  /// глобуса первой оказывалась случайная точка где-нибудь в степи, карта
+  /// прыгала туда, и человек видел одно объявление посреди поля вместо
+  /// города, полного меток.
+  ///
+  /// Масштаб считаем из ширины облака точек: на весь мир приходится 360
+  /// градусов долготы, и каждое удвоение масштаба делит их пополам. Это
+  /// грубо, зато не требует от карты ничего, чего она может не уметь.
+  void _fitAll(ymk.Map map, List<MapItem> items) {
+    final lats = items.map((i) => i.lat).toList();
+    final lons = items.map((i) => i.lon).toList();
+
+    final north = lats.reduce(math.max);
+    final south = lats.reduce(math.min);
+    final east = lons.reduce(math.max);
+    final west = lons.reduce(math.min);
+
+    // Когда объявление одно, облака нет: берём близкий масштаб улицы.
+    final span = math.max(east - west, (north - south) * 1.6);
+
+    final zoom = span <= 0.005
+        ? 15.0
+        : (math.log(360 / span) / math.ln2 - 0.4).clamp(3.0, 16.0);
+
+    map.move(
+      ymk.CameraPosition(
+        ymk.Point(
+          latitude: (north + south) / 2,
+          longitude: (east + west) / 2,
+        ),
+        zoom: zoom.toDouble(),
+        azimuth: 0.0,
+        tilt: 0.0,
+      ),
+    );
   }
 
   /// Нажали на метку: показываем, что это, и предлагаем открыть.
