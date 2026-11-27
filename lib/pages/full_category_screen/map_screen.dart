@@ -71,7 +71,7 @@ class _MapScreenState extends State<MapScreen> {
 
   /// Слушатели карта держит слабыми ссылками, поэтому они живут полями.
   late final _MapWatch _watch = _MapWatch(_onCameraStopped);
-  late final _Clusters _clusters = _Clusters(_clusterIcon);
+  late final _Clusters _clusters = _Clusters(_clusterIcon, _onClusterTap);
   late final _ItemTap _itemTap = _ItemTap(_openItem);
 
   Timer? _debounce;
@@ -431,6 +431,121 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  /// Нажали на группу.
+  ///
+  /// ПОЧЕМУ НЕ ПРОСТО ПРИБЛИЗИТЬ. Обычно группа при приближении распадается
+  /// на отдельные метки, и этого достаточно. Но бывает, что объявления
+  /// стоят ровно в одной точке и не разъедутся никогда: у тринадцати
+  /// аксайских объявлений в адресе нет улицы либо стоит гаражный
+  /// кооператив, которого на карте нет, поэтому все они получили середину
+  /// города. Приближать такую группу бессмысленно, человек будет жать и
+  /// злиться. Ей показываем список.
+  void _onClusterTap(ymk.Cluster cluster) {
+    if (!mounted) return;
+
+    final items = cluster.placemarks
+        .map((p) => p.userData is int ? _shown[p.userData as int] : null)
+        .whereType<MapItem>()
+        .toList();
+
+    if (items.isEmpty) return;
+
+    final lats = items.map((i) => i.lat);
+    final lons = items.map((i) => i.lon);
+
+    final spread = (lats.reduce(math.max) - lats.reduce(math.min)).abs() +
+        (lons.reduce(math.max) - lons.reduce(math.min)).abs();
+
+    // Примерно сто метров. Меньше этого считаем «в одной точке».
+    if (spread > 0.001) {
+      final map = _map;
+
+      if (map != null) {
+        map.move(
+          ymk.CameraPosition(
+            ymk.Point(
+              latitude: lats.reduce((a, b) => a + b) / items.length,
+              longitude: lons.reduce((a, b) => a + b) / items.length,
+            ),
+            zoom: map.cameraPosition.zoom + 2,
+            azimuth: 0.0,
+            tilt: 0.0,
+          ),
+        );
+      }
+
+      return;
+    }
+
+    _showList(items);
+  }
+
+  /// Список объявлений, стоящих в одной точке.
+  void _showList(List<MapItem> items) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: formBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                children: [
+                  Text(
+                    'Здесь объявлений: ${items.length}',
+                    style: const TextStyle(color: textPrimary, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
+              child: Text(
+                'Точный адрес у них не указан, поэтому все стоят в середине '
+                'населённого пункта',
+                style: TextStyle(color: textMuted, fontSize: 12),
+              ),
+            ),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.only(bottom: 12),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const Divider(
+                  height: 1,
+                  color: Colors.white12,
+                ),
+                itemBuilder: (_, i) {
+                  final item = items[i];
+
+                  return ListTile(
+                    title: Text(
+                      item.name.isEmpty ? 'Без названия' : item.name,
+                      style: const TextStyle(color: textPrimary, fontSize: 14),
+                    ),
+                    subtitle: Text(
+                      item.price.isEmpty ? '' : '${item.price} ₽',
+                      style: const TextStyle(color: textSecondary, fontSize: 13),
+                    ),
+                    onTap: () {
+                      Navigator.of(sheetContext).pop();
+                      _goTo(item);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Нажали на метку: показываем, что это, и предлагаем открыть.
   bool _openItem(Object? userData) {
     final item = userData is int ? _shown[userData] : null;
@@ -565,9 +680,15 @@ class _MapWatch extends ymk.MapCameraListener {
 
 /// Оформление групп: кружок с числом вместо кучи меток.
 class _Clusters extends ymk.ClusterListener {
-  _Clusters(this.icon);
+  _Clusters(this.icon, this.onTap);
 
   final ymk_image.ImageProvider Function() icon;
+
+  final void Function(ymk.Cluster cluster) onTap;
+
+  /// Слушатели нажатия карта держит слабыми ссылками, поэтому храним их
+  /// сами: без этого группа через мгновение перестаёт нажиматься.
+  final List<_ClusterTap> _taps = [];
 
   @override
   void onClusterAdded(ymk.Cluster cluster) {
@@ -579,6 +700,25 @@ class _Clusters extends ymk.ClusterListener {
     // Сколько объявлений внутри. Подписью, а не картинкой: числа заранее
     // неизвестны, и готовить файл под каждое пришлось бы на все случаи.
     cluster.appearance.setText(cluster.size > 99 ? '99+' : '${cluster.size}');
+
+    final tap = _ClusterTap(onTap);
+
+    _taps.add(tap);
+    cluster.addClusterTapListener(tap);
+  }
+}
+
+/// Нажатие по группе.
+class _ClusterTap extends ymk.ClusterTapListener {
+  _ClusterTap(this.onTap);
+
+  final void Function(ymk.Cluster cluster) onTap;
+
+  @override
+  bool onClusterTap(ymk.Cluster cluster) {
+    onTap(cluster);
+
+    return true;
   }
 }
 
