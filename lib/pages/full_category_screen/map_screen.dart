@@ -356,7 +356,18 @@ class _MapScreenState extends State<MapScreen> {
     // коллекция с группировкой.
     log.w('КАРТА: нарисовано меток ${items.length}');
 
-    points.clusterPlacemarks(clusterRadius: 60, minZoom: 15);
+    /*
+     * СКЛЕИВАЕМ ПОСКУПЕЕ (правка 27.11.2026).
+     *
+     * Было 60 и 15, и на городском масштабе восемь объявлений с разных
+     * улиц Аксая превращались в один синий кружок: понять по такой карте
+     * ничего нельзя. Теперь метки слипаются, только если стоят почти
+     * вплотную, и начиная с масштаба города каждая стоит сама по себе.
+     *
+     * Группы остаются там, где они по делу: несколько квартир в одном
+     * доме или десяток товаров одного магазина.
+     */
+    points.clusterPlacemarks(clusterRadius: 24, minZoom: 12);
 
     setState(() {
       _loading = false;
@@ -412,7 +423,8 @@ class _MapScreenState extends State<MapScreen> {
     map.move(
       ymk.CameraPosition(
         ymk.Point(latitude: lat, longitude: lon),
-        zoom: 12.0,
+        // Масштаб города: видно улицы и дома, а не область целиком.
+        zoom: 12.5,
         azimuth: 0.0,
         tilt: 0.0,
       ),
