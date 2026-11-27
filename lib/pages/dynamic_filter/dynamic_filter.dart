@@ -10,6 +10,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:lidle/models/map_point.dart';
+import 'package:lidle/widgets/common/advert_point_field.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/j_calendar/j_calendar_widget.dart';
@@ -303,6 +305,14 @@ class _DynamicFilterState extends State<DynamicFilter>
 
   // Scroll controller for error handling
   final ScrollController _scrollController = ScrollController();
+
+  /// Метка на карте, поставленная человеком (задача 71, 27.11.2026).
+  ///
+  /// Пусто означает «считай по адресу»: точку найдёт сервер после
+  /// сохранения. Заполнено означает, что человек показал место сам, и тогда
+  /// координаты уходят вместе с адресом, а сервер помечает их как его
+  /// метку и больше не пересчитывает.
+  MapPoint? _pin;
 
   // NOTE: Все адресные поля (regions/cities/streets/buildings lists,
   // search caches, selected values/IDs) живут в `_AddressApiMixin`
@@ -1000,6 +1010,18 @@ class _DynamicFilterState extends State<DynamicFilter>
           _isNationwide = advertData['is_nationwide'] == true;
 
           _isFeedAdvert = advertData['is_feed'] == true;
+
+          /*
+           * Метка, которую человек поставил раньше (задача 71, 27.11.2026).
+           *
+           * Берём только свою метку, посчитанную по адресу не берём: иначе
+           * форма при первом же сохранении отправила бы её обратно как
+           * поставленную рукой, и объявление навсегда перестало бы
+           * пересчитываться при смене адреса.
+           */
+          final savedPoint = MapPoint.fromJson(advertData['point']);
+          _pin = savedPoint != null && savedPoint.isPin ? savedPoint : null;
+
           _feedOriginalName = originalName;
           _feedOriginalDescription = originalDescription;
           _feedAiName = aiName;
@@ -2740,6 +2762,14 @@ class _DynamicFilterState extends State<DynamicFilter>
 
             if (addressRegionId != null) {
               address['region_id'] = addressRegionId;
+            }
+
+            // Метка на карте, если человек её ставил (задача 71,
+            // 27.11.2026). Источник метки сервер проставляет сам, нам
+            // достаточно координат.
+            if (_pin != null) {
+              address['lat'] = _pin!.lat;
+              address['lon'] = _pin!.lon;
             }
 
 
@@ -5867,30 +5897,25 @@ class _DynamicFilterState extends State<DynamicFilter>
                 },
         ),
 
-        // Отображение карты пока срата 
-        
-        // const SizedBox(height: 9),
-
-        // const Text(
-        //   'Местоположение на карте',
-        //   style: TextStyle(color: textPrimary, fontSize: 14),
-        // ),
-        // const SizedBox(height: 9),
-
-        // Container(
-        //   height: 160,
-        //   decoration: BoxDecoration(
-        //     color: formBackground,
-        //     borderRadius: BorderRadius.circular(8),
-        //   ),
-        //   child: const Center(
-        //     child: Icon(
-        //       Icons.map_outlined,
-        //       color: textSecondary,
-        //       size: 40,
-        //     ),
-        //   ),
-        // ),
+        /*
+         * МЕСТОПОЛОЖЕНИЕ НА КАРТЕ (задача 71, 27.11.2026).
+         *
+         * Здесь годами стоял серый прямоугольник со значком карты, под
+         * комментарием «отображение карты пока срата»: настоящей карты в
+         * проекте не было, и показывать было нечего. Теперь есть.
+         *
+         * Метка встаёт сама по выбранному адресу, и её можно подвинуть
+         * пальцем. Подвинутая метка считается главнее справочника: ни
+         * пересчёт, ни ночной прогон её не трогают.
+         */
+        AdvertPointField(
+          regionId: _selectedPlaceRegionId ?? _selectedCityRegionId ?? _selectedRegionId,
+          cityId: _selectedCityId,
+          streetId: _selectedStreetId,
+          buildingId: _selectedStreetId == null ? null : _selectedBuildingId,
+          pin: _pin,
+          onPinChanged: (point) => setState(() => _pin = point),
+        ),
 
       ],
     );

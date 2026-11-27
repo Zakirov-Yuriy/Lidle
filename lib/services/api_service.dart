@@ -1852,6 +1852,60 @@ class ApiService {
     }
   }
 
+  /// Где находится выбранный в форме адрес (задача 71, 27.11.2026).
+  ///
+  /// Нужно форме подачи: объявления ещё нет, координаты по нему считать
+  /// некому, а метку показать надо сразу, пока человек заполняет поля.
+  /// Считает сервер, не приложение: у нас нет ни справочника, ни права
+  /// ходить на карты напрямую.
+  static Future<MapPoint?> geoResolve({
+    int? regionId,
+    int? cityId,
+    int? districtId,
+    int? streetId,
+    int? buildingId,
+    String? token,
+  }) async {
+    try {
+      final response = await post('/geo/resolve', {
+        if (regionId != null) 'region_id': regionId,
+        if (cityId != null) 'city_id': cityId,
+        if (districtId != null) 'district_id': districtId,
+        if (streetId != null) 'street_id': streetId,
+        if (buildingId != null) 'building_id': buildingId,
+      }, token: token);
+
+      return MapPoint.fromJson(response['data']);
+    } catch (e) {
+      // Карта не обязательна для подачи: не нашлось, значит блок не
+      // покажется, а точку посчитает сервер после сохранения.
+      return null;
+    }
+  }
+
+  /// Какой адрес в этой точке: человек подвинул метку пальцем.
+  ///
+  /// Возвращает разобранный адрес сервера или пусто. Строку для показа
+  /// человеку берём из `display`.
+  static Future<Map<String, dynamic>?> geoReverse(
+    double lat,
+    double lon, {
+    String? token,
+  }) async {
+    try {
+      final response = await post('/geo/reverse', {
+        'lat': lat,
+        'lon': lon,
+      }, token: token);
+
+      final data = response['data'];
+
+      return data is Map<String, dynamic> ? data : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Зарегистрировать, что товаром поделились.
   static Future<void> shareProduct(int productId, {String? token}) async {
     try {

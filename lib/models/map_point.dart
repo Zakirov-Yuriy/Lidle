@@ -16,6 +16,7 @@ class MapPoint {
     required this.lon,
     required this.precision,
     required this.radius,
+    this.source = 'directory',
   });
 
   final double lat;
@@ -26,6 +27,14 @@ class MapPoint {
 
   /// Радиус области в метрах. Ноль значит «знаем дом».
   final int radius;
+
+  /// Откуда точка: `directory` посчитана по адресу, `pin` поставлена
+  /// человеком. Форме правки это нужно, чтобы не предлагать уточнить то,
+  /// что человек уже уточнил.
+  final String source;
+
+  /// Метку ставил человек.
+  bool get isPin => source == 'pin';
 
   /// Точка известна до дома, можно ставить метку.
   bool get isExact => radius <= 0;
@@ -45,6 +54,7 @@ class MapPoint {
       lon: lon,
       precision: (raw['precision'] as String?) ?? 'city',
       radius: (raw['radius'] as num?)?.toInt() ?? 0,
+      source: (raw['source'] as String?) ?? 'directory',
     );
   }
 
@@ -54,6 +64,7 @@ class MapPoint {
         'lon': lon,
         'precision': precision,
         'radius': radius,
+        'source': source,
       };
 
   /// Насколько близко подводить камеру.
