@@ -4,8 +4,6 @@
 
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show Factory;
 import 'package:flutter/gestures.dart';
@@ -237,9 +235,7 @@ class _MapScreenState extends State<MapScreen> {
     points.clear();
     _shown.clear();
 
-    final icon = await _pinIcon();
-
-    if (!mounted) return;
+    final icon = _pinIcon();
 
     for (final item in items) {
       final mark = points.addPlacemarkWithImage(
@@ -360,69 +356,23 @@ class _MapScreenState extends State<MapScreen> {
   /// Картинка метки. Читается с диска один раз на экран.
   ymk_image.ImageProvider? _pin;
 
-  Future<ymk_image.ImageProvider> _pinIcon() async {
+  ymk_image.ImageProvider _pinIcon() {
     return _pin ??= ymk_image.ImageProvider.fromImageProvider(
       const AssetImage('assets/home_page/map_pin.png'),
     );
   }
 
-  /// Картинка группы: кружок с числом внутри.
+  /// Картинка группы: белый кружок с синей серединой.
   ///
-  /// Рисуем сами и держим по числу в памяти: картинок с готовым числом у нас
-  /// нет, а заводить полсотни файлов ради цифр глупо.
-  final Map<int, ymk_image.ImageProvider> _clusterIcons = {};
+  /// Число внутри рисуется не картинкой, а подписью к метке: иначе под
+  /// каждое возможное число пришлось бы готовить свой файл, а числа
+  /// заранее неизвестны.
+  ymk_image.ImageProvider? _cluster;
 
-  ymk_image.ImageProvider _clusterIcon(int size) {
-    final cached = _clusterIcons[size];
-
-    if (cached != null) return cached;
-
-    final icon = ymk_image.ImageProvider.fromImageProvider(
-      MemoryImage(_drawCluster(size)),
+  ymk_image.ImageProvider _clusterIcon() {
+    return _cluster ??= ymk_image.ImageProvider.fromImageProvider(
+      const AssetImage('assets/home_page/map_cluster.png'),
     );
-
-    _clusterIcons[size] = icon;
-
-    return icon;
-  }
-
-  Uint8List _drawCluster(int size) {
-    const double side = 96;
-
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-
-    final center = const Offset(side / 2, side / 2);
-
-    canvas.drawCircle(center, side / 2, Paint()..color = Colors.white);
-    canvas.drawCircle(
-      center,
-      side / 2 - 6,
-      Paint()..color = const Color(0xFF1C7ED6),
-    );
-
-    final text = TextPainter(
-      text: TextSpan(
-        text: size > 99 ? '99+' : '$size',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 34,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    text.paint(
-      canvas,
-      Offset(center.dx - text.width / 2, center.dy - text.height / 2),
-    );
-
-    final picture = recorder.endRecording();
-    final image = picture.toImageSync(side.toInt(), side.toInt());
-    final bytes = image.toByteData(format: ui.ImageByteFormat.png);
-
-    return bytes!.buffer.asUint8List();
   }
 }
 
@@ -445,16 +395,20 @@ class _MapWatch extends ymk.MapCameraListener {
 
 /// Оформление групп: кружок с числом вместо кучи меток.
 class _Clusters extends ymk.ClusterListener {
-  _Clusters(this.iconFor);
+  _Clusters(this.icon);
 
-  final ymk_image.ImageProvider Function(int size) iconFor;
+  final ymk_image.ImageProvider Function() icon;
 
   @override
   void onClusterAdded(ymk.Cluster cluster) {
     cluster.appearance.setIconWithStyle(
-      iconFor(cluster.size),
-      const ymk.IconStyle(anchor: math.Point(0.5, 0.5), scale: 0.4),
+      icon(),
+      const ymk.IconStyle(anchor: math.Point(0.5, 0.5), scale: 0.45),
     );
+
+    // Сколько объявлений внутри. Подписью, а не картинкой: числа заранее
+    // неизвестны, и готовить файл под каждое пришлось бы на все случаи.
+    cluster.appearance.setText(cluster.size > 99 ? '99+' : '${cluster.size}');
   }
 }
 

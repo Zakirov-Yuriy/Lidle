@@ -109,7 +109,7 @@ flutter:
     - assets/publication_tariff/
     - assets/payment/
     - assets/my_purchases/
-    - assets/map/map.png
+    # - assets/map/map.png
     - assets/messages/
     - assets/offers/
     - assets/support/
