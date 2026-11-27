@@ -501,34 +501,52 @@ class _UniversalBrowseCategoryScreenState
                                 ),
                               ),
                             ),
-                            // const SizedBox(height: 10),
-                            // SizedBox(
-                            //   width: double.infinity,
-                            //   height: 51,
-                            //   child: ElevatedButton(
-                            //     onPressed: () {
-                            //       Navigator.pushNamed(
-                            //         context,
-                            //         MapScreen.routeName,
-                            //       );
-                            //     },
-                            //     style: ElevatedButton.styleFrom(
-                            //       backgroundColor: primaryBackground,
-                            //       side: const BorderSide(color: Colors.white24),
-                            //       shape: RoundedRectangleBorder(
-                            //         borderRadius: BorderRadius.circular(5),
-                            //       ),
-                            //     ),
-                            //     child: const Text(
-                            //       'Показать на карте',
-                            //       style: TextStyle(
-                            //         color: Colors.white,
-                            //         fontSize: 16,
-                            //         fontWeight: FontWeight.w600,
-                            //       ),
-                            //     ),
-                            //   ),
-                            // ),
+                            /*
+                             * КНОПКА «ПОКАЗАТЬ НА КАРТЕ» ВЕРНУЛАСЬ
+                             * (задача 71, 27.11.2026).
+                             *
+                             * Она была закомментирована с тех пор, как на
+                             * месте карты лежал снимок картинкой: вести
+                             * человека на картинку было нечестно. Теперь
+                             * там настоящая карта с объявлениями.
+                             *
+                             * Категорию передаём, чтобы на карте оказалось
+                             * то же, что и в списке: человек выбрал
+                             * квартиры, значит и на карте квартиры.
+                             */
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 51,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => MapScreen(
+                                        categoryId: widget.category?.id,
+                                        title: widget.category?.name ?? 'На карте',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryBackground,
+                                  side: const BorderSide(color: Colors.white24),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Показать на карте',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
