@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/home_models.dart' as home;
 import 'package:lidle/models/map_item.dart';
+import 'package:lidle/models/map_point.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/services/api_service.dart';
@@ -80,10 +81,6 @@ class _MapScreenState extends State<MapScreen> {
   /// Первая загрузка на этом экране: после неё камера один раз подъезжает
   /// к найденным объявлениям.
   bool _firstLoad = true;
-
-  /// Камера уже встала на выбранный город, осталось подогнать масштаб под
-  /// его объявления, когда они приедут.
-  bool _fitAfterMove = false;
 
   /// Сколько точек нашлось в последний раз. По нему показываем, что здесь
   /// пусто, вместо молчаливой карты.
@@ -327,25 +324,6 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    /*
-     * ВТОРОЙ ШАГ: ПОДГОНЯЕМ МАСШТАБ ПОД ТО, ЧТО НАШЛОСЬ В ГОРОДЕ
-     * (правка 27.11.2026).
-     *
-     * Первым шагом камера просто встала на выбранный город, и мы ещё не
-     * знали, где в нём объявления. Теперь знаем: это и есть то, что
-     * приехало по кадру города. Подгоняем масштаб один раз, чтобы в кадр
-     * влезли все, и больше в движение карты не вмешиваемся.
-     */
-    if (_fitAfterMove) {
-      _fitAfterMove = false;
-
-      if (items.length > 1) {
-        _fit(map, _core(items));
-
-        return;
-      }
-    }
-
     points.clear();
     _shown.clear();
 
@@ -446,16 +424,7 @@ class _MapScreenState extends State<MapScreen> {
       final city = await ApiService.geoResolve(cityId: cityId);
 
       if (city != null && mounted) {
-        _fitAfterMove = true;
-
-        map.move(
-          ymk.CameraPosition(
-            ymk.Point(latitude: city.lat, longitude: city.lon),
-            zoom: 11.0,
-            azimuth: 0.0,
-            tilt: 0.0,
-          ),
-        );
+        await _showAround(map, city, 0.6, 1.0, 11.0);
 
         return;
       }
@@ -473,16 +442,7 @@ class _MapScreenState extends State<MapScreen> {
       final region = await ApiService.geoResolve(regionId: regionId);
 
       if (region != null && mounted) {
-        _fitAfterMove = true;
-
-        map.move(
-          ymk.CameraPosition(
-            ymk.Point(latitude: region.lat, longitude: region.lon),
-            zoom: 7.5,
-            azimuth: 0.0,
-            tilt: 0.0,
-          ),
-        );
+        await _showAround(map, region, 2.2, 3.4, 7.5);
 
         return;
       }
@@ -515,6 +475,59 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     _fit(map, _core(items));
+  }
+
+  /// Показать всё, что есть вокруг места.
+  ///
+  /// ЗАЧЕМ ОТДЕЛЬНЫЙ ЗАПРОС. Первая выдача приходит по кадру, в котором
+  /// виден весь шар, и в неё попадает пятьсот точек, ближайших к середине
+  /// этого кадра. Объявлений нужного города там может не быть вовсе.
+  ///
+  /// Поэтому спрашиваем ещё раз, прямоугольником вокруг самого места. Для
+  /// города это примерно шестьдесят километров в каждую сторону: Москва с
+  /// ближним Подмосковьем, Мариуполь с окрестными сёлами. Дальше кадр
+  /// подгоняется под то, что нашлось, и человек видит ВСЕ объявления
+  /// своего города, а не только те, что рядом с его районом.
+  ///
+  /// Это стоит одного лишнего запроса на открытие карты, и он того стоит:
+  /// без него при выбранных Кузьминках в кадре было одно объявление из
+  /// двенадцати московских.
+  Future<void> _showAround(
+    ymk.Map map,
+    MapPoint place,
+    double latSpan,
+    double lonSpan,
+    double fallbackZoom,
+  ) async {
+    final around = await ApiService.mapPoints(
+      north: (place.lat + latSpan).clamp(-85.0, 85.0),
+      south: (place.lat - latSpan).clamp(-85.0, 85.0),
+      east: (place.lon + lonSpan).clamp(-180.0, 180.0),
+      west: (place.lon - lonSpan).clamp(-180.0, 180.0),
+      kind: widget.kind,
+      categoryId: widget.categoryId,
+      catalogId: widget.catalogId,
+      query: widget.query,
+    );
+
+    if (!mounted) return;
+
+    if (around.length > 1) {
+      _fit(map, _core(around), fallback: ymk.Point(latitude: place.lat, longitude: place.lon));
+
+      return;
+    }
+
+    // В городе пусто или ровно одно объявление: показываем сам город, и
+    // пусть человек видит, что здесь ничего нет, а не гадает.
+    map.move(
+      ymk.CameraPosition(
+        ymk.Point(latitude: place.lat, longitude: place.lon),
+        zoom: fallbackZoom,
+        azimuth: 0.0,
+        tilt: 0.0,
+      ),
+    );
   }
 
   /// Основная масса точек: края отбрасываем.
