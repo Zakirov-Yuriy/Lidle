@@ -647,16 +647,20 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  /// Картинка группы: белый кружок с синей серединой.
+  /// Картинка группы: такая же красная капля, только с крупной головкой
+  /// (правка заказчика 27.11.2026).
   ///
-  /// Число внутри рисуется не картинкой, а подписью к метке: иначе под
-  /// каждое возможное число пришлось бы готовить свой файл, а числа
-  /// заранее неизвестны.
+  /// Раньше группа была синим кружком, и на карте получались два разных
+  /// языка: красные капли у одиночных объявлений и синие кружки у
+  /// остальных. Теперь всё одним знаком, а число пишется внутри головки.
+  ///
+  /// Число рисуется подписью, а не картинкой: чисел заранее не знает
+  /// никто, и готовить файл под каждое пришлось бы на все случаи.
   ymk_image.ImageProvider? _cluster;
 
   ymk_image.ImageProvider _clusterIcon() {
     return _cluster ??= ymk_image.ImageProvider.fromImageProvider(
-      const AssetImage('assets/home_page/map_cluster.png'),
+      const AssetImage('assets/home_page/map_pin_group.png'),
     );
   }
 }
@@ -694,12 +698,27 @@ class _Clusters extends ymk.ClusterListener {
   void onClusterAdded(ymk.Cluster cluster) {
     cluster.appearance.setIconWithStyle(
       icon(),
-      const ymk.IconStyle(anchor: math.Point(0.5, 0.5), scale: 0.45),
+      // Остриё капли стоит на месте, как у одиночной метки.
+      const ymk.IconStyle(anchor: math.Point(0.5, 1.0), scale: 0.5),
     );
 
-    // Сколько объявлений внутри. Подписью, а не картинкой: числа заранее
-    // неизвестны, и готовить файл под каждое пришлось бы на все случаи.
-    cluster.appearance.setText(cluster.size > 99 ? '99+' : '${cluster.size}');
+    /*
+     * Сколько объявлений внутри, прямо в головке капли.
+     *
+     * Подпись по умолчанию ставится в середину картинки, а картинка
+     * нарисована так, что её середина приходится на головку. Обводка
+     * тёмная: белые цифры на красном без неё читаются хуже.
+     */
+    cluster.appearance.setTextWithStyle(
+      const ymk.TextStyle(
+        size: 11,
+        color: Color(0xFFFFFFFF),
+        outlineColor: Color(0x66000000),
+        outlineWidth: 1,
+        placement: ymk.TextStylePlacement.Center,
+      ),
+      text: cluster.size > 99 ? '99+' : '${cluster.size}',
+    );
 
     final tap = _ClusterTap(onTap);
 
