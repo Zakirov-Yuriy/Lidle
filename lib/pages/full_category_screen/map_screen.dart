@@ -15,6 +15,7 @@ import 'package:lidle/pages/full_category_screen/mini_property_details_screen.da
 import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/map_service.dart';
+import 'package:lidle/services/selected_city_service.dart';
 import 'package:yandex_maps_mapkit_lite/image.dart' as ymk_image;
 import 'package:yandex_maps_mapkit_lite/mapkit.dart' as ymk;
 import 'package:yandex_maps_mapkit_lite/yandex_map.dart';
@@ -283,11 +284,11 @@ class _MapScreenState extends State<MapScreen> {
     if (_firstLoad && items.isNotEmpty) {
       _firstLoad = false;
 
-      _fitAll(map, items);
+      await _startView(map, items);
 
       // Камера уехала, значит в кадре теперь другое. Спросим точки заново
       // и на этом успокоимся: дальше карту двигает человек.
-      _load();
+      if (mounted) _load();
 
       return;
     }
@@ -326,6 +327,43 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
+
+
+  /// Куда смотреть при открытии карты.
+  ///
+  /// СНАЧАЛА ГОРОД ЧЕЛОВЕКА. Объявления разбросаны по всей стране: в выдаче
+  /// есть и Мариуполь, и Москва, и Сибирь. Если показать их все разом,
+  /// карта открывается видом на половину Евразии, и это бесполезно: своего
+  /// города на ней не разглядеть.
+  ///
+  /// Поэтому, если человек выбрал город в приложении, карта открывается на
+  /// нём. Координаты города спрашиваем у той же ручки, что и форма подачи:
+  /// держать их список в приложении незачем.
+  ///
+  /// ЕСЛИ ГОРОД НЕ ВЫБРАН, показываем все найденные объявления разом: это
+  /// хотя бы честно отвечает на вопрос «а где они вообще есть».
+  Future<void> _startView(ymk.Map map, List<MapItem> items) async {
+    final cityId = SelectedCityService().cityId;
+
+    if (cityId != null) {
+      final city = await ApiService.geoResolve(cityId: cityId);
+
+      if (city != null) {
+        map.move(
+          ymk.CameraPosition(
+            ymk.Point(latitude: city.lat, longitude: city.lon),
+            zoom: 11.5,
+            azimuth: 0.0,
+            tilt: 0.0,
+          ),
+        );
+
+        return;
+      }
+    }
+
+    _fitAll(map, items);
+  }
 
   /// Подводит камеру так, чтобы в кадр попали все найденные объявления.
   ///
