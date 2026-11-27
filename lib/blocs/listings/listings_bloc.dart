@@ -1174,6 +1174,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
         _feedCityName = feed.cityName;
 
+        // Город, по которому сервер собрал ленту, нужен карте выдачи:
+        // человек мог ничего не выбирать в шапке, а город у него есть
+        // (27.11.2026).
+        SelectedCityService().setHomeCity(feed.cityId, feed.cityName);
+
         // Лента отдаёт объявления и товары одним списком, разобранным
         // сервисом. Порядок его, а не наш: он чередует разделы и ведёт
         // список от свежих к старым.

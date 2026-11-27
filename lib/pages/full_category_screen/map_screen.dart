@@ -9,7 +9,6 @@ import 'package:flutter/foundation.dart' show Factory;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/home_models.dart' as home;
 import 'package:lidle/models/map_item.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
@@ -409,14 +408,26 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _startView(ymk.Map map, List<MapItem> items) async {
     final place = SelectedCityService();
 
-    final cityId = place.cityId;
-    final regionId = place.regionId;
+    /*
+     * ГОРОД БЕРЁМ И ИЗ ПРОФИЛЯ ТОЖЕ (правка 27.11.2026).
+     *
+     * `cityId` это город, ВЫБРАННЫЙ человеком в шапке. Если он ничего не
+     * выбирал, тут пусто, но город у него всё равно есть: он записан в
+     * профиле, и лента главной приходит по нему, с подписью «Сначала
+     * показываем ваш город». Карта должна открываться там же.
+     *
+     * Именно на этом всё и спотыкалось: в журнале было «выбран город null»
+     * при Москве на главной, и карта честно показывала место с самым
+     * большим скоплением объявлений, то есть Мариуполь.
+     *
+     * Человек нажал «Сбросить» на главной, значит города у него нет совсем,
+     * и тогда снова показываем всю площадку.
+     */
+    final cityId = place.isAllRegions || place.feedAllRegions
+        ? place.cityId
+        : place.mapCityId;
 
-    // Временно, для разбора 27.11.2026: убрать, когда станет ясно, почему
-    // карта открывается не на выбранном городе.
-    log.w('КАРТА: выбран город $cityId, регион $regionId, '
-        'название ${place.place.name}, все регионы ${place.isAllRegions}, '
-        'точек в первой выдаче ${items.length}');
+    final regionId = place.regionId;
 
     /*
      * ГОРОД ЧЕЛОВЕКА ГЛАВНЕЕ ВСЕГО ОСТАЛЬНОГО (правка заказчика 27.11.2026).
@@ -433,8 +444,6 @@ class _MapScreenState extends State<MapScreen> {
      */
     if (cityId != null) {
       final city = await ApiService.geoResolve(cityId: cityId);
-
-      log.w('КАРТА: точка города ${city?.lat}, ${city?.lon}');
 
       if (city != null && mounted) {
         _fitAfterMove = true;
@@ -462,8 +471,6 @@ class _MapScreenState extends State<MapScreen> {
      */
     if (regionId != null) {
       final region = await ApiService.geoResolve(regionId: regionId);
-
-      log.w('КАРТА: точка региона ${region?.lat}, ${region?.lon}');
 
       if (region != null && mounted) {
         _fitAfterMove = true;
@@ -503,8 +510,6 @@ class _MapScreenState extends State<MapScreen> {
      * на экране появлялась Африка, а вся настоящая выдача сжималась в три
      * точки посередине (27.11.2026).
      */
-    log.w('КАРТА: места нет, показываю скопление по ${items.length} точкам');
-
     if (items.isEmpty) {
       return;
     }
