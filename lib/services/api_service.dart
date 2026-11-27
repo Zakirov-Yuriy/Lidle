@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:lidle/models/filter_models.dart'; // Import the new model
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/home_models.dart' show Listing;
+import 'package:lidle/models/map_item.dart';
 import 'package:lidle/models/map_point.dart';
 import 'package:lidle/models/catalog_model.dart' as catalog_models;
 import 'package:lidle/models/create_advert_model.dart';
@@ -1880,6 +1881,53 @@ class ApiService {
       // Карта не обязательна для подачи: не нашлось, значит блок не
       // покажется, а точку посчитает сервер после сохранения.
       return null;
+    }
+  }
+
+  /// Точки для карты выдачи (задача 71, 27.11.2026).
+  ///
+  /// Спрашиваем только то, что попадает в кадр: без границ первое же
+  /// открытие карты вытащило бы всю площадку разом. Сервер отдаёт
+  /// урезанные точки, без картинок и характеристик.
+  static Future<List<MapItem>> mapPoints({
+    required double north,
+    required double south,
+    required double east,
+    required double west,
+    String kind = 'all',
+    int? categoryId,
+    String? query,
+    String? token,
+  }) async {
+    try {
+      final params = <String, String>{
+        'north': north.toString(),
+        'south': south.toString(),
+        'east': east.toString(),
+        'west': west.toString(),
+        'kind': kind,
+        if (categoryId != null) 'category_id': categoryId.toString(),
+        if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+      };
+
+      final suffix = params.entries
+          .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
+          .join('&');
+
+      final response = await get('/geo/points?$suffix', token: token);
+
+      final data = response['data'];
+
+      if (data is! List) return const [];
+
+      return data
+          .map(MapItem.fromJson)
+          .whereType<MapItem>()
+          .toList();
+    } catch (e) {
+      // Карта не должна падать из-за одного неудачного запроса: человек
+      // подвинет её, и точки придут снова.
+      return const [];
     }
   }
 
