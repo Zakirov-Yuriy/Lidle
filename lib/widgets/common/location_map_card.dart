@@ -93,7 +93,7 @@ class LocationMapCard extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => AdvertMapScreen(point: p, address: address),
+              builder: (_) => AdvertMapScreen(point: p),
             ),
           ),
           child: ClipRRect(

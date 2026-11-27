@@ -29,16 +29,9 @@ import 'package:yandex_maps_mapkit_lite/yandex_map.dart';
 /// она двигается, и нарисованная поверх метка осталась бы висеть
 /// посередине экрана, показывая не на дом, а в случайное место.
 class AdvertMapScreen extends StatefulWidget {
-  const AdvertMapScreen({
-    super.key,
-    required this.point,
-    this.address = '',
-  });
+  const AdvertMapScreen({super.key, required this.point});
 
   final MapPoint point;
-
-  /// Адрес строкой, показываем в шапке.
-  final String address;
 
   @override
   State<AdvertMapScreen> createState() => _AdvertMapScreenState();
@@ -59,26 +52,25 @@ class _AdvertMapScreenState extends State<AdvertMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    /*
+     * НИКАКОЙ ШАПКИ (правка заказчика 27.11.2026).
+     *
+     * Полоса с кнопкой «назад», словом «Расположение» и адресом съедала
+     * верх экрана и ничего не добавляла: человек только что нажал на карту
+     * в карточке и прекрасно помнит, куда попал, а адрес он там же и
+     * прочитал. Карта занимает экран целиком.
+     *
+     * ВОЗВРАТ ЗНАЧКОМ В ТОМ ЖЕ УГЛУ, что и значок «развернуть» в карточке,
+     * только стрелки смотрят внутрь. Получается одна и та же кнопка в одном
+     * и том же месте: нажал, развернулось, нажал ещё раз, свернулось
+     * обратно. Кнопка «назад» на телефоне и жест от края работают как
+     * обычно, значок их не отменяет.
+     */
     return Scaffold(
       backgroundColor: primaryBackground,
-      appBar: AppBar(
-        backgroundColor: formBackground,
-        foregroundColor: textPrimary,
-        title: const Text('Расположение', style: TextStyle(fontSize: 17)),
-      ),
-      body: Column(
+      body: Stack(
         children: [
-          if (widget.address.isNotEmpty)
-            Container(
-              width: double.infinity,
-              color: formBackground,
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Text(
-                widget.address,
-                style: const TextStyle(color: textSecondary, fontSize: 13),
-              ),
-            ),
-          Expanded(
+          Positioned.fill(
             child: YandexMap(
               // Здесь жесты нужны самой карте, иначе её не подвинуть:
               // Flutter иначе забирает их себе ещё до карты.
@@ -90,16 +82,53 @@ class _AdvertMapScreenState extends State<AdvertMapScreen> {
               onMapCreated: _onMapCreated,
             ),
           ),
+          // Значок «свернуть». В безопасной зоне, чтобы не залезть под
+          // часы и вырез камеры.
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(context).maybePop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.close_fullscreen,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Предупреждение о неточном месте: плашкой поверх карты, а не
+          // полосой снизу, иначе карта перестаёт быть во весь экран.
           if (!widget.point.isExact)
-            Container(
-              width: double.infinity,
-              color: formBackground,
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-              child: Text(
-                widget.point.precision == 'street'
-                    ? 'Точный дом продавец не указал, место показано в пределах улицы'
-                    : 'Точный адрес продавец не указал, место показано примерно',
-                style: const TextStyle(color: textMuted, fontSize: 12),
+            SafeArea(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  margin: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    widget.point.precision == 'street'
+                        ? 'Точный дом продавец не указал, место показано в пределах улицы'
+                        : 'Точный адрес продавец не указал, место показано примерно',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
               ),
             ),
         ],
