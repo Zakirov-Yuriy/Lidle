@@ -577,6 +577,15 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
   Widget _button(String text, Color color, VoidCallback? onTap) {
     return SizedBox(
       height: 44,
+
+      /*
+       * ВО ВСЮ ШИРИНУ КАРТОЧКИ (правка заказчика 27.11.2026).
+       *
+       * Пока кнопок было две, они стояли в ряд и каждая занимала половину.
+       * После того как «Проверить связь» убрали, оставшаяся «Сохранить»
+       * съёжилась по своему тексту и прижалась к левому краю.
+       */
+      width: double.infinity,
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
