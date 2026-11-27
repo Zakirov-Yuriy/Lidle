@@ -5269,6 +5269,22 @@ class _DynamicFilterState extends State<DynamicFilter>
           onTap: _selectedStreetId == null ? null : () => _pickBuilding(context),
         ),
 
+        /*
+         * МЕСТОПОЛОЖЕНИЕ НА КАРТЕ (задача 71, 27.11.2026).
+         *
+         * Метка встаёт сама по выбранному адресу, и её можно подвинуть
+         * пальцем. Подвинутая метка считается главнее справочника: ни
+         * пересчёт, ни ночной прогон её не трогают.
+         */
+        AdvertPointField(
+          regionId: _selectedPlaceRegionId ?? _selectedCityRegionId ?? _selectedRegionId,
+          cityId: _selectedCityId,
+          streetId: _selectedStreetId,
+          buildingId: _selectedStreetId == null ? null : _selectedBuildingId,
+          pin: _pin,
+          onPinChanged: (point) => setState(() => _pin = point),
+        ),
+
       ],
     );
   }
@@ -5897,25 +5913,8 @@ class _DynamicFilterState extends State<DynamicFilter>
                 },
         ),
 
-        /*
-         * МЕСТОПОЛОЖЕНИЕ НА КАРТЕ (задача 71, 27.11.2026).
-         *
-         * Здесь годами стоял серый прямоугольник со значком карты, под
-         * комментарием «отображение карты пока срата»: настоящей карты в
-         * проекте не было, и показывать было нечего. Теперь есть.
-         *
-         * Метка встаёт сама по выбранному адресу, и её можно подвинуть
-         * пальцем. Подвинутая метка считается главнее справочника: ни
-         * пересчёт, ни ночной прогон её не трогают.
-         */
-        AdvertPointField(
-          regionId: _selectedPlaceRegionId ?? _selectedCityRegionId ?? _selectedRegionId,
-          cityId: _selectedCityId,
-          streetId: _selectedStreetId,
-          buildingId: _selectedStreetId == null ? null : _selectedBuildingId,
-          pin: _pin,
-          onPinChanged: (point) => setState(() => _pin = point),
-        ),
+        // Карты здесь нет нарочно: это старая копия секции адреса, на
+        // экране она не используется. Карта живёт в _buildAddressSection.
 
       ],
     );
