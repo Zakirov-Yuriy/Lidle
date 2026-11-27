@@ -131,9 +131,11 @@ class LocationMapCard extends StatelessWidget {
         if (!p.isExact) ...[
           const SizedBox(height: 4),
           Text(
-            p.precision == 'street'
-                ? 'Место показано примерно, в пределах улицы'
-                : 'Место показано примерно, точный адрес не указан',
+            switch (p.precision) {
+              'street' => 'Место показано примерно, в пределах улицы',
+              'region' => 'Указана только область, место показано примерно',
+              _ => 'Место показано примерно, точный адрес не указан',
+            },
             style: const TextStyle(color: textMuted, fontSize: 11),
           ),
         ],
