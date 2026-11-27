@@ -313,26 +313,23 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
             ),
 
             const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  child: _button(
-                    'Сохранить',
-                    accentColor,
-                    _busy ? null : () => _save(provider),
-                  ),
-                ),
-                if (connection != null) ...[
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _button(
-                      'Проверить связь',
-                      bgColor,
-                      _busy ? null : () => _check(connection),
-                    ),
-                  ),
-                ],
-              ],
+
+            /*
+             * ОДНА КНОПКА, А НЕ ДВЕ (правка заказчика 27.11.2026).
+             *
+             * Раньше рядом стояла «Проверить связь», и подключение
+             * требовало двух действий подряд: сохранить, потом проверить.
+             * Второе нажатие ничего не решало, его просто надо было не
+             * забыть сделать, и люди забывали: ключи лежали сохранённые, а
+             * служба считалась неподключённой.
+             *
+             * Теперь связь проверяется сама сразу после сохранения, и
+             * человек видит один ответ: заработало или нет.
+             */
+            _button(
+              'Сохранить',
+              accentColor,
+              _busy ? null : () => _save(provider),
             ),
 
             if (connection != null) ...[
@@ -493,19 +490,31 @@ class _DeliveryConnectionsScreenState extends State<DeliveryConnectionsScreen> {
 
     await _load();
 
-    if (mounted) _say('Сохранено. Проверьте связь.');
-  }
+    if (!mounted) return;
 
-  Future<void> _check(DeliveryConnection connection) async {
+    /*
+     * СРАЗУ ПРОВЕРЯЕМ СВЯЗЬ.
+     *
+     * Номер подключения появляется только после сохранения, поэтому
+     * проверку зовём после перезагрузки списка, когда он уже известен.
+     */
+    final saved = _connectionOf(provider.key);
+
+    if (saved == null) {
+      _say('Сохранено');
+
+      return;
+    }
+
     setState(() => _busy = true);
 
-    final error = await DeliveryConnectionsService.check(connection.id);
+    final failed = await DeliveryConnectionsService.check(saved.id);
 
     if (!mounted) return;
 
     setState(() => _busy = false);
 
-    _say(error ?? 'Связь есть, ключи приняты');
+    _say(failed ?? 'Сохранено, связь есть, ключи приняты');
 
     await _load();
   }
