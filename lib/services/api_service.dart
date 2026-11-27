@@ -1916,24 +1916,17 @@ class ApiService {
           .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
           .join('&');
 
-      log.w('КАРТА: спрашиваю /geo/points?$suffix');
-
       final response = await get('/geo/points?$suffix', token: token);
 
       final data = response['data'];
 
       if (data is! List) {
-        log.w('КАРТА: сервер ответил без списка точек: $response');
+        log.w('Карта: сервер ответил без списка точек: $response');
 
         return const [];
       }
 
-      final items = data.map(MapItem.fromJson).whereType<MapItem>().toList();
-
-      log.w('КАРТА: пришло точек ${items.length}'
-          '${items.isEmpty ? '' : ', первая ${items.first.lat}, ${items.first.lon}'}');
-
-      return items;
+      return data.map(MapItem.fromJson).whereType<MapItem>().toList();
     } catch (e) {
       /*
        * ОШИБКУ ПИШЕМ, А НЕ ПРЯЧЕМ. Сначала здесь стоял молчаливый возврат
@@ -1941,7 +1934,7 @@ class ApiService {
        * же, как «тут ничего нет»: полдня ушло на поиски того, чего не
        * было.
        */
-      log.e('КАРТА: запрос точек не удался: $e');
+      log.e('Карта: запрос точек не удался: $e');
 
       return const [];
     }

@@ -9,7 +9,6 @@ import 'package:flutter/foundation.dart' show Factory;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/home_models.dart' as home;
 import 'package:lidle/models/map_item.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
@@ -287,9 +286,6 @@ class _MapScreenState extends State<MapScreen> {
     final east = lons.reduce(math.max).clamp(-180.0, 180.0);
     final west = lons.reduce(math.min).clamp(-180.0, 180.0);
 
-    log.w('КАРТА: кадр $south..$north по широте, $west..$east по долготе, '
-        'категория ${widget.categoryId}, каталог ${widget.catalogId}');
-
     final items = await ApiService.mapPoints(
       north: north,
       south: south,
@@ -314,8 +310,6 @@ class _MapScreenState extends State<MapScreen> {
      */
     if (_firstLoad && items.isNotEmpty) {
       _firstLoad = false;
-
-      log.w('КАРТА: первое открытие, веду камеру по ${items.length} точкам');
 
       await _startView(map, items);
 
@@ -355,8 +349,6 @@ class _MapScreenState extends State<MapScreen> {
 
     // Без этого вызова ни метки, ни группы не нарисуются: так устроена
     // коллекция с группировкой.
-    log.w('КАРТА: нарисовано меток ${items.length}');
-
     /*
      * СКЛЕИВАЕМ ПОСКУПЕЕ (правка 27.11.2026).
      *
@@ -404,9 +396,6 @@ class _MapScreenState extends State<MapScreen> {
         final near = items.where((i) =>
             (i.lat - city.lat).abs() < 0.45 &&
             (i.lon - city.lon).abs() < 0.65).toList();
-
-        log.w('КАРТА: выбран город $cityId, в нём и рядом ${near.length} '
-            'объявлений из ${items.length}');
 
         if (near.isNotEmpty) {
           _fit(map, near, fallback: ymk.Point(latitude: city.lat, longitude: city.lon));
@@ -481,9 +470,6 @@ class _MapScreenState extends State<MapScreen> {
     final zoom = span <= 0.004
         ? 15.5
         : (math.log(360 / (span * 1.6)) / math.ln2).clamp(4.0, 16.0);
-
-    log.w('КАРТА: показываю ${items.length} объявлений, '
-        'середина ${(north + south) / 2}, ${(east + west) / 2}, масштаб $zoom');
 
     map.move(
       ymk.CameraPosition(

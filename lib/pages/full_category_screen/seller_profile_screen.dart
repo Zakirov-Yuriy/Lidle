@@ -7,6 +7,8 @@ import 'package:lidle/widgets/components/favorite_heart.dart';
 import 'package:lidle/widgets/skeletons/listing_card_skeleton.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:lidle/models/map_point.dart';
+import 'package:lidle/widgets/common/location_map_card.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:lidle/widgets/common/share_action_button.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -183,6 +185,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   String? _description; // поле description (профильное about)
   String? _addressText; // собранная строка регион/город
   String? _registrationDate; // дата регистрации (created_at, формат дд.мм.гггг)
+
+  /// Точка компании на карте (задача 71, 27.11.2026).
+  ///
+  /// Приходит отдельным полем `point` из `GET /companies/{id}`, считается по
+  /// адресу компании. Пусто значит, что адрес не заполнен или не нашёлся на
+  /// карте, и тогда блока с картой нет совсем: пустая карта хуже её
+  /// отсутствия.
+  MapPoint? _companyPoint;
 
   /// Средний чек продавца (18.09.2026).
   ///
@@ -579,6 +589,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     _companyName = m['companyName'] as String?;
     _description = m['description'] as String?;
     _addressText = m['addressText'] as String?;
+    _companyPoint = MapPoint.fromJson(m['point']);
     _registrationDate = m['registrationDate'] as String?;
     _averageBill = m['averageBill'] as String?;
     _companyImage = m['companyImage'] as String?;
@@ -630,6 +641,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         'companyName': _companyName,
         'description': _description,
         'addressText': _addressText,
+        'point': _companyPoint?.toJson(),
         'registrationDate': _registrationDate,
         'averageBill': _averageBill,
         'companyImage': _companyImage,
@@ -748,6 +760,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       }
       final addr = parts.isNotEmpty ? parts.join(', ') : null;
 
+      // Точка компании на карте (задача 71, 27.11.2026). Считает сервер по
+      // тому же адресу, что собран строкой выше.
+      final companyPoint = MapPoint.fromJson(companyData['point']);
+
       // Контакты компании. Списки приходят плоскими (pluck): телефоны —
       // строки, telegrams/maxes — строки-юзернеймы. На всякий случай
       // поддерживаем и формат объектов {phone/username}.
@@ -786,6 +802,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _companyName = companyName;
         _description = desc;
         _addressText = addr;
+        _companyPoint = companyPoint;
         _registrationDate = registrationDate;
         _averageBill = bill;
         _companyImage = companyImage;
@@ -1884,11 +1901,38 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   Widget _buildLocationContent() {
-    return Text(
-      _profileLoading && _addressText == null
-          ? 'Загрузка...'
-          : (_addressText ?? 'Не указано'),
-      style: const TextStyle(color: textPrimary, fontSize: 15),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _profileLoading && _addressText == null
+              ? 'Загрузка...'
+              : (_addressText ?? 'Не указано'),
+          style: const TextStyle(color: textPrimary, fontSize: 15),
+        ),
+
+        /*
+         * КАРТА С МЕСТОМ КОМПАНИИ (задача 71, 27.11.2026).
+         *
+         * Последний из трёх видов точек по постановке: объявление, товар,
+         * компания. Блок устроен тем же виджетом, что и в карточке
+         * объявления, поэтому ведёт себя так же: стоит неподвижно, по
+         * нажатию раскрывается во весь экран.
+         *
+         * Своего заголовка и адреса под картой не рисует: заголовок
+         * «Расположение» и строка адреса уже стоят здесь же, выше.
+         */
+        if (_companyPoint != null) ...[
+          const SizedBox(height: 10),
+          LocationMapCard(
+            point: _companyPoint,
+            address: _addressText ?? '',
+            height: 160,
+            showTitle: false,
+            showAddress: false,
+          ),
+        ],
+      ],
     );
   }
 
