@@ -16,6 +16,7 @@ import 'package:lidle/pages/full_category_screen/mini_property_details_screen.da
 import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/map_service.dart';
+import 'package:lidle/services/selected_city_service.dart';
 import 'package:yandex_maps_mapkit_lite/image.dart' as ymk_image;
 import 'package:yandex_maps_mapkit_lite/mapkit.dart' as ymk;
 import 'package:yandex_maps_mapkit_lite/yandex_map.dart';
@@ -316,7 +317,7 @@ class _MapScreenState extends State<MapScreen> {
 
       log.w('КАРТА: первое открытие, веду камеру по ${items.length} точкам');
 
-      _startView(map, items);
+      await _startView(map, items);
 
       /*
        * Повторную загрузку НЕ зовём руками. Камера доезжает не мгновенно, и
@@ -395,7 +396,40 @@ class _MapScreenState extends State<MapScreen> {
   /// километров, берётся самая населённая клетка, и камера встаёт в
   /// середину ИМЕННО ЕЁ объявлений. Это всегда настоящее место: город, где
   /// их больше всего.
-  void _startView(ymk.Map map, List<MapItem> items) {
+  Future<void> _startView(ymk.Map map, List<MapItem> items) async {
+    /*
+     * СНАЧАЛА ГОРОД ЧЕЛОВЕКА, если он его выбрал.
+     *
+     * Без этого карта открывается там, где объявлений больше всего, и у
+     * человека с выбранным Мариуполем она уезжала в Аксай: в недвижимости
+     * там тринадцать объявлений против одиннадцати мариупольских. Свой
+     * город человек выбрал сам, и это важнее нашей статистики.
+     *
+     * Координаты города спрашиваем у той же ручки, что и форма подачи:
+     * держать их список в приложении незачем.
+     */
+    final cityId = SelectedCityService().cityId;
+
+    if (cityId != null) {
+      final city = await ApiService.geoResolve(cityId: cityId);
+
+      if (city != null && mounted) {
+        log.w('КАРТА: открываю на выбранном городе $cityId: '
+            '${city.lat}, ${city.lon}');
+
+        map.move(
+          ymk.CameraPosition(
+            ymk.Point(latitude: city.lat, longitude: city.lon),
+            zoom: 12.5,
+            azimuth: 0.0,
+            tilt: 0.0,
+          ),
+        );
+
+        return;
+      }
+    }
+
     const double cell = 0.2;
 
     final groups = <String, List<MapItem>>{};
