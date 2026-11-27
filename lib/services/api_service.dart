@@ -1896,6 +1896,7 @@ class ApiService {
     required double west,
     String kind = 'all',
     int? categoryId,
+    int? catalogId,
     String? query,
     String? token,
   }) async {
@@ -1907,6 +1908,7 @@ class ApiService {
         'west': west.toString(),
         'kind': kind,
         if (categoryId != null) 'category_id': categoryId.toString(),
+        if (catalogId != null) 'catalog_id': catalogId.toString(),
         if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
       };
 

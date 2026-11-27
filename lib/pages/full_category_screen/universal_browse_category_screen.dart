@@ -524,7 +524,15 @@ class _UniversalBrowseCategoryScreenState
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => MapScreen(
+                                        // Экран показывает либо категорию,
+                                        // либо каталог целиком. Во втором
+                                        // случае номера категории нет, и
+                                        // без каталога на карту уходила бы
+                                        // вся площадка (27.11.2026).
                                         categoryId: widget.category?.id,
+                                        catalogId: widget.category == null
+                                            ? widget.catalogId
+                                            : null,
                                         title: widget.category?.name ?? 'На карте',
                                       ),
                                     ),

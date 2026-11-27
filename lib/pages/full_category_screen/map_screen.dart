@@ -39,6 +39,7 @@ class MapScreen extends StatefulWidget {
   const MapScreen({
     super.key,
     this.categoryId,
+    this.catalogId,
     this.query,
     this.kind = 'all',
     this.title = 'На карте',
@@ -46,6 +47,10 @@ class MapScreen extends StatefulWidget {
 
   /// Та же категория, что в выдаче, если на карту пришли из неё.
   final int? categoryId;
+
+  /// Каталог целиком: на экране разделов в руках именно он, а номера
+  /// категории там нет. Без этого на карту уходила вся площадка.
+  final int? catalogId;
 
   /// Тот же поисковый запрос, что в выдаче.
   final String? query;
@@ -287,6 +292,7 @@ class _MapScreenState extends State<MapScreen> {
       west: west,
       kind: widget.kind,
       categoryId: widget.categoryId,
+      catalogId: widget.catalogId,
       query: widget.query,
     );
 
